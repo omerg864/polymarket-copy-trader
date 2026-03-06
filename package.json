@@ -1,0 +1,38 @@
+{
+	"name": "polymarket-5-minutes-bot",
+	"version": "1.0.0",
+	"description": "Automated trading bot for Polymarket BTC 5-minute up/down markets",
+	"type": "module",
+	"main": "src/index.js",
+	"scripts": {
+		"start": "node src/index.js --live",
+		"start:demo": "node src/index.js --demo",
+		"dev": "node --watch src/index.js --demo",
+		"redis:start": "docker run -d --name polymarket-redis -p 6379:6379 redis:latest || docker start polymarket-redis",
+		"redis:flush": "docker exec polymarket-redis redis-cli FLUSHALL",
+		"logs:clear": "rm -f logs/*.log && echo 'Logs cleared'",
+		"demo:reset-run": "npm run redis:flush && npm run logs:clear && npm run start:demo",
+		"api": "node src/api.js",
+		"dashboard:dev": "cd dashboard && npm run dev",
+		"dashboard": "node src/api.js & cd dashboard && npm run dev",
+		"stop": "node src/stop.js"
+	},
+	"keywords": [
+		"polymarket",
+		"trading-bot",
+		"bitcoin",
+		"crypto"
+	],
+	"license": "MIT",
+	"dependencies": {
+		"@polymarket/clob-client": "^5.1.0",
+		"axios": "^1.7.0",
+		"cors": "^2.8.6",
+		"dotenv": "^16.4.0",
+		"ethers": "^5.7.2",
+		"express": "^5.2.1",
+		"ioredis": "^5.4.0",
+		"technicalindicators": "^3.1.0",
+		"winston": "^3.14.0"
+	}
+}
