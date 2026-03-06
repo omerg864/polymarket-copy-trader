@@ -35,3 +35,23 @@ export interface Trade {
 	pctChange?: number;
 	confidence?: number;
 }
+
+export interface BotConfig {
+	mode: string;
+	minOrderSizeUsd: number;
+	maxOrderSizeUsd: number;
+	confidenceThreshold: number;
+	takeProfitPct: number;
+	stopLossPct: number;
+	maxConcurrentTrades: number;
+	minEntryPrice: number;
+	minMarketAgeMinutes: number;
+	candleCount: number;
+	rsiPeriod: number;
+	emaFast: number;
+	emaSlow: number;
+	riskMonitorIntervalMs: number;
+	botAllowance: number;
+	highPriceThreshold: number;
+	highPriceMaxBonusPct: number;
+}

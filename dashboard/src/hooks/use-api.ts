@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
-import type { TradeSummary, Trade } from '@/types';
+import type { TradeSummary, Trade, BotConfig } from '@/types';
 
 const API_BASE = '/api';
 
@@ -7,6 +7,14 @@ async function fetchJson<T>(url: string): Promise<T> {
 	const res = await fetch(`${API_BASE}${url}`);
 	if (!res.ok) throw new Error(`API error: ${res.statusText}`);
 	return res.json();
+}
+
+export function useConfig() {
+	return useQuery<BotConfig>({
+		queryKey: ['config'],
+		queryFn: () => fetchJson('/config'),
+		refetchInterval: 30000,
+	});
 }
 
 export function useSummary() {

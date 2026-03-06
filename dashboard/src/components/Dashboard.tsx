@@ -16,10 +16,18 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from '@/components/ui/dialog';
+import {
 	useSummary,
 	useActiveTrades,
 	useTradeHistory,
 	useToggleStop,
+	useConfig,
 } from '@/hooks/use-api';
 import type { Trade } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -115,6 +123,7 @@ export function Dashboard() {
 	} = useSummary();
 	const { data: activeTrades } = useActiveTrades();
 	const { data: history } = useTradeHistory();
+	const { data: config } = useConfig();
 	const toggleStop = useToggleStop();
 
 	const [sortField, setSortField] = useState<SortField>('time');
@@ -222,12 +231,136 @@ export function Dashboard() {
 										: '⏸️ Pause New Trades'}
 							</Button>
 						)}
-						<Badge
-							variant="outline"
-							className="text-xs border-zinc-700 text-zinc-400"
-						>
-							DEMO MODE
-						</Badge>
+						<Dialog>
+							<DialogTrigger asChild>
+								<Badge
+									variant="outline"
+									className="text-xs border-zinc-700 text-zinc-400 cursor-pointer hover:bg-zinc-800 transition-colors"
+								>
+									{config?.mode?.toUpperCase() || 'LOADING'}{' '}
+									MODE
+								</Badge>
+							</DialogTrigger>
+							<DialogContent className="sm:max-w-[425px] bg-zinc-950 border border-zinc-800 text-zinc-100">
+								<DialogHeader>
+									<DialogTitle className="text-xl">
+										Bot Configuration
+									</DialogTitle>
+								</DialogHeader>
+								{config ? (
+									<div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+										<div className="space-y-2">
+											<h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">
+												Trading Limits
+											</h3>
+											<div className="grid grid-cols-2 gap-2 text-sm">
+												<span className="text-zinc-500">
+													Min Order Size
+												</span>
+												<span className="text-right">
+													${config.minOrderSizeUsd}
+												</span>
+												<span className="text-zinc-500">
+													Max Order Size
+												</span>
+												<span className="text-right">
+													${config.maxOrderSizeUsd}
+												</span>
+												<span className="text-zinc-500">
+													Max Open Trades
+												</span>
+												<span className="text-right">
+													{config.maxConcurrentTrades}
+												</span>
+												<span className="text-zinc-500">
+													Bot Allowance
+												</span>
+												<span className="text-right">
+													${config.botAllowance}
+												</span>
+											</div>
+										</div>
+										<div className="space-y-2">
+											<h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">
+												Strategy Guards
+											</h3>
+											<div className="grid grid-cols-2 gap-2 text-sm">
+												<span className="text-zinc-500">
+													Min Confidence
+												</span>
+												<span className="text-right">
+													{config.confidenceThreshold *
+														100}
+													%
+												</span>
+												<span className="text-zinc-500">
+													Min Entry Price
+												</span>
+												<span className="text-right">
+													${config.minEntryPrice}
+												</span>
+												<span className="text-zinc-500">
+													Min Market Age
+												</span>
+												<span className="text-right">
+													{config.minMarketAgeMinutes}{' '}
+													min
+												</span>
+												<span className="text-zinc-500">
+													Take Profit
+												</span>
+												<span className="text-right">
+													+
+													{config.takeProfitPct * 100}
+													%
+												</span>
+												<span className="text-zinc-500">
+													Stop Loss
+												</span>
+												<span className="text-right">
+													-{config.stopLossPct * 100}%
+												</span>
+											</div>
+										</div>
+										<div className="space-y-2">
+											<h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">
+												Technical Analysis
+											</h3>
+											<div className="grid grid-cols-2 gap-2 text-sm">
+												<span className="text-zinc-500">
+													Candles Fetched
+												</span>
+												<span className="text-right">
+													{config.candleCount}
+												</span>
+												<span className="text-zinc-500">
+													RSI Period
+												</span>
+												<span className="text-right">
+													{config.rsiPeriod}
+												</span>
+												<span className="text-zinc-500">
+													EMA Fast
+												</span>
+												<span className="text-right">
+													{config.emaFast}
+												</span>
+												<span className="text-zinc-500">
+													EMA Slow
+												</span>
+												<span className="text-right">
+													{config.emaSlow}
+												</span>
+											</div>
+										</div>
+									</div>
+								) : (
+									<div className="py-8 text-center text-zinc-500 animate-pulse">
+										Loading configuration...
+									</div>
+								)}
+							</DialogContent>
+						</Dialog>
 					</div>
 				</div>
 
