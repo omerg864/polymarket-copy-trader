@@ -11,6 +11,7 @@ import {
 	DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+	getAuthRole,
 	useConfig,
 	useFlushRedis,
 	useRedisStats,
@@ -31,6 +32,7 @@ export function Header() {
 	const toggleStop = useToggleStop();
 	const { data: redisStats, refetch: refetchRedisStats } = useRedisStats();
 	const flushRedis = useFlushRedis();
+	const isReadonly = getAuthRole() === 'readonly';
 
 	const handleExport = useMemoizedFn(() => {
 		if (!history || !summary || !config) return;
@@ -132,13 +134,14 @@ export function Header() {
 							summary.isStopping
 								? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 hover:text-emerald-300'
 								: 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20 hover:text-amber-300'
-						} transition-colors`}
+						} transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
 						onClick={() =>
 							toggleStop.mutate(!summary.isStopping, {
 								onSuccess: () => refetchSummary(),
 							})
 						}
-						disabled={toggleStop.isPending}
+						disabled={toggleStop.isPending || isReadonly}
+						title={isReadonly ? 'Admin access required' : undefined}
 					>
 						{toggleStop.isPending
 							? '⌛ Updating...'
@@ -159,8 +162,11 @@ export function Header() {
 					<DialogTrigger asChild>
 						<Button
 							variant="outline"
-							className="h-7 px-3 text-xs font-medium rounded border bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20 hover:text-red-300 transition-colors"
-							disabled={flushRedis.isPending}
+							className="h-7 px-3 text-xs font-medium rounded border bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							disabled={flushRedis.isPending || isReadonly}
+							title={
+								isReadonly ? 'Admin access required' : undefined
+							}
 						>
 							{flushRedis.isPending
 								? '⌛ Flushing...'

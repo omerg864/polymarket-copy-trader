@@ -1,6 +1,7 @@
 import type { BotConfig, TradeSummary } from '@shared/types';
 import type { Request, Response } from 'express';
 import config from '../config';
+import { resolveRole } from '../middleware/auth';
 import {
 	flushRedis,
 	getActiveTrades,
@@ -107,12 +108,17 @@ export async function flushRedisData(
 
 export function verifyAuth(req: Request, res: Response): void {
 	const { password } = req.body as { password?: string };
-	if (!config.authPassword) {
-		res.json({ success: true });
+	if (!config.adminPassword && !config.readonlyPassword) {
+		res.json({ success: true, role: 'admin' });
 		return;
 	}
-	if (password === config.authPassword) {
-		res.json({ success: true });
+	if (!password) {
+		res.status(401).json({ error: 'Authentication required' });
+		return;
+	}
+	const role = resolveRole(password);
+	if (role) {
+		res.json({ success: true, role });
 		return;
 	}
 	res.status(401).json({ error: 'Invalid password' });

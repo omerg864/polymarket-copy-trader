@@ -6,7 +6,8 @@ const config = {
 	isDemo: (process.env.MODE || 'demo') === 'demo',
 
 	// Auth
-	authPassword: process.env.AUTH_PASSWORD || '',
+	adminPassword: process.env.ADMIN_PASSWORD || '',
+	readonlyPassword: process.env.READONLY_PASSWORD || '',
 
 	// Redis
 	redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',

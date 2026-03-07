@@ -10,7 +10,7 @@ import {
 	stopBot,
 	verifyAuth,
 } from '../controllers/bot.controller';
-import { authGuard } from '../middleware/auth';
+import { adminGuard, authGuard } from '../middleware/auth';
 
 const router = Router();
 
@@ -21,9 +21,9 @@ router.use(authGuard);
 router.get('/summary', asyncHandler(getSummary));
 router.get('/active-trades', asyncHandler(listActiveTrades));
 router.get('/trade-history', asyncHandler(listTradeHistory));
-router.post('/stop', asyncHandler(stopBot));
+router.post('/stop', adminGuard, asyncHandler(stopBot));
 router.get('/config', getBotConfig);
 router.get('/redis-stats', asyncHandler(getRedisStats));
-router.post('/flush-redis', asyncHandler(flushRedisData));
+router.post('/flush-redis', adminGuard, asyncHandler(flushRedisData));
 
 export default router;

@@ -1,7 +1,7 @@
 import { AnalysisDashboard } from '@/components/AnalysisDashboard';
 import { Dashboard } from '@/components/Dashboard';
 import { LoginPage } from '@/components/LoginPage';
-import { setAuthPassword, useCheckAuth } from '@/hooks/use-api';
+import { getAuthRole, setAuthPassword, useCheckAuth } from '@/hooks/use-api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 
@@ -54,7 +54,17 @@ function AuthenticatedApp() {
 							📊 Trade Analysis
 						</button>
 					</nav>
-					<div className="sm:ml-auto absolute top-3 right-4 sm:static">
+					<div className="sm:ml-auto absolute top-3 right-4 sm:static flex items-center gap-3">
+						{getAuthRole() === 'readonly' && (
+							<span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
+								READ-ONLY
+							</span>
+						)}
+						{getAuthRole() === 'admin' && (
+							<span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+								ADMIN
+							</span>
+						)}
 						<button
 							onClick={() => {
 								setAuthPassword(null);

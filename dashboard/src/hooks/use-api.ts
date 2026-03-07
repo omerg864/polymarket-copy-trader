@@ -3,14 +3,26 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
+export type AuthRole = 'admin' | 'readonly';
+
 let authPassword: string | null = null;
+let authRole: AuthRole | null = null;
 
 export function setAuthPassword(password: string | null) {
 	authPassword = password;
+	if (!password) authRole = null;
+}
+
+export function setAuthRole(role: AuthRole | null) {
+	authRole = role;
 }
 
 export function getAuthPassword(): string | null {
 	return authPassword;
+}
+
+export function getAuthRole(): AuthRole | null {
+	return authRole;
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -40,8 +52,10 @@ export function useLogin() {
 				body: JSON.stringify({ password }),
 			});
 			if (!res.ok) throw new Error('Invalid password');
+			const data = await res.json();
 			authPassword = password;
-			return res.json();
+			authRole = data.role || 'readonly';
+			return data;
 		},
 	});
 }
@@ -58,7 +72,9 @@ export function useCheckAuth() {
 					body: JSON.stringify({}),
 				});
 				if (res.ok) {
+					const data = await res.json();
 					authPassword = '';
+					authRole = data.role || 'admin';
 					return true;
 				}
 				return false;
@@ -68,6 +84,10 @@ export function useCheckAuth() {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ password: authPassword }),
 			});
+			if (res.ok) {
+				const data = await res.json();
+				authRole = data.role || 'readonly';
+			}
 			return res.ok;
 		},
 		retry: false,
