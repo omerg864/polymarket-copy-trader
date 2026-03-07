@@ -1,4 +1,4 @@
-import type { Trade } from '@polymarket-bot/shared';
+import type { Trade } from '@shared/types';
 import config from '../config';
 import demoTradingService from '../services/demoTrading';
 import polymarketService from '../services/polymarket';
@@ -243,7 +243,7 @@ class StrategyEngine {
 		const confidenceRatio =
 			confidenceRange > 0
 				? (signal.confidence - config.confidenceThreshold) /
-					confidenceRange
+				confidenceRange
 				: 0;
 		const orderBudgetBase =
 			config.minOrderSizeUsd +

@@ -10,7 +10,6 @@
 		"build": "tsc"
 	},
 	"dependencies": {
-		"@polymarket-bot/shared": "file:../shared",
 		"@polymarket/clob-client": "^5.1.0",
 		"axios": "^1.7.0",
 		"dotenv": "^16.4.0",

@@ -1,5 +1,5 @@
 import { Wallet } from '@ethersproject/wallet';
-import type { Market, MarketPrices } from '@polymarket-bot/shared';
+import type { Market, MarketPrices } from '@shared/types';
 import { ClobClient, OrderType, Side } from '@polymarket/clob-client';
 import axios, { AxiosInstance } from 'axios';
 import config, { validateLiveConfig } from '../config';

@@ -1,4 +1,4 @@
-import type { Trade } from '@polymarket-bot/shared';
+import type { Trade } from '@shared/types';
 import config from '../config';
 import demoTradingService from '../services/demoTrading';
 import polymarketService from '../services/polymarket';

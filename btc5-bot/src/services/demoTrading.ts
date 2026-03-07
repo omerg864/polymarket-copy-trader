@@ -1,4 +1,4 @@
-import type { Market, Trade } from '@polymarket-bot/shared';
+import type { Market, Trade } from '@shared/types';
 import { randomUUID } from 'crypto';
 import config from '../config';
 import logger from '../utils/logger';

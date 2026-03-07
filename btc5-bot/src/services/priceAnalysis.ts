@@ -1,4 +1,4 @@
-import type { Candle, Signal } from '@polymarket-bot/shared';
+import type { Candle, Signal } from '@shared/types';
 import axios, { AxiosInstance } from 'axios';
 import {
 	BollingerBands,
@@ -177,7 +177,7 @@ class PriceAnalysisService {
 		const mean10 = recent10.reduce((a, b) => a + b, 0) / recent10.length;
 		const stdDev = Math.sqrt(
 			recent10.reduce((sum, v) => sum + (v - mean10) ** 2, 0) /
-				recent10.length,
+			recent10.length,
 		);
 		const volatilityPct = mean10 > 0 ? stdDev / mean10 : 0;
 
@@ -312,9 +312,9 @@ class PriceAnalysisService {
 				priceToBeat: priceToBeat || 'N/A',
 				distFromRef: priceToBeat
 					? (
-							((currentPrice - priceToBeat) / priceToBeat) *
-							100
-						).toFixed(4) + '%'
+						((currentPrice - priceToBeat) / priceToBeat) *
+						100
+					).toFixed(4) + '%'
 					: 'N/A',
 				vwap: vwap.toFixed(2),
 				microRsi: microRsi.toFixed(1),
@@ -342,7 +342,7 @@ class PriceAnalysisService {
 					momentum3: signal.indicators?.momentum3,
 				},
 			}) +
-				` ${emoji} [SIGNAL] ${direction} (confidence: ${(confidence * 100).toFixed(1)}%)`,
+			` ${emoji} [SIGNAL] ${direction} (confidence: ${(confidence * 100).toFixed(1)}%)`,
 		);
 
 		return signal;

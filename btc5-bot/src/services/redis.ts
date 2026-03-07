@@ -1,4 +1,4 @@
-import type { BotStats, Trade } from '@polymarket-bot/shared';
+import type { BotStats, Trade } from '@shared/types';
 import Redis from 'ioredis';
 import config from '../config';
 import logger from '../utils/logger';
