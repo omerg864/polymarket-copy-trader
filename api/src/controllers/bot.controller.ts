@@ -1,4 +1,4 @@
-import type { BotConfig, TradeSummary } from '@polymarket-bot/shared';
+import type { BotConfig, TradeSummary } from '@shared/types';
 import type { Request, Response } from 'express';
 import config from '../config';
 import {
