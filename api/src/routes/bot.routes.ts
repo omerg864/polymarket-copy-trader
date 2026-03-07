@@ -8,9 +8,15 @@ import {
 	listActiveTrades,
 	listTradeHistory,
 	stopBot,
+	verifyAuth,
 } from '../controllers/bot.controller';
+import { authGuard } from '../middleware/auth';
 
 const router = Router();
+
+router.post('/auth/verify', verifyAuth);
+
+router.use(authGuard);
 
 router.get('/summary', asyncHandler(getSummary));
 router.get('/active-trades', asyncHandler(listActiveTrades));

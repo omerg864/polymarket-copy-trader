@@ -5,11 +5,16 @@ const config = {
 	mode: process.env.MODE || 'demo',
 	isDemo: (process.env.MODE || 'demo') === 'demo',
 
+	// Auth
+	authPassword: process.env.AUTH_PASSWORD || '',
+
 	// Redis
 	redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
 
 	// API
 	port: parseInt(process.env.API_PORT || '3001', 10),
+
+	clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
 
 	// Trading strategy — dynamic order sizing
 	minOrderSizeUsd: parseFloat(process.env.MIN_ORDER_SIZE || '5'),

@@ -104,3 +104,16 @@ export async function flushRedisData(
 	await flushRedis();
 	res.json({ success: true });
 }
+
+export function verifyAuth(req: Request, res: Response): void {
+	const { password } = req.body as { password?: string };
+	if (!config.authPassword) {
+		res.json({ success: true });
+		return;
+	}
+	if (password === config.authPassword) {
+		res.json({ success: true });
+		return;
+	}
+	res.status(401).json({ error: 'Invalid password' });
+}

@@ -15,7 +15,11 @@ const limiter = rateLimit({
 	message: { error: 'Too many requests, please try again later.' },
 });
 
-app.use(cors());
+app.use(
+	cors({
+		origin: config.clientUrl,
+	}),
+);
 app.use(express.json());
 app.use(limiter);
 
