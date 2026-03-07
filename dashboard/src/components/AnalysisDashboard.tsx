@@ -104,7 +104,7 @@ export function AnalysisDashboard() {
 
 		// Only analyze resolved trades
 		const resolved = history.filter(
-			(t) =>
+			(t: Trade) =>
 				t.status === 'won' ||
 				t.status === 'lost' ||
 				t.status === 'resolved' ||
@@ -236,13 +236,13 @@ export function AnalysisDashboard() {
 		const byDirection = {
 			UP: {
 				main: calculateStats(
-					resolved.filter((t) => t.direction === 'UP'),
+					resolved.filter((t: Trade) => t.direction === 'UP'),
 				),
 				children: [],
 			},
 			DOWN: {
 				main: calculateStats(
-					resolved.filter((t) => t.direction === 'DOWN'),
+					resolved.filter((t: Trade) => t.direction === 'DOWN'),
 				),
 				children: [],
 			},
@@ -333,7 +333,7 @@ export function AnalysisDashboard() {
 
 	const suggestions: string[] = [];
 	const resolvedBase = history.filter(
-		(t) =>
+		(t: Trade) =>
 			t.status === 'won' ||
 			t.status === 'lost' ||
 			t.status === 'resolved' ||
@@ -343,7 +343,7 @@ export function AnalysisDashboard() {
 	);
 
 	const lowConf = calculateStats(
-		resolvedBase.filter((t) => (t.confidence || 0) < 0.7),
+		resolvedBase.filter((t: Trade) => (t.confidence || 0) < 0.7),
 	);
 	if (lowConf.total > 4 && lowConf.winRate < 45) {
 		suggestions.push(
@@ -356,7 +356,7 @@ export function AnalysisDashboard() {
 	}
 
 	const expensivePrice = calculateStats(
-		resolvedBase.filter((t) => t.entryPrice >= 0.8),
+		resolvedBase.filter((t: Trade) => t.entryPrice >= 0.8),
 	);
 	if (expensivePrice.total > 4 && expensivePrice.winRate < 40) {
 		suggestions.push(
@@ -382,7 +382,7 @@ export function AnalysisDashboard() {
 	}
 
 	const lateAge = calculateStats(
-		resolvedBase.filter((t) => {
+		resolvedBase.filter((t: Trade) => {
 			if (!t.startTime || !t.enteredAt) return false;
 			return (
 				(new Date(t.enteredAt).getTime() -

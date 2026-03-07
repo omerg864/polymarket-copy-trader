@@ -4,6 +4,7 @@ import {
 	CardDescription,
 	CardHeader,
 } from '@/components/ui/card';
+import type { Trade } from '@/types';
 import { useSummary, useTradeHistory } from '@/hooks/use-api';
 
 export function StatsSummary() {
@@ -24,7 +25,7 @@ export function StatsSummary() {
 	let highestLoss = 0;
 
 	if (history) {
-		history.forEach((trade) => {
+		history.forEach((trade: Trade) => {
 			totalCosts += trade.cost;
 			if (trade.cost > highestCost) highestCost = trade.cost;
 			if (trade.pnl > highestWin) highestWin = trade.pnl;

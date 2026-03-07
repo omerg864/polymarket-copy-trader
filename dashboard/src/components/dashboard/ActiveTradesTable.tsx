@@ -5,6 +5,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
+import type { Trade } from '@/types';
 import {
 	Table,
 	TableBody,
@@ -66,7 +67,7 @@ export function ActiveTradesTable() {
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{activeTrades.map((trade) => {
+						{activeTrades.map((trade: Trade) => {
 							const pctChg =
 								trade.entryPrice > 0
 									? ((trade.currentPrice - trade.entryPrice) /

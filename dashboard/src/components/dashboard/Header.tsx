@@ -13,7 +13,9 @@ import {
 	useTradeHistory,
 	useConfig,
 	useToggleStop,
+	useRedisStats,
 } from '@/hooks/use-api';
+import { Database } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { HeaderClocks } from './HeaderClocks';
@@ -23,6 +25,7 @@ export function Header() {
 	const { data: history } = useTradeHistory();
 	const { data: config } = useConfig();
 	const toggleStop = useToggleStop();
+	const { data: redisStats } = useRedisStats();
 
 	const handleExport = useMemoizedFn(() => {
 		if (!history || !summary || !config) return;
@@ -102,7 +105,19 @@ export function Header() {
 				<p className="text-sm text-zinc-500 mt-1">
 					BTC 5-Minute Up/Down Markets • Auto-refreshes every 5s
 				</p>
-				<HeaderClocks startTime={summary?.botStartTime} />
+				<div className="flex items-baseline gap-3">
+					<HeaderClocks startTime={summary?.botStartTime} />
+					{redisStats && (
+						<Badge
+							variant="outline"
+							className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono text-zinc-400 border-zinc-700/50 bg-zinc-900/50"
+						>
+							<Database className="h-3 w-3 text-emerald-500/80" />
+							{redisStats.memoryUsed} ({redisStats.totalKeys}{' '}
+							keys)
+						</Badge>
+					)}
+				</div>
 			</div>
 			<div className="flex items-center gap-4">
 				{summary && (

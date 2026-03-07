@@ -172,6 +172,30 @@ class RedisService {
 			JSON.stringify(stats),
 		);
 	}
+	async getSystemStats() {
+		try {
+			if (!this.client || !this.client.isReady) {
+				return { memoryUsed: 'N/A', totalKeys: 0 };
+			}
+			const info = await this.client.info();
+
+			// Parse memory used
+			const memMatch = info.match(/used_memory_human:([^\r\n]+)/);
+			const memoryUsed = memMatch ? memMatch[1] : 'Unknown';
+
+			// Parse active keys (usually db0 for this bot)
+			const keysMatch = info.match(/db0:keys=(\d+)/);
+			const totalKeys = keysMatch ? parseInt(keysMatch[1], 10) : 0;
+
+			return {
+				memoryUsed,
+				totalKeys,
+			};
+		} catch (err) {
+			logger.error(`Failed to get Redis stats: ${err.message}`);
+			return { memoryUsed: 'Error', totalKeys: 0 };
+		}
+	}
 }
 
 const redisService = new RedisService();

@@ -144,6 +144,28 @@ app.get('/api/config', (_req, res) => {
 	}
 });
 
+app.get('/api/redis-stats', async (_req, res) => {
+	try {
+		const info = await redis.info();
+
+		// Parse memory used
+		const memMatch = info.match(/used_memory_human:([^\r\n]+)/);
+		const memoryUsed = memMatch ? memMatch[1] : 'Unknown';
+
+		// Parse active keys (usually db0 for this bot)
+		const keysMatch = info.match(/db0:keys=(\d+)/);
+		const totalKeys = keysMatch ? parseInt(keysMatch[1], 10) : 0;
+
+		res.json({ memoryUsed, totalKeys });
+	} catch (err) {
+		res.status(500).json({
+			error: err.message,
+			memoryUsed: 'Error',
+			totalKeys: 0,
+		});
+	}
+});
+
 const PORT = process.env.API_PORT || 3001;
 app.listen(PORT, () => {
 	console.log(`📊 Dashboard API running on http://localhost:${PORT}`);

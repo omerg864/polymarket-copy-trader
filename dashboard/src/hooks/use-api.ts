@@ -54,3 +54,11 @@ export function useToggleStop() {
 		},
 	});
 }
+
+export function useRedisStats() {
+	return useQuery<{ memoryUsed: string; totalKeys: number }>({
+		queryKey: ['redis-stats'],
+		queryFn: () => fetchJson('/redis-stats'),
+		refetchInterval: 10000,
+	});
+}
