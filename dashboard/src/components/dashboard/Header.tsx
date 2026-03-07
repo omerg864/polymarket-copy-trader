@@ -102,15 +102,15 @@ export function Header() {
 	});
 
 	return (
-		<div className="flex items-center justify-between">
+		<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 			<div>
-				<h1 className="text-2xl font-bold tracking-tight">
+				<h1 className="text-xl sm:text-2xl font-bold tracking-tight">
 					📊 Polymarket Trading Dashboard
 				</h1>
-				<p className="text-sm text-zinc-500 mt-1">
+				<p className="text-xs sm:text-sm text-zinc-500 mt-1">
 					BTC 5-Minute Up/Down Markets • Auto-refreshes every 5s
 				</p>
-				<div className="flex items-baseline gap-3">
+				<div className="flex flex-wrap items-baseline gap-3">
 					<HeaderClocks startTime={summary?.botStartTime} />
 					{redisStats && (
 						<Badge
@@ -124,7 +124,7 @@ export function Header() {
 					)}
 				</div>
 			</div>
-			<div className="flex items-center gap-4">
+			<div className="flex flex-wrap items-center gap-2 sm:gap-4">
 				{summary && (
 					<Button
 						variant="outline"

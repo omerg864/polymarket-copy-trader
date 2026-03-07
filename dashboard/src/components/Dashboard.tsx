@@ -1,7 +1,7 @@
 import { useSummary } from '@/hooks/use-api';
+import { ActiveTradesTable } from './dashboard/ActiveTradesTable';
 import { Header } from './dashboard/Header';
 import { StatsSummary } from './dashboard/StatsSummary';
-import { ActiveTradesTable } from './dashboard/ActiveTradesTable';
 import { TradeHistoryTable } from './dashboard/TradeHistoryTable';
 
 export function Dashboard() {
@@ -18,8 +18,8 @@ export function Dashboard() {
 	}
 
 	return (
-		<div className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
-			<div className="max-w-7xl mx-auto space-y-6">
+		<div className="min-h-screen bg-zinc-950 text-zinc-100 p-3 sm:p-6">
+			<div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
 				<Header />
 				<StatsSummary />
 				<ActiveTradesTable />

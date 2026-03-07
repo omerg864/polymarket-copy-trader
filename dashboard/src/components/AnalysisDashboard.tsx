@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useMemo } from 'react';
-import { useTradeHistory } from '@/hooks/use-api';
+import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+} from '@/components/ui/accordion';
 import {
 	Card,
 	CardContent,
@@ -8,14 +12,10 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
-import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from '@/components/ui/accordion';
-import { Lightbulb, Sparkles } from 'lucide-react';
+import { useTradeHistory } from '@/hooks/use-api';
 import type { Trade } from '@/types';
+import { Lightbulb, Sparkles } from 'lucide-react';
+import { useMemo } from 'react';
 
 function calculateStats(trades: Trade[]) {
 	const total = trades.length;
@@ -427,26 +427,26 @@ export function AnalysisDashboard() {
 	) => (
 		<div
 			key={label}
-			className={`flex items-center justify-between py-2 border-b border-zinc-800/50 last:border-0 rounded -mx-2 px-2 ${
+			className={`flex flex-wrap sm:flex-nowrap items-center justify-between py-2 border-b border-zinc-800/50 last:border-0 rounded -mx-2 px-2 gap-1 ${
 				isChild ? 'bg-zinc-900/40 text-sm' : 'hover:bg-zinc-800/30'
 			}`}
 		>
 			<span
-				className={`${isChild ? 'text-zinc-400' : 'text-zinc-300 font-medium'} w-[30%] pl-2 truncate`}
+				className={`${isChild ? 'text-zinc-400' : 'text-zinc-300 font-medium'} w-full sm:w-[30%] pl-2 truncate`}
 				title={label}
 			>
 				{isChild && '↳ '}
 				{label}
 			</span>
-			<span className="text-zinc-500 text-xs font-mono w-[20%] text-center">
+			<span className="text-zinc-500 text-xs font-mono w-auto sm:w-[20%] text-center">
 				{stats.total} trades
 			</span>
 			<span
-				className={`font-mono font-medium text-xs w-[20%] text-center ${stats.totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+				className={`font-mono font-medium text-xs w-auto sm:w-[20%] text-center ${stats.totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
 			>
 				{stats.totalPnl >= 0 ? '+' : ''}${stats.totalPnl.toFixed(2)}
 			</span>
-			<div className="w-[30%] text-right whitespace-nowrap">
+			<div className="w-auto sm:w-[30%] text-right whitespace-nowrap">
 				<span
 					className={`font-mono font-bold ${stats.winRate >= 50 ? 'text-emerald-400' : 'text-red-400'} ${isChild ? 'text-xs' : ''}`}
 				>
@@ -460,12 +460,12 @@ export function AnalysisDashboard() {
 	);
 
 	return (
-		<div className="p-6 max-w-7xl mx-auto space-y-6 pb-24">
+		<div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6 pb-24">
 			<div>
-				<h2 className="text-2xl font-bold tracking-tight">
+				<h2 className="text-xl sm:text-2xl font-bold tracking-tight">
 					Trade Analysis
 				</h2>
-				<p className="text-zinc-400">
+				<p className="text-sm sm:text-base text-zinc-400">
 					Historical performance breakdown across{' '}
 					<span className="text-zinc-100 font-bold">
 						{analysis.total.total}

@@ -1,4 +1,3 @@
-import { useState, useMemo } from 'react';
 import {
 	Card,
 	CardContent,
@@ -21,10 +20,11 @@ import {
 	TableRow,
 } from '@/components/ui/table';
 import { useTradeHistory } from '@/hooks/use-api';
-import { useMemoizedFn } from 'ahooks';
-import type { Trade } from '@/types';
-import { DirectionBadge, PnlBadge, StatusBadge } from './badges';
 import { formatDate } from '@/lib/utils';
+import type { Trade } from '@/types';
+import { useMemoizedFn } from 'ahooks';
+import { useMemo, useState } from 'react';
+import { DirectionBadge, PnlBadge, StatusBadge } from './badges';
 
 type SortField = 'time' | 'pnl' | 'confidence' | 'cost';
 type SortDir = 'asc' | 'desc';
@@ -90,7 +90,7 @@ export function TradeHistoryTable() {
 	return (
 		<Card className="bg-zinc-900 border-zinc-800">
 			<CardHeader>
-				<div className="flex items-center justify-between">
+				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div>
 						<CardTitle className="text-lg">
 							📋 Trade History ({filteredHistory.length})
@@ -99,7 +99,7 @@ export function TradeHistoryTable() {
 							Completed trades with outcomes
 						</CardDescription>
 					</div>
-					<div className="flex gap-2">
+					<div className="flex flex-wrap gap-2">
 						<select
 							value={filterStatus}
 							onChange={(e) =>
@@ -131,125 +131,132 @@ export function TradeHistoryTable() {
 			</CardHeader>
 			<CardContent>
 				{filteredHistory.length > 0 ? (
-					<Table>
-						<TableHeader>
-							<TableRow className="border-zinc-800 hover:bg-transparent">
-								<TableHead
-									className="text-zinc-500 cursor-pointer select-none hover:text-zinc-300"
-									onClick={() => toggleSort('time')}
-								>
-									Closed{sortIndicator('time')}
-								</TableHead>
-								<TableHead className="text-zinc-500">
-									Opened
-								</TableHead>
-								<TableHead className="text-zinc-500">
-									Market
-								</TableHead>
-								<TableHead className="text-zinc-500">
-									Direction
-								</TableHead>
-								<TableHead className="text-zinc-500">
-									Shares
-								</TableHead>
-								<TableHead className="text-zinc-500">
-									Entry
-								</TableHead>
-								<TableHead className="text-zinc-500">
-									Exit
-								</TableHead>
-								<TableHead
-									className="text-zinc-500 cursor-pointer select-none hover:text-zinc-300"
-									onClick={() => toggleSort('cost')}
-								>
-									Cost{sortIndicator('cost')}
-								</TableHead>
-								<TableHead
-									className="text-zinc-500 cursor-pointer select-none hover:text-zinc-300"
-									onClick={() => toggleSort('confidence')}
-								>
-									Confidence
-									{sortIndicator('confidence')}
-								</TableHead>
-								<TableHead
-									className="text-zinc-500 cursor-pointer select-none hover:text-zinc-300"
-									onClick={() => toggleSort('pnl')}
-								>
-									P&L{sortIndicator('pnl')}
-								</TableHead>
-								<TableHead className="text-zinc-500">
-									Result
-								</TableHead>
-								<TableHead className="text-zinc-500">
-									Status
-								</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{filteredHistory.map((trade: Trade) => (
-								<TableRow
-									key={trade.id}
-									className="border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors"
-									onClick={() => setSelectedTrade(trade)}
-								>
-									<TableCell className="text-xs text-zinc-500">
-										{trade.closedAt
-											? formatDate(trade.closedAt)
-											: '—'}
-									</TableCell>
-									<TableCell className="text-xs text-zinc-500">
-										{trade.enteredAt
-											? formatDate(trade.enteredAt)
-											: '—'}
-									</TableCell>
-									<TableCell className="font-mono text-xs text-zinc-400">
-										{trade.title.replace(
-											'Bitcoin Up or Down - ',
-											'',
-										)}
-									</TableCell>
-									<TableCell>
-										<DirectionBadge
-											direction={trade.direction}
-										/>
-									</TableCell>
-									<TableCell className="font-mono text-sm">
-										{trade.size.toLocaleString()}
-									</TableCell>
-									<TableCell className="font-mono text-sm">
-										${trade.entryPrice.toFixed(3)}
-									</TableCell>
-									<TableCell className="font-mono text-sm">
-										{trade.exitPrice != null
-											? `$${trade.exitPrice.toFixed(3)}`
-											: '—'}
-									</TableCell>
-									<TableCell className="font-mono text-sm">
-										${trade.cost.toFixed(2)}
-									</TableCell>
-									<TableCell className="font-mono text-sm">
-										{trade.confidence
-											? `${(
-													trade.confidence * 100
-												).toFixed(0)}%`
-											: '—'}
-									</TableCell>
-									<TableCell>
-										<PnlBadge
-											pnl={trade.pnl}
-											cost={trade.cost}
-										/>
-									</TableCell>
-									<TableCell className="font-mono text-sm text-zinc-300">
-										${(trade.cost + trade.pnl).toFixed(2)}
-									</TableCell>
-									<TableCell>
-										<StatusBadge status={trade.status} />
-									</TableCell>
+					<div className="overflow-x-auto">
+						<Table>
+							<TableHeader>
+								<TableRow className="border-zinc-800 hover:bg-transparent">
+									<TableHead
+										className="text-zinc-500 cursor-pointer select-none hover:text-zinc-300"
+										onClick={() => toggleSort('time')}
+									>
+										Closed{sortIndicator('time')}
+									</TableHead>
+									<TableHead className="text-zinc-500">
+										Opened
+									</TableHead>
+									<TableHead className="text-zinc-500">
+										Market
+									</TableHead>
+									<TableHead className="text-zinc-500">
+										Direction
+									</TableHead>
+									<TableHead className="text-zinc-500">
+										Shares
+									</TableHead>
+									<TableHead className="text-zinc-500">
+										Entry
+									</TableHead>
+									<TableHead className="text-zinc-500">
+										Exit
+									</TableHead>
+									<TableHead
+										className="text-zinc-500 cursor-pointer select-none hover:text-zinc-300"
+										onClick={() => toggleSort('cost')}
+									>
+										Cost{sortIndicator('cost')}
+									</TableHead>
+									<TableHead
+										className="text-zinc-500 cursor-pointer select-none hover:text-zinc-300"
+										onClick={() => toggleSort('confidence')}
+									>
+										Confidence
+										{sortIndicator('confidence')}
+									</TableHead>
+									<TableHead
+										className="text-zinc-500 cursor-pointer select-none hover:text-zinc-300"
+										onClick={() => toggleSort('pnl')}
+									>
+										P&L{sortIndicator('pnl')}
+									</TableHead>
+									<TableHead className="text-zinc-500">
+										Result
+									</TableHead>
+									<TableHead className="text-zinc-500">
+										Status
+									</TableHead>
 								</TableRow>
-							))}
-						</TableBody>
-					</Table>
+							</TableHeader>
+							<TableBody>
+								{filteredHistory.map((trade: Trade) => (
+									<TableRow
+										key={trade.id}
+										className="border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors"
+										onClick={() => setSelectedTrade(trade)}
+									>
+										<TableCell className="text-xs text-zinc-500">
+											{trade.closedAt
+												? formatDate(trade.closedAt)
+												: '—'}
+										</TableCell>
+										<TableCell className="text-xs text-zinc-500">
+											{trade.enteredAt
+												? formatDate(trade.enteredAt)
+												: '—'}
+										</TableCell>
+										<TableCell className="font-mono text-xs text-zinc-400">
+											{trade.title.replace(
+												'Bitcoin Up or Down - ',
+												'',
+											)}
+										</TableCell>
+										<TableCell>
+											<DirectionBadge
+												direction={trade.direction}
+											/>
+										</TableCell>
+										<TableCell className="font-mono text-sm">
+											{trade.size.toLocaleString()}
+										</TableCell>
+										<TableCell className="font-mono text-sm">
+											${trade.entryPrice.toFixed(3)}
+										</TableCell>
+										<TableCell className="font-mono text-sm">
+											{trade.exitPrice != null
+												? `$${trade.exitPrice.toFixed(3)}`
+												: '—'}
+										</TableCell>
+										<TableCell className="font-mono text-sm">
+											${trade.cost.toFixed(2)}
+										</TableCell>
+										<TableCell className="font-mono text-sm">
+											{trade.confidence
+												? `${(
+														trade.confidence * 100
+													).toFixed(0)}%`
+												: '—'}
+										</TableCell>
+										<TableCell>
+											<PnlBadge
+												pnl={trade.pnl}
+												cost={trade.cost}
+											/>
+										</TableCell>
+										<TableCell className="font-mono text-sm text-zinc-300">
+											$
+											{(trade.cost + trade.pnl).toFixed(
+												2,
+											)}
+										</TableCell>
+										<TableCell>
+											<StatusBadge
+												status={trade.status}
+											/>
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</div>
 				) : (
 					<p className="text-zinc-500 text-sm py-8 text-center">
 						No trades match the current filters.
