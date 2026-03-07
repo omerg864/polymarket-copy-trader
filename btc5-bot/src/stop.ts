@@ -1,7 +1,7 @@
 import Redis from 'ioredis';
-import config from './config.js';
+import config from './config';
 
-async function stopBot() {
+async function stopBot(): Promise<void> {
 	const redis = new Redis(config.redisUrl);
 	console.log('🛑 Requesting bot to stop...');
 	await redis.set('pmbot:state:stop_requested', 'true');
@@ -11,7 +11,7 @@ async function stopBot() {
 	process.exit(0);
 }
 
-stopBot().catch((err) => {
+stopBot().catch((err: Error) => {
 	console.error('Failed to request stop:', err.message);
 	process.exit(1);
 });

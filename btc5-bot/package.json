@@ -1,0 +1,28 @@
+{
+	"name": "polymarket-btc5-bot",
+	"version": "1.0.0",
+	"description": "Trading engine for Polymarket BTC 5-minute up/down markets",
+	"main": "dist/index.js",
+	"scripts": {
+		"start": "node dist/index.js --live",
+		"start:demo": "node dist/index.js --demo",
+		"dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts --demo",
+		"build": "tsc"
+	},
+	"dependencies": {
+		"@polymarket-bot/shared": "file:../shared",
+		"@polymarket/clob-client": "^5.1.0",
+		"axios": "^1.7.0",
+		"dotenv": "^16.4.0",
+		"ethers": "^5.7.2",
+		"ioredis": "^5.4.0",
+		"technicalindicators": "^3.1.0",
+		"winston": "^3.14.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.12.12",
+		"nodemon": "^3.1.0",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.4.5"
+	}
+}

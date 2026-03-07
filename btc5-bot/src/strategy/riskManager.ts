@@ -1,28 +1,21 @@
-import config from '../config.js';
-import logger from '../utils/logger.js';
-import demoTradingService from '../services/demoTrading.js';
-import redisService from '../services/redis.js';
-import priceAnalysisService from '../services/priceAnalysis.js';
-import polymarketService from '../services/polymarket.js';
+import type { Trade } from '@polymarket-bot/shared';
+import config from '../config';
+import demoTradingService from '../services/demoTrading';
+import polymarketService from '../services/polymarket';
+import priceAnalysisService from '../services/priceAnalysis';
+import redisService from '../services/redis';
+import logger from '../utils/logger';
 
 /**
  * Risk manager — monitors active positions and triggers
  * take-profit or stop-loss exits mid-trade.
- *
- * For demo mode, estimates position value using current BTC price
- * relative to priceToBeat. If BTC moves strongly in the trade's
- * direction, the position's implied price rises (toward 1.0),
- * triggering take-profit. If it moves against, it drops (toward 0.0),
- * triggering stop-loss.
  */
 class RiskManager {
-	constructor() {
-		this.monitoring = false;
-		this.monitorInterval = null;
-		this.checking = false;
-	}
+	private monitoring = false;
+	private monitorInterval: ReturnType<typeof setInterval> | null = null;
+	private checking = false;
 
-	startMonitoring() {
+	startMonitoring(): void {
 		if (this.monitoring) return;
 		this.monitoring = true;
 
@@ -35,7 +28,7 @@ class RiskManager {
 		);
 	}
 
-	stopMonitoring() {
+	stopMonitoring(): void {
 		this.monitoring = false;
 		if (this.monitorInterval) {
 			clearInterval(this.monitorInterval);
@@ -44,7 +37,7 @@ class RiskManager {
 		logger.info('Risk manager stopped');
 	}
 
-	async checkAllPositions() {
+	private async checkAllPositions(): Promise<void> {
 		if (this.checking) return;
 		this.checking = true;
 
@@ -56,7 +49,9 @@ class RiskManager {
 				await this.checkPosition(trade);
 			}
 		} catch (error) {
-			logger.error(`Risk manager error: ${error.message}`);
+			const message =
+				error instanceof Error ? error.message : String(error);
+			logger.error(`Risk manager error: ${message}`);
 		} finally {
 			this.checking = false;
 		}
@@ -64,28 +59,20 @@ class RiskManager {
 
 	/**
 	 * Check a single position against TP/SL thresholds.
-	 * Uses BTC price vs priceToBeat to estimate position value.
 	 */
-	async checkPosition(trade) {
+	private async checkPosition(trade: Trade): Promise<void> {
 		if (trade.status !== 'open') return;
 
-		// Check if market has ended — let the engine resolve
 		const endTime = new Date(trade.endTime);
 		const now = new Date();
+		if (now >= endTime) return;
 
-		if (now >= endTime) {
-			// Already logged by engine — suppress spammy repeated messages
-			return;
-		}
-
-		// Get the priceToBeat from the trade
-		const priceToBeat = parseFloat(trade.priceToBeat);
+		const priceToBeat = parseFloat(String(trade.priceToBeat));
 		if (!priceToBeat || priceToBeat <= 0) return;
 
 		const btcPrice = await priceAnalysisService.getCurrentPrice();
 		if (!btcPrice) return;
 
-		// Get the real market price of our token from Polymarket
 		const currentPrice = await polymarketService.getTokenPrice(
 			trade.tokenId,
 			trade.conditionId,
@@ -118,14 +105,17 @@ class RiskManager {
 			return;
 		}
 
-		// Debug log position status
 		const emoji = pctChange >= 0 ? '📈' : '📉';
 		logger.debug(
 			`${emoji} ${trade.direction} | ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (${(pctChange * 100).toFixed(1)}%) | BTC: $${btcPrice.toFixed(2)} vs ref $${priceToBeat.toFixed(2)}`,
 		);
 	}
 
-	async executeSell(trade, currentPrice, reason = 'sell') {
+	private async executeSell(
+		trade: Trade,
+		currentPrice: number,
+		reason: string = 'sell',
+	): Promise<void> {
 		try {
 			if (config.isDemo) {
 				await demoTradingService.placeSellOrder(
@@ -134,15 +124,11 @@ class RiskManager {
 					reason,
 				);
 			} else {
-				// For live mode — would place actual sell order
 				const market = {
 					conditionId: trade.conditionId,
 					tickSize: config.tickSize,
 					negRisk: config.negRisk,
 				};
-				const polymarketService = (
-					await import('../services/polymarket.js')
-				).default;
 				await polymarketService.placeSellOrder(
 					trade.tokenId,
 					currentPrice,
@@ -159,11 +145,9 @@ class RiskManager {
 				await redisService.removeTrade(trade.id);
 				await redisService.saveTradeHistory(trade);
 
-				// Update bot balance allowance for live mode
 				const bal = await redisService.getBotBalance();
 				await redisService.setBotBalance(bal + revenue);
 
-				// Update virtual bot stats
 				const stats = await redisService.getBotStats();
 				stats.totalTrades += 1;
 				if (trade.pnl >= 0) stats.wins += 1;
@@ -172,7 +156,9 @@ class RiskManager {
 				await redisService.updateBotStats(stats);
 			}
 		} catch (error) {
-			logger.error(`Error executing sell: ${error.message}`);
+			const message =
+				error instanceof Error ? error.message : String(error);
+			logger.error(`Error executing sell: ${message}`);
 		}
 	}
 }

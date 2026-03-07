@@ -1,19 +1,21 @@
+import type { Market, Trade } from '@polymarket-bot/shared';
 import { randomUUID } from 'crypto';
-import config from '../config.js';
-import redisService from './redis.js';
-import logger from '../utils/logger.js';
+import config from '../config';
+import logger from '../utils/logger';
+import redisService from './redis';
 
 /**
  * Demo trading service — simulates order placement and P&L tracking
- * without using real money. Uses the same interface as real trading
- * so the strategy engine can swap seamlessly.
+ * without using real money.
  */
 class DemoTradingService {
+	private balance: number;
+
 	constructor() {
 		this.balance = config.botAllowance;
 	}
 
-	async initialize() {
+	async initialize(): Promise<void> {
 		this.balance = await redisService.getBotBalance();
 		if (
 			isNaN(this.balance) ||
@@ -28,7 +30,7 @@ class DemoTradingService {
 		);
 	}
 
-	async getBalance() {
+	async getBalance(): Promise<number> {
 		this.balance = await redisService.getBotBalance();
 		return this.balance;
 	}
@@ -37,15 +39,14 @@ class DemoTradingService {
 	 * Simulate buying a position
 	 */
 	async placeBuyOrder(
-		tokenId,
-		price,
-		size,
-		market,
-		direction,
-		confidence = 0,
-		indicators = null,
-	) {
-		// Validate price before trading
+		tokenId: string,
+		price: number,
+		size: number,
+		market: Market,
+		direction: 'UP' | 'DOWN',
+		confidence: number = 0,
+		indicators: Trade['indicators'] = undefined,
+	): Promise<Trade | null> {
 		if (
 			!price ||
 			price <= 0 ||
@@ -69,11 +70,10 @@ class DemoTradingService {
 			return null;
 		}
 
-		// Deduct cost from balance
 		this.balance -= cost;
 		await redisService.setBotBalance(this.balance);
 
-		const trade = {
+		const trade: Trade = {
 			id: randomUUID(),
 			type: 'demo',
 			direction,
@@ -91,7 +91,7 @@ class DemoTradingService {
 			startTime: market.startTime.toISOString(),
 			endTime: market.endTime.toISOString(),
 			enteredAt: new Date().toISOString(),
-			priceToBeat: market.priceToBeat,
+			priceToBeat: market.priceToBeat ?? 0,
 			confidence,
 			pnl: 0,
 			indicators,
@@ -114,7 +114,11 @@ class DemoTradingService {
 	/**
 	 * Simulate selling a position (take profit or stop loss)
 	 */
-	async placeSellOrder(trade, currentPrice, reason = 'sell') {
+	async placeSellOrder(
+		trade: Trade,
+		currentPrice: number,
+		reason: string = 'sell',
+	): Promise<Trade> {
 		const revenue = currentPrice * trade.size;
 		const pnl = revenue - trade.cost;
 		const pctChange =
@@ -122,12 +126,10 @@ class DemoTradingService {
 				? (currentPrice - trade.entryPrice) / trade.entryPrice
 				: 0;
 
-		// Add revenue back to balance
 		this.balance = await redisService.getBotBalance();
 		this.balance += revenue;
 		await redisService.setBotBalance(this.balance);
 
-		// Update trade
 		trade.status =
 			reason === 'tp'
 				? 'closed_tp'
@@ -142,7 +144,6 @@ class DemoTradingService {
 		await redisService.removeTrade(trade.id);
 		await redisService.saveTradeHistory(trade);
 
-		// Update stats
 		const stats = await redisService.getBotStats();
 		stats.totalTrades += 1;
 		if (pnl >= 0) stats.wins += 1;
@@ -168,7 +169,7 @@ class DemoTradingService {
 	/**
 	 * Resolve a trade at market close (simulate final resolution)
 	 */
-	async resolveTrade(trade, won) {
+	async resolveTrade(trade: Trade, won: boolean): Promise<Trade> {
 		const finalPrice = won ? 1.0 : 0.0;
 		const revenue = finalPrice * trade.size;
 		const pnl = revenue - trade.cost;
@@ -209,7 +210,7 @@ class DemoTradingService {
 		return trade;
 	}
 
-	async printStats() {
+	async printStats(): Promise<void> {
 		const stats = await redisService.getBotStats();
 		const balance = await redisService.getBotBalance();
 		const winRate =

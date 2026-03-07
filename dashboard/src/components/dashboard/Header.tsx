@@ -2,22 +2,26 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
 	Dialog,
+	DialogClose,
 	DialogContent,
+	DialogDescription,
+	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
 } from '@/components/ui/dialog';
-import { useMemoizedFn } from 'ahooks';
 import {
-	useSummary,
-	useTradeHistory,
 	useConfig,
-	useToggleStop,
+	useFlushRedis,
 	useRedisStats,
+	useSummary,
+	useToggleStop,
+	useTradeHistory,
 } from '@/hooks/use-api';
+import { useMemoizedFn } from 'ahooks';
+import { saveAs } from 'file-saver';
 import { Database } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 import { HeaderClocks } from './HeaderClocks';
 
 export function Header() {
@@ -25,7 +29,8 @@ export function Header() {
 	const { data: history } = useTradeHistory();
 	const { data: config } = useConfig();
 	const toggleStop = useToggleStop();
-	const { data: redisStats } = useRedisStats();
+	const { data: redisStats, refetch: refetchRedisStats } = useRedisStats();
+	const flushRedis = useFlushRedis();
 
 	const handleExport = useMemoizedFn(() => {
 		if (!history || !summary || !config) return;
@@ -150,6 +155,55 @@ export function Header() {
 				>
 					📥 Export
 				</Button>
+				<Dialog>
+					<DialogTrigger asChild>
+						<Button
+							variant="outline"
+							className="h-7 px-3 text-xs font-medium rounded border bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+							disabled={flushRedis.isPending}
+						>
+							{flushRedis.isPending
+								? '⌛ Flushing...'
+								: '🗑️ Flush Redis'}
+						</Button>
+					</DialogTrigger>
+					<DialogContent className="sm:max-w-[400px] bg-zinc-950 border border-zinc-800 text-zinc-100">
+						<DialogHeader>
+							<DialogTitle className="text-lg text-red-400">
+								🗑️ Flush Redis
+							</DialogTitle>
+							<DialogDescription className="text-zinc-400">
+								This will permanently delete all data in Redis
+								including trade history, stats, and active
+								trades. This action cannot be undone.
+							</DialogDescription>
+						</DialogHeader>
+						<DialogFooter className="gap-2 sm:gap-0">
+							<DialogClose asChild>
+								<Button
+									variant="outline"
+									className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+								>
+									Cancel
+								</Button>
+							</DialogClose>
+							<DialogClose asChild>
+								<Button
+									variant="destructive"
+									className="bg-red-600 hover:bg-red-700 text-white"
+									onClick={() =>
+										flushRedis.mutate(undefined, {
+											onSuccess: () =>
+												refetchRedisStats(),
+										})
+									}
+								>
+									Yes, Flush All Data
+								</Button>
+							</DialogClose>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
 				<Dialog>
 					<DialogTrigger asChild>
 						<Badge

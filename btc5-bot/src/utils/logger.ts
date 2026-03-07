@@ -1,6 +1,6 @@
-import winston from 'winston';
-import config from '../config.js';
 import { mkdirSync } from 'fs';
+import winston from 'winston';
+import config from '../config';
 
 // Ensure logs directory exists
 try {
@@ -9,12 +9,22 @@ try {
 	// ignore
 }
 
-const { combine, timestamp, printf, colorize, align } = winston.format;
+const { combine, timestamp, printf, colorize } = winston.format;
 
-const logFormat = printf(({ level, message, timestamp, ...meta }) => {
+const logFormat = printf(({ level, message, timestamp: ts, ...meta }) => {
 	const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
-	return `${timestamp} [${level}]${metaStr} ${message}`;
+	return `${ts} [${level}]${metaStr} ${message}`;
 });
+
+interface ExtendedLogger extends winston.Logger {
+	trade: (action: string, data?: Record<string, unknown>) => void;
+	signal: (
+		direction: string,
+		confidence: number,
+		indicators: Record<string, unknown>,
+	) => void;
+	profit: (pnl: number, pctChange: number) => void;
+}
 
 const logger = winston.createLogger({
 	level: config.logLevel,
@@ -43,14 +53,18 @@ const logger = winston.createLogger({
 			),
 		}),
 	],
-});
+}) as ExtendedLogger;
 
 // Convenience methods for trade-specific logging
-logger.trade = (action, data) => {
+logger.trade = (action: string, data?: Record<string, unknown>): void => {
 	logger.info(`📊 [TRADE] ${action}`, data);
 };
 
-logger.signal = (direction, confidence, indicators) => {
+logger.signal = (
+	direction: string,
+	confidence: number,
+	indicators: Record<string, unknown>,
+): void => {
 	const emoji = direction === 'UP' ? '🟢' : '🔴';
 	logger.info(
 		`${emoji} [SIGNAL] ${direction} (confidence: ${(confidence * 100).toFixed(1)}%)`,
@@ -58,7 +72,7 @@ logger.signal = (direction, confidence, indicators) => {
 	);
 };
 
-logger.profit = (pnl, pctChange) => {
+logger.profit = (pnl: number, pctChange: number): void => {
 	const emoji = pnl >= 0 ? '💰' : '💸';
 	logger.info(
 		`${emoji} [P&L] ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (${(pctChange * 100).toFixed(1)}%)`,

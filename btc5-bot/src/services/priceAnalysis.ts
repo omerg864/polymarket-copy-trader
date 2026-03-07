@@ -1,15 +1,18 @@
-import axios from 'axios';
+import type { Candle, Signal } from '@polymarket-bot/shared';
+import axios, { AxiosInstance } from 'axios';
 import {
-	RSI,
-	EMA,
 	BollingerBands,
+	EMA,
+	RSI,
 	StochasticRSI,
 	VWAP,
 } from 'technicalindicators';
-import config from '../config.js';
-import logger from '../utils/logger.js';
+import config from '../config';
+import logger from '../utils/logger';
 
 class PriceAnalysisService {
+	private binanceApi: AxiosInstance;
+
 	constructor() {
 		this.binanceApi = axios.create({
 			baseURL: 'https://api.binance.com/api/v3',
@@ -20,9 +23,9 @@ class PriceAnalysisService {
 	/**
 	 * Fetch 1-minute OHLCV candles from Binance
 	 */
-	async getCandles(limit = config.candleCount) {
+	async getCandles(limit: number = config.candleCount): Promise<Candle[]> {
 		try {
-			const response = await this.binanceApi.get('/klines', {
+			const response = await this.binanceApi.get<unknown[][]>('/klines', {
 				params: {
 					symbol: 'BTCUSDT',
 					interval: '1m',
@@ -31,16 +34,18 @@ class PriceAnalysisService {
 			});
 
 			return response.data.map((candle) => ({
-				openTime: candle[0],
-				open: parseFloat(candle[1]),
-				high: parseFloat(candle[2]),
-				low: parseFloat(candle[3]),
-				close: parseFloat(candle[4]),
-				volume: parseFloat(candle[5]),
-				closeTime: candle[6],
+				openTime: candle[0] as number,
+				open: parseFloat(candle[1] as string),
+				high: parseFloat(candle[2] as string),
+				low: parseFloat(candle[3] as string),
+				close: parseFloat(candle[4] as string),
+				volume: parseFloat(candle[5] as string),
+				closeTime: candle[6] as number,
 			}));
 		} catch (error) {
-			logger.error(`Error fetching candles: ${error.message}`);
+			const message =
+				error instanceof Error ? error.message : String(error);
+			logger.error(`Error fetching candles: ${message}`);
 			return [];
 		}
 	}
@@ -48,14 +53,19 @@ class PriceAnalysisService {
 	/**
 	 * Get current BTC price
 	 */
-	async getCurrentPrice() {
+	async getCurrentPrice(): Promise<number | null> {
 		try {
-			const response = await this.binanceApi.get('/ticker/price', {
-				params: { symbol: 'BTCUSDT' },
-			});
+			const response = await this.binanceApi.get<{ price: string }>(
+				'/ticker/price',
+				{
+					params: { symbol: 'BTCUSDT' },
+				},
+			);
 			return parseFloat(response.data.price);
 		} catch (error) {
-			logger.error(`Error fetching BTC price: ${error.message}`);
+			const message =
+				error instanceof Error ? error.message : String(error);
+			logger.error(`Error fetching BTC price: ${message}`);
 			return null;
 		}
 	}
@@ -63,9 +73,9 @@ class PriceAnalysisService {
 	/**
 	 * Get historical BTC price at an exact start time
 	 */
-	async getHistoricalPrice(startTimeMs) {
+	async getHistoricalPrice(startTimeMs: number): Promise<number | null> {
 		try {
-			const response = await this.binanceApi.get('/klines', {
+			const response = await this.binanceApi.get<unknown[][]>('/klines', {
 				params: {
 					symbol: 'BTCUSDT',
 					interval: '1m',
@@ -74,33 +84,25 @@ class PriceAnalysisService {
 				},
 			});
 			if (response.data && response.data[0]) {
-				// Index 1 is the open price of the 1m candle
-				return parseFloat(response.data[0][1]);
+				return parseFloat(response.data[0][1] as string);
 			}
 			return null;
 		} catch (error) {
-			logger.error(
-				`Error fetching historical BTC price: ${error.message}`,
-			);
+			const message =
+				error instanceof Error ? error.message : String(error);
+			logger.error(`Error fetching historical BTC price: ${message}`);
 			return null;
 		}
 	}
 
 	/**
 	 * Generate a trading signal for a 5-minute binary market.
-	 *
-	 * These markets resolve based on whether BTC finishes ABOVE or BELOW
-	 * a specific reference price (priceToBeat). The strategy must be
-	 * reference-price-aware, not just "bullish/bearish".
-	 *
-	 * @param {number|null} priceToBeat - The reference price (null if unavailable)
-	 * @returns {{ direction: 'UP'|'DOWN', confidence: number, indicators: object }}
 	 */
-	async getSignal(priceToBeat = null) {
+	async getSignal(priceToBeat: number | null = null): Promise<Signal> {
 		const candles = await this.getCandles();
 		if (candles.length < 20) {
 			logger.warn('Not enough candle data for signal generation');
-			return { direction: 'UP', confidence: 0.3, indicators: {} };
+			return { direction: 'UP', confidence: 0.3, indicators: undefined };
 		}
 
 		const closes = candles.map((c) => c.close);
@@ -108,17 +110,17 @@ class PriceAnalysisService {
 
 		// === Indicator calculations ===
 
-		// Micro-RSI (period 5) — fast reaction to overbought/oversold
+		// Micro-RSI (period 5)
 		const rsiValues = RSI.calculate({ values: closes, period: 5 });
 		const microRsi =
 			rsiValues.length > 0 ? rsiValues[rsiValues.length - 1] : 50;
 
-		// Standard RSI for context
+		// Standard RSI
 		const rsi14Values = RSI.calculate({ values: closes, period: 14 });
 		const rsi14 =
 			rsi14Values.length > 0 ? rsi14Values[rsi14Values.length - 1] : 50;
 
-		// Stochastic RSI (period 14) — extremely sensitive momentum
+		// Stochastic RSI
 		const stochRsiValues = StochasticRSI.calculate({
 			values: closes,
 			rsiPeriod: 14,
@@ -131,7 +133,7 @@ class PriceAnalysisService {
 				? stochRsiValues[stochRsiValues.length - 1]
 				: { k: 50, d: 50 };
 
-		// VWAP — Volume Weighted Average Price
+		// VWAP
 		const vwapValues = VWAP.calculate({
 			high: candles.map((c) => c.high),
 			low: candles.map((c) => c.low),
@@ -143,7 +145,7 @@ class PriceAnalysisService {
 				? vwapValues[vwapValues.length - 1]
 				: currentPrice;
 
-		// Short-term EMA (3 vs 8) for micro-trend
+		// Short-term EMA (3 vs 8)
 		const ema3Values = EMA.calculate({ values: closes, period: 3 });
 		const ema8Values = EMA.calculate({ values: closes, period: 8 });
 		const ema3 =
@@ -155,7 +157,7 @@ class PriceAnalysisService {
 				? ema8Values[ema8Values.length - 1]
 				: currentPrice;
 
-		// Bollinger Bands (period 10, tighter for 1-min)
+		// Bollinger Bands
 		const bbValues = BollingerBands.calculate({
 			period: 10,
 			values: closes,
@@ -163,14 +165,14 @@ class PriceAnalysisService {
 		});
 		const bb = bbValues.length > 0 ? bbValues[bbValues.length - 1] : null;
 
-		// Short-term momentum (last 3 candles)
+		// Short-term momentum
 		const recent3 = closes.slice(-3);
 		const momentum3 =
 			recent3.length >= 2
 				? (recent3[recent3.length - 1] - recent3[0]) / recent3[0]
 				: 0;
 
-		// Volatility — standard deviation of last 10 closes
+		// Volatility
 		const recent10 = closes.slice(-10);
 		const mean10 = recent10.reduce((a, b) => a + b, 0) / recent10.length;
 		const stdDev = Math.sqrt(
@@ -184,54 +186,49 @@ class PriceAnalysisService {
 		let bearScore = 0;
 		let maxScore = 0;
 
-		// --- Factor 1: Distance from priceToBeat (weight: 4) ---
-		// This is the MOST important factor for binary markets
+		// Factor 1: Distance from priceToBeat (weight: 4)
 		if (priceToBeat && priceToBeat > 0) {
 			const distPct = (currentPrice - priceToBeat) / priceToBeat;
 			maxScore += 4;
 
 			if (distPct > 0.001) {
-				// BTC is significantly above reference → UP likely
 				bullScore += distPct > 0.003 ? 4 : 3;
 			} else if (distPct < -0.001) {
-				// BTC is significantly below reference → DOWN likely
 				bearScore += distPct < -0.003 ? 4 : 3;
 			} else {
-				// Too close to call — add 1 to whichever micro-trend favors
 				if (momentum3 > 0) bullScore += 1;
 				else bearScore += 1;
 			}
 		}
 
-		// --- Factor 2: Short-term momentum (weight: 3) ---
+		// Factor 2: Short-term momentum (weight: 3)
 		maxScore += 3;
 		if (momentum3 > 0.0005) {
-			bullScore += 3; // Strong upward micro-momentum
+			bullScore += 3;
 		} else if (momentum3 > 0.0001) {
 			bullScore += 2;
 		} else if (momentum3 < -0.0005) {
-			bearScore += 3; // Strong downward micro-momentum
+			bearScore += 3;
 		} else if (momentum3 < -0.0001) {
 			bearScore += 2;
 		} else {
-			// Nearly flat
 			if (momentum3 > 0) bullScore += 1;
 			else bearScore += 1;
 		}
 
-		// --- Factor 3: Micro-RSI (weight: 2) ---
+		// Factor 3: Micro-RSI (weight: 2)
 		maxScore += 2;
 		if (microRsi < 25) {
-			bullScore += 2; // Very oversold → bounce likely
+			bullScore += 2;
 		} else if (microRsi < 40) {
-			bullScore += 1; // Slightly oversold
+			bullScore += 1;
 		} else if (microRsi > 75) {
-			bearScore += 2; // Very overbought → drop likely
+			bearScore += 2;
 		} else if (microRsi > 60) {
-			bearScore += 1; // Slightly overbought
+			bearScore += 1;
 		}
 
-		// --- Factor 4: EMA micro-trend (weight: 2) ---
+		// Factor 4: EMA micro-trend (weight: 2)
 		maxScore += 2;
 		const emaDiff = (ema3 - ema8) / ema8;
 		if (emaDiff > 0.0002) {
@@ -244,58 +241,55 @@ class PriceAnalysisService {
 			bearScore += 1;
 		}
 
-		// --- Factor 5: VWAP (Volume alignment) (weight: 2) ---
+		// Factor 5: VWAP (weight: 2)
 		maxScore += 2;
 		if (currentPrice > vwap) {
-			// Price above VWAP = bulls in control
 			bullScore += currentPrice > vwap * 1.0005 ? 2 : 1;
 		} else if (currentPrice < vwap) {
-			// Price below VWAP = bears in control
 			bearScore += currentPrice < vwap * 0.9995 ? 2 : 1;
 		}
 
-		// --- Factor 6: StochRSI (weight: 2) ---
+		// Factor 6: StochRSI (weight: 2)
 		maxScore += 2;
 		if (stochRsi.k < 20 && stochRsi.d < 20) {
-			bullScore += 2; // Deeply oversold
+			bullScore += 2;
 		} else if (stochRsi.k < 40) {
 			bullScore += 1;
 		} else if (stochRsi.k > 80 && stochRsi.d > 80) {
-			bearScore += 2; // Deeply overbought
+			bearScore += 2;
 		} else if (stochRsi.k > 60) {
 			bearScore += 1;
 		}
 
-		// --- Factor 7: Bollinger Band Breakout/Reversion (weight: 2) ---
+		// Factor 7: Bollinger Band (weight: 2)
 		if (bb) {
 			maxScore += 2;
 			if (currentPrice < bb.lower) {
-				bullScore += 2; // Pierced lower band → strong mean reversion up
+				bullScore += 2;
 			} else if (currentPrice <= bb.lower * 1.0002) {
-				bullScore += 1; // Near lower band
+				bullScore += 1;
 			} else if (currentPrice > bb.upper) {
-				bearScore += 2; // Pierced upper band → strong mean reversion down
+				bearScore += 2;
 			} else if (currentPrice >= bb.upper * 0.9998) {
-				bearScore += 1; // Near upper band
+				bearScore += 1;
 			}
 		}
 
 		// === Confidence & Direction ===
 		const totalScore = bullScore + bearScore;
-		const direction = bullScore >= bearScore ? 'UP' : 'DOWN';
+		const direction: 'UP' | 'DOWN' = bullScore >= bearScore ? 'UP' : 'DOWN';
 		const winningScore = Math.max(bullScore, bearScore);
 
-		// Base confidence from scoring
 		let confidence = totalScore > 0 ? winningScore / totalScore : 0.5;
 
-		// Volatility penalty — high volatility = less predictable
+		// Volatility penalty
 		if (volatilityPct > 0.002) {
-			confidence *= 0.8; // 20% confidence penalty for high volatility
+			confidence *= 0.8;
 		} else if (volatilityPct > 0.001) {
-			confidence *= 0.9; // 10% penalty for moderate volatility
+			confidence *= 0.9;
 		}
 
-		// Distance bonus — if price is far from priceToBeat, more confident
+		// Distance bonus
 		if (priceToBeat && priceToBeat > 0) {
 			const absDistPct = Math.abs(
 				(currentPrice - priceToBeat) / priceToBeat,
@@ -305,12 +299,12 @@ class PriceAnalysisService {
 			}
 		}
 
-		// Edge case: if no priceToBeat available, reduce confidence significantly
+		// No priceToBeat penalty
 		if (!priceToBeat || priceToBeat <= 0) {
 			confidence *= 0.7;
 		}
 
-		const signal = {
+		const signal: Signal = {
 			direction,
 			confidence,
 			indicators: {
@@ -341,11 +335,11 @@ class PriceAnalysisService {
 				indicators: {
 					btcPrice: currentPrice.toFixed(2),
 					priceToBeat: priceToBeat ? priceToBeat.toFixed(2) : 'N/A',
-					distFromRef: signal.indicators.distFromRef,
-					vwap: signal.indicators.vwap,
+					distFromRef: signal.indicators?.distFromRef,
+					vwap: signal.indicators?.vwap,
 					microRsi: microRsi.toFixed(2),
-					stochRsi: signal.indicators.stochRsi,
-					momentum3: signal.indicators.momentum3,
+					stochRsi: signal.indicators?.stochRsi,
+					momentum3: signal.indicators?.momentum3,
 				},
 			}) +
 				` ${emoji} [SIGNAL] ${direction} (confidence: ${(confidence * 100).toFixed(1)}%)`,

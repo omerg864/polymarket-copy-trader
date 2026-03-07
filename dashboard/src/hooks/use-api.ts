@@ -1,7 +1,7 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
-import type { TradeSummary, Trade, BotConfig } from '@/types';
+import type { BotConfig, Trade, TradeSummary } from '@/types';
+import { useMutation, useQuery } from '@tanstack/react-query';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 async function fetchJson<T>(url: string): Promise<T> {
 	const res = await fetch(`${API_BASE}${url}`);
@@ -60,5 +60,17 @@ export function useRedisStats() {
 		queryKey: ['redis-stats'],
 		queryFn: () => fetchJson('/redis-stats'),
 		refetchInterval: 10000,
+	});
+}
+
+export function useFlushRedis() {
+	return useMutation({
+		mutationFn: async () => {
+			const res = await fetch(`${API_BASE}/flush-redis`, {
+				method: 'POST',
+			});
+			if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+			return res.json();
+		},
 	});
 }

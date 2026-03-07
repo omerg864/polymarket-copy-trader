@@ -1,9 +1,9 @@
-import config, { validateLiveConfig } from './config.js';
-import logger from './utils/logger.js';
-import redisService from './services/redis.js';
-import polymarketService from './services/polymarket.js';
-import demoTradingService from './services/demoTrading.js';
-import strategyEngine from './strategy/engine.js';
+import config, { validateLiveConfig } from './config';
+import demoTradingService from './services/demoTrading';
+import polymarketService from './services/polymarket';
+import redisService from './services/redis';
+import strategyEngine from './strategy/engine';
+import logger from './utils/logger';
 
 // Parse CLI arguments
 const args = process.argv.slice(2);
@@ -15,7 +15,7 @@ if (args.includes('--demo')) {
 	config.isDemo = false;
 }
 
-async function main() {
+async function main(): Promise<void> {
 	logger.info('');
 	logger.info('╔═══════════════════════════════════════════╗');
 	logger.info('║  Polymarket BTC 5-Min Trading Bot v1.0.0  ║');
@@ -27,7 +27,9 @@ async function main() {
 		try {
 			validateLiveConfig();
 		} catch (error) {
-			logger.error(error.message);
+			const message =
+				error instanceof Error ? error.message : String(error);
+			logger.error(message);
 			logger.error(
 				'Please set up your .env file. See .env.example for reference.',
 			);
@@ -39,7 +41,8 @@ async function main() {
 	try {
 		await redisService.connect();
 	} catch (error) {
-		logger.error(`Failed to connect to Redis: ${error.message}`);
+		const message = error instanceof Error ? error.message : String(error);
+		logger.error(`Failed to connect to Redis: ${message}`);
 		logger.error(
 			'Make sure Redis is running. Install with: brew install redis && redis-server',
 		);
@@ -50,7 +53,8 @@ async function main() {
 	try {
 		await polymarketService.initialize();
 	} catch (error) {
-		logger.error(`Failed to initialize Polymarket: ${error.message}`);
+		const message = error instanceof Error ? error.message : String(error);
+		logger.error(`Failed to initialize Polymarket: ${message}`);
 		process.exit(1);
 	}
 
@@ -65,7 +69,7 @@ async function main() {
 
 // Graceful shutdown
 let shuttingDown = false;
-async function shutdown(signal) {
+async function shutdown(signal: string): Promise<void> {
 	if (shuttingDown) return;
 	shuttingDown = true;
 
@@ -75,7 +79,8 @@ async function shutdown(signal) {
 		await strategyEngine.stop();
 		await redisService.disconnect();
 	} catch (error) {
-		logger.error(`Error during shutdown: ${error.message}`);
+		const message = error instanceof Error ? error.message : String(error);
+		logger.error(`Error during shutdown: ${message}`);
 	}
 
 	process.exit(0);
@@ -83,19 +88,19 @@ async function shutdown(signal) {
 
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', (error: Error) => {
 	logger.error(`Uncaught exception: ${error.message}`);
-	logger.error(error.stack);
+	logger.error(error.stack || '');
 	shutdown('uncaughtException');
 });
-process.on('unhandledRejection', (reason) => {
+process.on('unhandledRejection', (reason: unknown) => {
 	logger.error(`Unhandled rejection: ${reason}`);
 	shutdown('unhandledRejection');
 });
 
 // Run
-main().catch((error) => {
+main().catch((error: Error) => {
 	logger.error(`Fatal error: ${error.message}`);
-	logger.error(error.stack);
+	logger.error(error.stack || '');
 	process.exit(1);
 });

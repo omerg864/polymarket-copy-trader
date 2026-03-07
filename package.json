@@ -4,6 +4,12 @@
 	"description": "Automated trading bot for Polymarket BTC 5-minute up/down markets",
 	"type": "module",
 	"main": "src/index.js",
+	"workspaces": [
+		"api",
+		"btc5-bot",
+		"dashboard",
+		"shared"
+	],
 	"scripts": {
 		"start": "node src/index.js --live",
 		"start:demo": "node src/index.js --demo",

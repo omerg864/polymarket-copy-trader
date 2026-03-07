@@ -1,10 +1,11 @@
-import config from '../config.js';
-import logger from '../utils/logger.js';
-import polymarketService from '../services/polymarket.js';
-import priceAnalysisService from '../services/priceAnalysis.js';
-import demoTradingService from '../services/demoTrading.js';
-import redisService from '../services/redis.js';
-import riskManager from './riskManager.js';
+import type { Trade } from '@polymarket-bot/shared';
+import config from '../config';
+import demoTradingService from '../services/demoTrading';
+import polymarketService from '../services/polymarket';
+import priceAnalysisService from '../services/priceAnalysis';
+import redisService from '../services/redis';
+import logger from '../utils/logger';
+import riskManager from './riskManager';
 
 /**
  * Strategy Engine — Core trading loop:
@@ -15,14 +16,10 @@ import riskManager from './riskManager.js';
  * 5. Repeat
  */
 class StrategyEngine {
-	constructor() {
-		this.running = false;
-		this.cycleRunning = false;
-		this.currentMarket = null;
-		this.loopTimer = null;
-	}
+	private running = false;
+	private loopTimer: ReturnType<typeof setTimeout> | null = null;
 
-	async start() {
+	async start(): Promise<void> {
 		this.running = true;
 		logger.info('');
 		logger.info('═══════════════════════════════════════════════');
@@ -30,22 +27,20 @@ class StrategyEngine {
 		logger.info(
 			`  Mode: ${config.isDemo ? '🎮 DEMO (paper trading)' : '💰 LIVE (real money)'}`,
 		);
-		logger.info(`  Strategy: RSI + EMA + MACD momentum`);
+		logger.info('  Strategy: RSI + EMA + MACD momentum');
 		logger.info(
 			`  Order Size: $${config.minOrderSizeUsd}-$${config.maxOrderSizeUsd} (dynamic) | TP: ${config.takeProfitPct * 100}% | SL: ${config.stopLossPct * 100}%`,
 		);
 		logger.info('═══════════════════════════════════════════════');
 		logger.info('');
 
-		// Start risk manager
 		riskManager.startMonitoring();
 		await redisService.setBotStartTime(Date.now());
 
-		// Start the first cycle (subsequent ones are scheduled via chained setTimeout)
 		this.scheduleNextCycle(0);
 	}
 
-	async stop() {
+	async stop(): Promise<void> {
 		this.running = false;
 		riskManager.stopMonitoring();
 		if (this.loopTimer) {
@@ -53,7 +48,6 @@ class StrategyEngine {
 			this.loopTimer = null;
 		}
 
-		// Print final stats in demo mode
 		if (config.isDemo) {
 			await demoTradingService.printStats();
 		}
@@ -65,16 +59,18 @@ class StrategyEngine {
 	 * Schedule the next cycle after a delay.
 	 * Uses chained setTimeout to guarantee only one cycle runs at a time.
 	 */
-	scheduleNextCycle(delayMs) {
+	private scheduleNextCycle(delayMs: number): void {
 		if (!this.running) return;
 		this.loopTimer = setTimeout(async () => {
 			try {
 				await this.executeCycle();
 			} catch (error) {
-				logger.error(`Strategy cycle error: ${error.message}`);
-				logger.error(error.stack);
+				const message =
+					error instanceof Error ? error.message : String(error);
+				const stack = error instanceof Error ? error.stack : '';
+				logger.error(`Strategy cycle error: ${message}`);
+				if (stack) logger.error(stack);
 			}
-			// Schedule next cycle AFTER this one completes (15s polling)
 			this.scheduleNextCycle(15000);
 		}, delayMs);
 	}
@@ -82,11 +78,11 @@ class StrategyEngine {
 	/**
 	 * Single execution cycle
 	 */
-	async executeCycle() {
+	private async executeCycle(): Promise<void> {
 		// Step 0: Check graceful stop
 		const isStopping = await redisService.isStopRequested();
 
-		// Step 1: Resolve any expired trades first (must happen BEFORE max trades check)
+		// Step 1: Resolve any expired trades first
 		const activeTrades = await redisService.getActiveTrades();
 		await this.resolveExpiredTrades(activeTrades);
 
@@ -143,11 +139,11 @@ class StrategyEngine {
 			`   Start: ${startTime.toLocaleTimeString()} | End: ${endTime.toLocaleTimeString()}`,
 		);
 
-		// Wait for market to actually start before trying to get priceToBeat
+		// Wait for market to actually start
 		if (msUntilStart > 0) {
 			if (market.priceToBeat) {
 				logger.info(
-					`   BTC Reference Price: $${parseFloat(market.priceToBeat).toFixed(2)}`,
+					`   BTC Reference Price: $${market.priceToBeat.toFixed(2)}`,
 				);
 			}
 			logger.info(
@@ -156,7 +152,7 @@ class StrategyEngine {
 			return;
 		}
 
-		// Skip if market is about to end (< 60s remaining)
+		// Skip if market is about to end
 		if (msUntilEnd < 60000) {
 			logger.info(
 				`   ⏩ Market ends in ${(msUntilEnd / 1000).toFixed(0)}s. Too late to enter. Skipping.`,
@@ -164,10 +160,8 @@ class StrategyEngine {
 			return;
 		}
 
-		// Step 4: Get priceToBeat (reference price)
-		let refPrice = market.priceToBeat
-			? parseFloat(market.priceToBeat)
-			: null;
+		// Step 4: Get priceToBeat
+		let refPrice = market.priceToBeat;
 
 		if (!refPrice) {
 			logger.info(
@@ -185,7 +179,6 @@ class StrategyEngine {
 			}
 		}
 
-		// If priceToBeat is still missing, skip this cycle
 		if (!refPrice) {
 			logger.info(
 				'   ⚠️  Reference price not available yet. Will retry next cycle.',
@@ -199,7 +192,6 @@ class StrategyEngine {
 		);
 		const signal = await priceAnalysisService.getSignal(refPrice);
 
-		// Check confidence threshold
 		if (signal.confidence < config.confidenceThreshold) {
 			logger.info(
 				`⚠️  Low confidence (${(signal.confidence * 100).toFixed(1)}% < ${config.confidenceThreshold * 100}%). Skipping.`,
@@ -238,7 +230,7 @@ class StrategyEngine {
 			return;
 		}
 
-		// Validate price — skip if zero or invalid
+		// Validate price
 		if (!price || price <= 0 || price >= 1 || !isFinite(price)) {
 			logger.warn(
 				`⚠️  Invalid price ${price} for ${direction}. Skipping trade.`,
@@ -246,7 +238,7 @@ class StrategyEngine {
 			return;
 		}
 
-		// Calculate dynamic order size based on confidence
+		// Calculate dynamic order size
 		const confidenceRange = 1.0 - config.confidenceThreshold;
 		const confidenceRatio =
 			confidenceRange > 0
@@ -257,7 +249,7 @@ class StrategyEngine {
 			config.minOrderSizeUsd +
 			confidenceRatio * (config.maxOrderSizeUsd - config.minOrderSizeUsd);
 
-		// High price sizing bonus logic
+		// High price sizing bonus
 		let orderBudget = orderBudgetBase;
 		let multiplier = 1.0;
 
@@ -298,7 +290,6 @@ class StrategyEngine {
 				logger.warn('Demo trade failed (likely insufficient balance)');
 			}
 		} else {
-			// Live Mode Limit Check
 			const botBalance = await redisService.getBotBalance();
 			if (orderBudget > botBalance) {
 				logger.warn(
@@ -315,9 +306,11 @@ class StrategyEngine {
 					market,
 				);
 				if (order) {
-					// Save trade to Redis for monitoring
-					const trade = {
-						id: order.orderID || `live-${Date.now()}`,
+					const orderRecord = order as Record<string, unknown>;
+					const trade: Trade = {
+						id:
+							(orderRecord.orderID as string) ||
+							`live-${Date.now()}`,
 						type: 'live',
 						direction,
 						tokenId,
@@ -334,18 +327,17 @@ class StrategyEngine {
 						startTime: market.startTime.toISOString(),
 						endTime: market.endTime.toISOString(),
 						enteredAt: new Date().toISOString(),
-						orderId: order.orderID,
-						priceToBeat: market.priceToBeat,
+						priceToBeat: market.priceToBeat ?? 0,
 						pnl: 0,
 						indicators: signal.indicators,
 					};
 					await redisService.saveTrade(trade);
-
-					// Deduct cost from virtual allowance
 					await redisService.setBotBalance(botBalance - trade.cost);
 				}
 			} catch (error) {
-				logger.error(`Failed to place live order: ${error.message}`);
+				const message =
+					error instanceof Error ? error.message : String(error);
+				logger.error(`Failed to place live order: ${message}`);
 			}
 		}
 
@@ -366,7 +358,7 @@ class StrategyEngine {
 	/**
 	 * Resolve trades whose markets have ended
 	 */
-	async resolveExpiredTrades(trades) {
+	private async resolveExpiredTrades(trades: Trade[]): Promise<void> {
 		const now = new Date();
 
 		for (const trade of trades) {
@@ -375,11 +367,9 @@ class StrategyEngine {
 			const endTime = new Date(trade.endTime);
 			if (now < endTime) continue;
 
-			// Wait a bit after market end for Polymarket to resolve (at least 30s)
 			const msSinceEnd = now.getTime() - endTime.getTime();
 			if (msSinceEnd < 30000) continue;
 
-			// Market has ended — get actual outcome from Polymarket API
 			logger.info(`⏰ Resolving expired trade: ${trade.title}`);
 
 			const winner = await polymarketService.getMarketOutcome(
@@ -387,9 +377,8 @@ class StrategyEngine {
 			);
 
 			if (!winner) {
-				// Not resolved yet on Polymarket — will retry next cycle
 				logger.info(
-					`   ⏳ Market not yet resolved on Polymarket. Will check again.`,
+					'   ⏳ Market not yet resolved on Polymarket. Will check again.',
 				);
 				continue;
 			}
@@ -400,22 +389,19 @@ class StrategyEngine {
 				await demoTradingService.resolveTrade(trade, won);
 			} else {
 				trade.status = 'resolved';
-				trade.outcome = winner;
-				trade.won = won;
 				trade.closedAt = new Date().toISOString();
 
 				const finalPrice = won ? 1.0 : 0.0;
 				const revenue = finalPrice * trade.size;
 				trade.pnl = revenue - trade.cost;
+				trade.exitPrice = finalPrice;
 
 				await redisService.removeTrade(trade.id);
 				await redisService.saveTradeHistory(trade);
 
-				// Update live allowance
 				const bal = await redisService.getBotBalance();
 				await redisService.setBotBalance(bal + revenue);
 
-				// Update live stats
 				const stats = await redisService.getBotStats();
 				stats.totalTrades += 1;
 				if (trade.pnl >= 0) stats.wins += 1;

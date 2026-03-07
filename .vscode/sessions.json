@@ -7,18 +7,25 @@
 	"sessions": {
 		"default": [
 			{
-				"name": "server",
+				"name": "api",
 				"autoExecuteCommands": true,
 				"icon": "server",
 				"color": "terminal.ansiRed",
-				"commands": ["npm run api"]
+				"commands": ["cd api", "npm run dev"]
 			},
 			{
 				"name": "dashboard",
 				"autoExecuteCommands": true,
 				"icon": "account",
 				"color": "terminal.ansiBlue",
-				"commands": ["npm run dashboard"]
+				"commands": ["cd dashboard", "npm run dev"]
+			},
+			{
+				"name": "bot",
+				"autoExecuteCommands": true,
+				"icon": "rocket",
+				"color": "terminal.ansiGreen",
+				"commands": ["cd btc5-bot"]
 			},
 			{
 				"name": "root",

@@ -63,14 +63,18 @@ git clone <repo-url>
 cd polymarket-5-minutes-bot
 npm install
 
-# 2. Configure environment
-cp .env.example .env
-# Edit .env with your settings (demo mode works out of the box)
+# 2. Build shared types
+cd shared && npm run build && cd ..
 
-# 3. Start the bot and dashboard (separate terminals)
-npm run start:demo       # Start the trading engine
-npm run dashboard        # Start the web dashboard (port 3000)
-npm run api              # Start the dashboard backend (port 3001)
+# 3. Configure environment
+cp btc5-bot/.env.example btc5-bot/.env
+cp api/.env.example api/.env
+# Edit .env files with your settings (demo mode works out of the box)
+
+# 4. Start the bot and dashboard (separate terminals)
+cd btc5-bot && npm run dev       # Start the trading engine (demo)
+cd api && npm run dev             # Start the dashboard backend (port 3001)
+cd dashboard && npm run dev       # Start the web dashboard (port 3000)
 ```
 
 ## Usage
@@ -78,9 +82,10 @@ npm run api              # Start the dashboard backend (port 3001)
 ### Demo Mode (no real money)
 
 ```bash
+cd btc5-bot
+npm run dev
+# or (after building)
 npm run start:demo
-# or
-node src/index.js --demo
 ```
 
 Demo mode starts with a virtual $100 USDC balance and simulates trades using real market data. No wallet or private key required.
@@ -89,7 +94,7 @@ Demo mode starts with a virtual $100 USDC balance and simulates trades using rea
 
 > **WARNING**: Live mode trades with real USDC on Polygon. Only use funds you can afford to lose.
 
-1. Set up your `.env` file:
+1. Set up your `btc5-bot/.env` file:
 
     ```env
     MODE=live
@@ -102,9 +107,8 @@ Demo mode starts with a virtual $100 USDC balance and simulates trades using rea
 
 3. Run:
     ```bash
+    cd btc5-bot
     npm start
-    # or
-    node src/index.js --live
     ```
 
 ## Configuration
@@ -162,24 +166,48 @@ The bot aligns its cycle to 5-minute intervals, attempting to analyze and enter 
 
 ```
 polymarket-5-minutes-bot/
-├── src/
-│   ├── index.js              # Entry point, CLI parsing
-│   ├── api.js                # Dashboard backend API
-│   ├── config.js             # Environment config loader
-│   ├── services/
-│   │   ├── redis.js          # Redis state management
-│   │   ├── polymarket.js     # Polymarket API (Gamma + CLOB)
-│   │   ├── priceAnalysis.js  # BTC price analysis (Binance)
-│   │   └── demoTrading.js    # Paper trading simulator
-│   ├── strategy/
-│   │   ├── engine.js         # Main trading loop
-│   │   └── riskManager.js    # TP/SL position monitor
-│   └── utils/
-│       └── logger.js         # Winston logger
-├── dashboard/                # React dashboard frontend
+├── shared/                    # Shared TypeScript types
+│   └── src/
+│       ├── index.ts
+│       └── types.ts           # Trade, Market, Signal, BotConfig, etc.
+├── btc5-bot/                  # Trading engine (TypeScript)
+│   ├── .env.example
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── src/
+│       ├── index.ts           # Entry point, CLI parsing
+│       ├── stop.ts            # Graceful stop script
+│       ├── config.ts          # Environment config loader
+│       ├── services/
+│       │   ├── redis.ts       # Redis state management
+│       │   ├── polymarket.ts  # Polymarket API (Gamma + CLOB)
+│       │   ├── priceAnalysis.ts # BTC price analysis (Binance)
+│       │   └── demoTrading.ts # Paper trading simulator
+│       ├── strategy/
+│       │   ├── engine.ts      # Main trading loop
+│       │   └── riskManager.ts # TP/SL position monitor
+│       └── utils/
+│           └── logger.ts      # Winston logger
+├── api/                       # Dashboard backend API (TypeScript)
+│   ├── .env.example
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── src/
+│       ├── index.ts           # Express server entry
+│       ├── config.ts          # API config
+│       ├── controllers/
+│       │   └── bot.controller.ts
+│       ├── middleware/
+│       │   └── errorHandler.ts
+│       ├── routes/
+│       │   └── bot.routes.ts
+│       └── services/
+│           └── redis.ts
+├── dashboard/                 # React dashboard frontend
+├── tests/                     # Test scripts
 ├── .env.example
 ├── .gitignore
-├── package.json
+├── package.json               # Workspace root
 └── README.md
 ```
 

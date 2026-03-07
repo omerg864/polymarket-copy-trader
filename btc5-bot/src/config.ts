@@ -24,6 +24,7 @@ const config = {
 	confidenceThreshold: parseFloat(process.env.CONFIDENCE_THRESHOLD || '0.70'),
 	takeProfitPct: parseFloat(process.env.TAKE_PROFIT_PCT || '0.30'),
 	stopLossPct: parseFloat(process.env.STOP_LOSS_PCT || '0.20'),
+
 	// Trading limits
 	maxConcurrentTrades: parseInt(process.env.MAX_CONCURRENT_TRADES || '3', 10),
 	minEntryPrice: parseFloat(process.env.MIN_ENTRY_PRICE || '0.80'),
@@ -60,12 +61,11 @@ const config = {
 	highPriceThreshold: parseFloat(process.env.HIGH_PRICE_THRESHOLD || '0.90'),
 	highPriceMaxBonusPct: parseFloat(
 		process.env.HIGH_PRICE_MAX_BONUS_PCT || '1.0',
-	), // +100% max bonus
+	),
 };
 
-// Validate config for live mode
-export function validateLiveConfig() {
-	const errors = [];
+export function validateLiveConfig(): void {
+	const errors: string[] = [];
 	if (
 		!config.privateKey ||
 		config.privateKey === '0x_your_private_key_here'
