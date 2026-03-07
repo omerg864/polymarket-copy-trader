@@ -47,14 +47,20 @@ async function getBotBalance() {
 	return raw ? parseFloat(raw) : botAllowance;
 }
 
+async function getBotStartTime() {
+	const raw = await redis.get(`${PREFIX}state:start_time`);
+	return raw ? parseInt(raw, 10) : null;
+}
+
 // --- Routes ---
 
 app.get('/api/summary', async (_req, res) => {
 	try {
-		const [stats, balance, activeTrades] = await Promise.all([
+		const [stats, balance, activeTrades, botStartTime] = await Promise.all([
 			getBotStats(),
 			getBotBalance(),
 			getActiveTrades(),
+			getBotStartTime(),
 		]);
 		const botAllowance = parseFloat(process.env.BOT_ALLOWANCE || '100');
 		res.json({
@@ -71,6 +77,7 @@ app.get('/api/summary', async (_req, res) => {
 			activeTrades: activeTrades.length,
 			isStopping:
 				(await redis.get(`${PREFIX}state:stop_requested`)) === 'true',
+			botStartTime,
 		});
 	} catch (err) {
 		res.status(500).json({ error: err.message });

@@ -45,6 +45,10 @@ export function Header() {
 			Confidence: t.confidence
 				? `${(t.confidence * 100).toFixed(1)}%`
 				: '',
+			VWAP: t.indicators?.vwap || '',
+			StochRSI: t.indicators?.stochRsi || '',
+			MicroRSI: t.indicators?.microRsi || '',
+			Volatility: t.indicators?.volatility || '',
 			'Opened At': t.enteredAt
 				? new Date(t.enteredAt).toLocaleString()
 				: '',
@@ -98,7 +102,7 @@ export function Header() {
 				<p className="text-sm text-zinc-500 mt-1">
 					BTC 5-Minute Up/Down Markets • Auto-refreshes every 5s
 				</p>
-				<HeaderClocks />
+				<HeaderClocks startTime={summary?.botStartTime} />
 			</div>
 			<div className="flex items-center gap-4">
 				{summary && (

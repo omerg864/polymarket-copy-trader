@@ -8,6 +8,7 @@ export interface TradeSummary {
 	winRate: string;
 	activeTrades: number;
 	isStopping: boolean;
+	botStartTime?: number | null;
 }
 
 export interface Trade {
@@ -34,6 +35,21 @@ export interface Trade {
 	pnl: number;
 	pctChange?: number;
 	confidence?: number;
+	indicators?: {
+		currentPrice: number;
+		priceToBeat: number | string;
+		distFromRef: string;
+		vwap?: string;
+		microRsi: string;
+		stochRsi?: string;
+		rsi14: string;
+		ema3: string;
+		ema8: string;
+		bbLower?: string;
+		bbUpper?: string;
+		momentum3: string;
+		volatility: string;
+	};
 }
 
 export interface BotConfig {

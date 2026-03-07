@@ -129,6 +129,15 @@ class RedisService {
 		);
 	}
 
+	async setBotStartTime(ms) {
+		await this.client.set(`${this.prefix}state:start_time`, ms.toString());
+	}
+
+	async getBotStartTime() {
+		const raw = await this.client.get(`${this.prefix}state:start_time`);
+		return raw ? parseInt(raw, 10) : null;
+	}
+
 	// ---- Bot Balance (Live or Demo) ----
 
 	async getBotBalance() {

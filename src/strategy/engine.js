@@ -39,6 +39,7 @@ class StrategyEngine {
 
 		// Start risk manager
 		riskManager.startMonitoring();
+		await redisService.setBotStartTime(Date.now());
 
 		// Start the first cycle (subsequent ones are scheduled via chained setTimeout)
 		this.scheduleNextCycle(0);
@@ -291,6 +292,7 @@ class StrategyEngine {
 				market,
 				direction,
 				signal.confidence,
+				signal.indicators,
 			);
 			if (!trade) {
 				logger.warn('Demo trade failed (likely insufficient balance)');
@@ -335,6 +337,7 @@ class StrategyEngine {
 						orderId: order.orderID,
 						priceToBeat: market.priceToBeat,
 						pnl: 0,
+						indicators: signal.indicators,
 					};
 					await redisService.saveTrade(trade);
 

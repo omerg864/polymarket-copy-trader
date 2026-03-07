@@ -1,5 +1,11 @@
 import axios from 'axios';
-import { RSI, EMA, BollingerBands } from 'technicalindicators';
+import {
+	RSI,
+	EMA,
+	BollingerBands,
+	StochasticRSI,
+	VWAP,
+} from 'technicalindicators';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 
@@ -112,6 +118,31 @@ class PriceAnalysisService {
 		const rsi14 =
 			rsi14Values.length > 0 ? rsi14Values[rsi14Values.length - 1] : 50;
 
+		// Stochastic RSI (period 14) — extremely sensitive momentum
+		const stochRsiValues = StochasticRSI.calculate({
+			values: closes,
+			rsiPeriod: 14,
+			stochasticPeriod: 14,
+			kPeriod: 3,
+			dPeriod: 3,
+		});
+		const stochRsi =
+			stochRsiValues.length > 0
+				? stochRsiValues[stochRsiValues.length - 1]
+				: { k: 50, d: 50 };
+
+		// VWAP — Volume Weighted Average Price
+		const vwapValues = VWAP.calculate({
+			high: candles.map((c) => c.high),
+			low: candles.map((c) => c.low),
+			close: closes,
+			volume: candles.map((c) => c.volume),
+		});
+		const vwap =
+			vwapValues.length > 0
+				? vwapValues[vwapValues.length - 1]
+				: currentPrice;
+
 		// Short-term EMA (3 vs 8) for micro-trend
 		const ema3Values = EMA.calculate({ values: closes, period: 3 });
 		const ema8Values = EMA.calculate({ values: closes, period: 8 });
@@ -213,13 +244,39 @@ class PriceAnalysisService {
 			bearScore += 1;
 		}
 
-		// --- Factor 5: Bollinger Band position (weight: 1) ---
+		// --- Factor 5: VWAP (Volume alignment) (weight: 2) ---
+		maxScore += 2;
+		if (currentPrice > vwap) {
+			// Price above VWAP = bulls in control
+			bullScore += currentPrice > vwap * 1.0005 ? 2 : 1;
+		} else if (currentPrice < vwap) {
+			// Price below VWAP = bears in control
+			bearScore += currentPrice < vwap * 0.9995 ? 2 : 1;
+		}
+
+		// --- Factor 6: StochRSI (weight: 2) ---
+		maxScore += 2;
+		if (stochRsi.k < 20 && stochRsi.d < 20) {
+			bullScore += 2; // Deeply oversold
+		} else if (stochRsi.k < 40) {
+			bullScore += 1;
+		} else if (stochRsi.k > 80 && stochRsi.d > 80) {
+			bearScore += 2; // Deeply overbought
+		} else if (stochRsi.k > 60) {
+			bearScore += 1;
+		}
+
+		// --- Factor 7: Bollinger Band Breakout/Reversion (weight: 2) ---
 		if (bb) {
-			maxScore += 1;
-			if (currentPrice <= bb.lower) {
-				bullScore += 1; // At lower band → mean reversion up
-			} else if (currentPrice >= bb.upper) {
-				bearScore += 1; // At upper band → mean reversion down
+			maxScore += 2;
+			if (currentPrice < bb.lower) {
+				bullScore += 2; // Pierced lower band → strong mean reversion up
+			} else if (currentPrice <= bb.lower * 1.0002) {
+				bullScore += 1; // Near lower band
+			} else if (currentPrice > bb.upper) {
+				bearScore += 2; // Pierced upper band → strong mean reversion down
+			} else if (currentPrice >= bb.upper * 0.9998) {
+				bearScore += 1; // Near upper band
 			}
 		}
 
@@ -265,10 +322,14 @@ class PriceAnalysisService {
 							100
 						).toFixed(4) + '%'
 					: 'N/A',
+				vwap: vwap.toFixed(2),
 				microRsi: microRsi.toFixed(1),
+				stochRsi: stochRsi.k.toFixed(1),
 				rsi14: rsi14.toFixed(1),
 				ema3: ema3.toFixed(2),
 				ema8: ema8.toFixed(2),
+				bbLower: bb ? bb.lower.toFixed(2) : 'N/A',
+				bbUpper: bb ? bb.upper.toFixed(2) : 'N/A',
 				momentum3: (momentum3 * 100).toFixed(4) + '%',
 				volatility: (volatilityPct * 100).toFixed(4) + '%',
 			},
@@ -281,9 +342,10 @@ class PriceAnalysisService {
 					btcPrice: currentPrice.toFixed(2),
 					priceToBeat: priceToBeat ? priceToBeat.toFixed(2) : 'N/A',
 					distFromRef: signal.indicators.distFromRef,
+					vwap: signal.indicators.vwap,
 					microRsi: microRsi.toFixed(2),
+					stochRsi: signal.indicators.stochRsi,
 					momentum3: signal.indicators.momentum3,
-					volatility: signal.indicators.volatility,
 				},
 			}) +
 				` ${emoji} [SIGNAL] ${direction} (confidence: ${(confidence * 100).toFixed(1)}%)`,

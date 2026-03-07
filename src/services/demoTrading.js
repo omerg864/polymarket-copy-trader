@@ -43,6 +43,7 @@ class DemoTradingService {
 		market,
 		direction,
 		confidence = 0,
+		indicators = null,
 	) {
 		// Validate price before trading
 		if (
@@ -93,6 +94,7 @@ class DemoTradingService {
 			priceToBeat: market.priceToBeat,
 			confidence,
 			pnl: 0,
+			indicators,
 		};
 
 		await redisService.saveTrade(trade);
