@@ -40,6 +40,7 @@ export interface Trade {
 		priceToBeat: number | string;
 		distFromRef: string;
 		vwap?: string;
+		vwapDistancePct?: string;
 		microRsi: string;
 		stochRsi?: string;
 		rsi14: string;
