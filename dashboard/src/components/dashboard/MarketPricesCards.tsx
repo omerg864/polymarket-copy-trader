@@ -12,12 +12,19 @@ const fmtPrice = (n: number) =>
 		maximumFractionDigits: 2,
 	});
 
+const fmtTime = (ts: number) =>
+	new Date(ts).toLocaleTimeString(undefined, {
+		hour: '2-digit',
+		minute: '2-digit',
+		second: '2-digit',
+	});
+
 export function MarketPricesCards() {
 	const { data: marketPrices } = useMarketPrices();
 
 	if (!marketPrices?.btcPrice) return null;
 
-	const { btcPrice, priceToBeat } = marketPrices;
+	const { btcPrice, priceToBeat, updatedAt } = marketPrices;
 	const diff = priceToBeat ? btcPrice - priceToBeat : null;
 	const isAbove = diff !== null && diff >= 0;
 
@@ -33,6 +40,11 @@ export function MarketPricesCards() {
 					<p className="text-2xl font-bold font-mono text-amber-400">
 						${fmtPrice(btcPrice)}
 					</p>
+					{updatedAt && (
+						<p className="text-xs text-zinc-500 mt-1">
+							Updated {fmtTime(updatedAt)}
+						</p>
+					)}
 				</CardContent>
 			</Card>
 

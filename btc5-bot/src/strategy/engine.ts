@@ -205,6 +205,16 @@ class StrategyEngine {
 			return;
 		}
 
+		// Update Redis with the resolved priceToBeat for the dashboard
+		try {
+			const btcPrice = await priceAnalysisService.getCurrentPrice();
+			if (btcPrice) {
+				await redisService.setMarketPrices(btcPrice, refPrice);
+			}
+		} catch (_) {
+			/* ignore */
+		}
+
 		// Step 5: Analyze BTC price for signal
 		logger.info(
 			`📊 Analyzing BTC price vs reference $${refPrice.toFixed(2)}...`,
