@@ -5,14 +5,17 @@ Automated trading bot for [Polymarket's BTC 5-minute up/down markets](https://po
 **Features:**
 
 - 📊 Technical analysis using RSI, EMA crossover, MACD, and Bollinger Bands on 1-minute candles
-- 🎮 Demo mode (paper trading) — now uses **real-time CLOB prices** for accurate simulation
+- 🎮 Demo mode (paper trading) — uses **real-time CLOB prices** for accurate simulation
 - 💰 Live mode — real trades on Polymarket via the CLOB API
 - 💰 **Bot Allowance Limit** — unified virtual budget limit for both Live and Demo modes
 - ⏯️ **Pause/Resume** — gracefully pause new trade entries while continuing to manage open positions
 - 👨‍💻 **Web Dashboard** — real-time monitoring of trades, P&L, balance, and bot status
+- 🔒 **Two-Tier Auth** — admin (full control) and read-only (view only) access
+- ⚙️ **Live Strategy Config** — all strategy parameters stored in MongoDB, editable from the dashboard, cached in Redis, and picked up by the bot automatically
 - 📈 **High-Price Sizing Bonus** — dynamically increases trade size for high-probability (high price) setups
 - 🛡️ **Entry Guards** — configurable thresholds for minimum entry price and market age to filter trades
-- 🗄️ Redis for persistent state, trade history, and stats
+- 🗄️ Redis for persistent state, trade history, stats, and strategy config cache
+- 🍃 MongoDB for durable strategy configuration
 - 🔄 Auto-aligns to 5-minute market intervals
 
 ---
@@ -33,7 +36,19 @@ Automated trading bot for [Polymarket's BTC 5-minute up/down markets](https://po
           │                 │               │
      ┌────▼─────────────────▼───────────────▼───┐
      │                 Redis                     │
-     │ Active trades, History, Balance, Cache    │
+     │ Active trades, History, Balance, Cache,   │
+     │ Strategy Config (cache from MongoDB)      │
+     └──────────────────┬───────────────────────┘
+                        │
+     ┌──────────────────▼───────────────────────┐
+     │              API Server                   │
+     │ Express + Mongoose — REST endpoints,      │
+     │ strategy config CRUD, two-tier auth       │
+     └──────────────────┬───────────────────────┘
+                        │
+     ┌──────────────────▼───────────────────────┐
+     │              MongoDB                      │
+     │ Durable strategy config (key/value)       │
      └──────────────────────────────────────────┘
 ```
 
@@ -55,6 +70,20 @@ Automated trading bot for [Polymarket's BTC 5-minute up/down markets](https://po
     docker run -d -p 6379:6379 redis
     ```
 
+- **MongoDB** — install and start:
+
+    ```bash
+    # macOS
+    brew tap mongodb/brew
+    brew install mongodb-community
+    brew services start mongodb-community
+
+    # Docker
+    docker run -d -p 27017:27017 mongo
+
+    # Or use MongoDB Atlas (cloud) — set MONGO_URI in api/.env
+    ```
+
 ## Setup
 
 ```bash
@@ -69,12 +98,13 @@ cd shared && npm run build && cd ..
 # 3. Configure environment
 cp btc5-bot/.env.example btc5-bot/.env
 cp api/.env.example api/.env
+cp dashboard/.env.example dashboard/.env
 # Edit .env files with your settings (demo mode works out of the box)
 
-# 4. Start the bot and dashboard (separate terminals)
-cd btc5-bot && npm run dev       # Start the trading engine (demo)
-cd api && npm run dev             # Start the dashboard backend (port 3001)
-cd dashboard && npm run dev       # Start the web dashboard (port 3000)
+# 4. Start services (separate terminals)
+cd api && npm run dev             # API server (port 3001) — connects to MongoDB & Redis
+cd btc5-bot && npm run dev        # Trading engine (demo mode)
+cd dashboard && npm run dev       # Web dashboard (port 5173)
 ```
 
 ## Usage
@@ -113,26 +143,61 @@ Demo mode starts with a virtual $100 USDC balance and simulates trades using rea
 
 ## Configuration
 
-| Variable                   | Default                  | Description                                       |
-| -------------------------- | ------------------------ | ------------------------------------------------- |
-| `MODE`                     | `demo`                   | `demo` or `live`                                  |
-| `BOT_ALLOWANCE`            | `100`                    | Virtual USDC budget the bot is allowed to use     |
-| `MIN_ORDER_SIZE`           | `5`                      | Minimum USDC per trade                            |
-| `MAX_ORDER_SIZE`           | `20`                     | Maximum USDC per trade (based on confidence)      |
-| `HIGH_PRICE_THRESHOLD`     | `0.90`                   | Entry price above which the sizing bonus kicks in |
-| `HIGH_PRICE_MAX_BONUS_PCT` | `1.0`                    | Max multiplier (+100%) for high-price trades      |
-| `MIN_ENTRY_PRICE`          | `0.80`                   | Only enter trades with price >= this              |
-| `MIN_MARKET_AGE_MINUTES`   | `2.0`                    | Only enter trades after X minutes of market age   |
-| `PRIVATE_KEY`              | —                        | Wallet private key (live mode only)               |
-| `FUNDER_ADDRESS`           | —                        | Polymarket profile address (live mode only)       |
-| `SIGNATURE_TYPE`           | `0`                      | `0` = Browser wallet, `1` = Magic/email login     |
-| `REDIS_URL`                | `redis://localhost:6379` | Redis connection string                           |
-| `RISK_MONITOR_INTERVAL_MS` | `2000`                   | Milliseconds between TP/SL checks                 |
-| `CONFIDENCE_THRESHOLD`     | `0.70`                   | Min signal confidence (0–1) to enter a trade      |
-| `TAKE_PROFIT_PCT`          | `0.30`                   | Sell when price rises 30% from entry              |
-| `STOP_LOSS_PCT`            | `0.20`                   | Sell when price drops 20% from entry              |
-| `MAX_CONCURRENT_TRADES`    | `3`                      | Max simultaneous open positions                   |
-| `LOG_LEVEL`                | `info`                   | `debug`, `info`, `warn`, `error`                  |
+### Environment Variables
+
+The project uses three `.env` files — one per package. Only infrastructure and credentials live in env vars; all **trading strategy parameters** are managed in MongoDB and editable from the dashboard.
+
+#### `btc5-bot/.env`
+
+| Variable         | Default                  | Description                                   |
+| ---------------- | ------------------------ | --------------------------------------------- |
+| `MODE`           | `demo`                   | `demo` or `live`                              |
+| `PRIVATE_KEY`    | —                        | Wallet private key (live mode only)           |
+| `FUNDER_ADDRESS` | —                        | Polymarket profile address (live mode only)   |
+| `SIGNATURE_TYPE` | `0`                      | `0` = Browser wallet, `1` = Magic/email login |
+| `REDIS_URL`      | `redis://localhost:6379` | Redis connection string                       |
+| `LOG_LEVEL`      | `info`                   | `debug`, `info`, `warn`, `error`              |
+
+#### `api/.env`
+
+| Variable            | Default                                    | Description                   |
+| ------------------- | ------------------------------------------ | ----------------------------- |
+| `MODE`              | `demo`                                     | `demo` or `live`              |
+| `API_PORT`          | `3001`                                     | Express server port           |
+| `ADMIN_PASSWORD`    | —                                          | Password for admin access     |
+| `READONLY_PASSWORD` | —                                          | Password for read-only access |
+| `REDIS_URL`         | `redis://localhost:6379`                   | Redis connection string       |
+| `MONGO_URI`         | `mongodb://localhost:27017/polymarket-bot` | MongoDB connection string     |
+| `CLIENT_URL`        | `http://localhost:5173`                    | Dashboard origin (CORS)       |
+
+#### `dashboard/.env`
+
+| Variable       | Default                 | Description    |
+| -------------- | ----------------------- | -------------- |
+| `VITE_API_URL` | `http://localhost:3001` | API server URL |
+
+### Strategy Config (MongoDB)
+
+All trading strategy parameters are stored in MongoDB and cached in Redis. They can be edited live from the dashboard by admin users. The bot picks up changes automatically (within ~10 seconds).
+
+| Parameter               | Default | Description                                       |
+| ----------------------- | ------- | ------------------------------------------------- |
+| `minOrderSizeUsd`       | `5`     | Minimum USDC per trade                            |
+| `maxOrderSizeUsd`       | `20`    | Maximum USDC per trade (scaled by confidence)     |
+| `confidenceThreshold`   | `0.70`  | Min signal confidence (0–1) to enter a trade      |
+| `takeProfitPct`         | `0.30`  | Sell when price rises 30% from entry              |
+| `stopLossPct`           | `0.20`  | Sell when price drops 20% from entry              |
+| `maxConcurrentTrades`   | `3`     | Max simultaneous open positions                   |
+| `minEntryPrice`         | `0.80`  | Only enter trades with price ≥ this               |
+| `minMarketAgeMinutes`   | `2.0`   | Only enter trades after X minutes of market age   |
+| `candleCount`           | `60`    | Number of 1-minute candles to fetch for analysis  |
+| `rsiPeriod`             | `14`    | RSI calculation period                            |
+| `emaFast`               | `9`     | Fast EMA period                                   |
+| `emaSlow`               | `21`    | Slow EMA period                                   |
+| `riskMonitorIntervalMs` | `2000`  | Milliseconds between TP/SL checks                 |
+| `botAllowance`          | `100`   | Virtual USDC budget the bot is allowed to use     |
+| `highPriceThreshold`    | `0.90`  | Entry price above which the sizing bonus kicks in |
+| `highPriceMaxBonusPct`  | `1.0`   | Max multiplier (+100%) for high-price trades      |
 
 ## How the Strategy Works
 
@@ -166,10 +231,10 @@ The bot aligns its cycle to 5-minute intervals, attempting to analyze and enter 
 
 ```
 polymarket-5-minutes-bot/
-├── shared/                    # Shared TypeScript types
+├── shared/                    # Shared TypeScript types & constants
 │   └── src/
 │       ├── index.ts
-│       └── types.ts           # Trade, Market, Signal, BotConfig, etc.
+│       └── types.ts           # Trade, Market, Signal, StrategyConfig, defaults
 ├── btc5-bot/                  # Trading engine (TypeScript)
 │   ├── .env.example
 │   ├── package.json
@@ -177,9 +242,10 @@ polymarket-5-minutes-bot/
 │   └── src/
 │       ├── index.ts           # Entry point, CLI parsing
 │       ├── stop.ts            # Graceful stop script
-│       ├── config.ts          # Environment config loader
+│       ├── config.ts          # Environment config (mode, credentials, Redis)
 │       ├── services/
 │       │   ├── redis.ts       # Redis state management
+│       │   ├── strategyConfig.ts # Strategy config from Redis/MongoDB
 │       │   ├── polymarket.ts  # Polymarket API (Gamma + CLOB)
 │       │   ├── priceAnalysis.ts # BTC price analysis (Binance)
 │       │   └── demoTrading.ts # Paper trading simulator
@@ -193,19 +259,24 @@ polymarket-5-minutes-bot/
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── src/
-│       ├── index.ts           # Express server entry
-│       ├── config.ts          # API config
+│       ├── index.ts           # Express server entry (+ MongoDB connect)
+│       ├── config.ts          # API config (auth, Redis, Mongo, port)
+│       ├── models/
+│       │   └── StrategyConfig.ts # Mongoose key/value model
 │       ├── controllers/
 │       │   └── bot.controller.ts
 │       ├── middleware/
+│       │   ├── auth.ts        # Two-tier auth (admin/readonly)
 │       │   └── errorHandler.ts
 │       ├── routes/
 │       │   └── bot.routes.ts
 │       └── services/
-│           └── redis.ts
+│           ├── redis.ts
+│           └── strategyConfig.ts # CRUD with Redis cache
 ├── dashboard/                 # React dashboard frontend
+│   ├── .env.example
 ├── tests/                     # Test scripts
-├── .env.example
+├── docker-compose.yml         # Redis service
 ├── .gitignore
 ├── package.json               # Workspace root
 └── README.md

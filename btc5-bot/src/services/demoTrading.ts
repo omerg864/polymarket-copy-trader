@@ -1,8 +1,12 @@
-import type { Market, Trade } from '@shared/types';
+import {
+	DEFAULT_STRATEGY_CONFIG,
+	type Market,
+	type Trade,
+} from '@shared/types';
 import { randomUUID } from 'crypto';
-import config from '../config';
 import logger from '../utils/logger';
 import redisService from './redis';
+import { getStrategyConfig } from './strategyConfig';
 
 /**
  * Demo trading service — simulates order placement and P&L tracking
@@ -12,17 +16,18 @@ class DemoTradingService {
 	private balance: number;
 
 	constructor() {
-		this.balance = config.botAllowance;
+		this.balance = DEFAULT_STRATEGY_CONFIG.botAllowance;
 	}
 
 	async initialize(): Promise<void> {
+		const sc = await getStrategyConfig();
 		this.balance = await redisService.getBotBalance();
 		if (
 			isNaN(this.balance) ||
 			this.balance === null ||
 			this.balance === undefined
 		) {
-			this.balance = config.botAllowance;
+			this.balance = sc.botAllowance;
 			await redisService.setBotBalance(this.balance);
 		}
 		logger.info(

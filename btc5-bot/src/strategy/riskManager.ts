@@ -4,6 +4,7 @@ import demoTradingService from '../services/demoTrading';
 import polymarketService from '../services/polymarket';
 import priceAnalysisService from '../services/priceAnalysis';
 import redisService from '../services/redis';
+import { getStrategyConfig } from '../services/strategyConfig';
 import logger from '../utils/logger';
 
 /**
@@ -15,16 +16,17 @@ class RiskManager {
 	private monitorInterval: ReturnType<typeof setInterval> | null = null;
 	private checking = false;
 
-	startMonitoring(): void {
+	async startMonitoring(): Promise<void> {
 		if (this.monitoring) return;
 		this.monitoring = true;
 
+		const sc = await getStrategyConfig();
 		this.monitorInterval = setInterval(
 			() => this.checkAllPositions(),
-			config.riskMonitorIntervalMs,
+			sc.riskMonitorIntervalMs,
 		);
 		logger.info(
-			`🛡️  Risk manager started — monitoring positions every ${config.riskMonitorIntervalMs}ms`,
+			`🛡️  Risk manager started — monitoring positions every ${sc.riskMonitorIntervalMs}ms`,
 		);
 	}
 
@@ -87,8 +89,10 @@ class RiskManager {
 		trade.currentPrice = currentPrice;
 		await redisService.saveTrade(trade);
 
+		const sc = await getStrategyConfig();
+
 		// Take profit check
-		if (pctChange >= config.takeProfitPct) {
+		if (pctChange >= sc.takeProfitPct) {
 			logger.info(
 				`🟢 TAKE PROFIT triggered for ${trade.direction} | Position: ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (+${(pctChange * 100).toFixed(1)}%) | BTC: $${btcPrice.toFixed(2)}`,
 			);
@@ -97,7 +101,7 @@ class RiskManager {
 		}
 
 		// Stop loss check
-		if (pctChange <= -config.stopLossPct) {
+		if (pctChange <= -sc.stopLossPct) {
 			logger.info(
 				`🔴 STOP LOSS triggered for ${trade.direction} | Position: ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (${(pctChange * 100).toFixed(1)}%) | BTC: $${btcPrice.toFixed(2)}`,
 			);

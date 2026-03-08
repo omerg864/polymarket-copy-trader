@@ -18,21 +18,39 @@ import {
 	useSummary,
 	useToggleStop,
 	useTradeHistory,
+	useUpdateConfig,
 } from '@/hooks/use-api';
+import type { StrategyConfig } from '@/types';
 import { useMemoizedFn } from 'ahooks';
 import { saveAs } from 'file-saver';
-import { Database } from 'lucide-react';
+import { Database, Pencil } from 'lucide-react';
+import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { HeaderClocks } from './HeaderClocks';
 
 export function Header() {
 	const { data: summary, refetch: refetchSummary } = useSummary();
 	const { data: history } = useTradeHistory();
-	const { data: config } = useConfig();
+	const { data: config, refetch: refetchConfig } = useConfig();
 	const toggleStop = useToggleStop();
 	const { data: redisStats, refetch: refetchRedisStats } = useRedisStats();
 	const flushRedis = useFlushRedis();
+	const updateConfig = useUpdateConfig();
 	const isReadonly = getAuthRole() === 'readonly';
+	const isAdmin = getAuthRole() === 'admin';
+
+	const [editing, setEditing] = useState(false);
+	const [editValues, setEditValues] = useState<Partial<StrategyConfig>>({});
+	const [configOpen, setConfigOpen] = useState(false);
+
+	const resetEditValues = () => {
+		if (config) {
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const { mode: _, ...strategy } = config;
+			setEditValues(strategy);
+		}
+		setEditing(false);
+	};
 
 	const handleExport = useMemoizedFn(() => {
 		if (!history || !summary || !config) return;
@@ -210,7 +228,13 @@ export function Header() {
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>
-				<Dialog>
+				<Dialog
+					open={configOpen}
+					onOpenChange={(open) => {
+						setConfigOpen(open);
+						if (open) resetEditValues();
+					}}
+				>
 					<DialogTrigger asChild>
 						<Badge
 							variant="outline"
@@ -221,120 +245,258 @@ export function Header() {
 					</DialogTrigger>
 					<DialogContent className="sm:max-w-[425px] bg-zinc-950 border border-zinc-800 text-zinc-100">
 						<DialogHeader>
-							<DialogTitle className="text-xl">
+							<DialogTitle className="text-xl flex items-center justify-between">
 								Bot Configuration
+								{isAdmin && !editing && (
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-7 px-2 text-zinc-400 hover:text-zinc-200"
+										onClick={() => setEditing(true)}
+									>
+										<Pencil className="h-3.5 w-3.5 mr-1" />
+										Edit
+									</Button>
+								)}
 							</DialogTitle>
 						</DialogHeader>
 						{config ? (
 							<div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
-								<div className="space-y-2">
-									<h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">
-										Trading Limits
-									</h3>
-									<div className="grid grid-cols-2 gap-2 text-sm">
-										<span className="text-zinc-500">
-											Min Order Size
-										</span>
-										<span className="text-right">
-											${config.minOrderSizeUsd}
-										</span>
-										<span className="text-zinc-500">
-											Max Order Size
-										</span>
-										<span className="text-right">
-											${config.maxOrderSizeUsd}
-										</span>
-										<span className="text-zinc-500">
-											Max Open Trades
-										</span>
-										<span className="text-right">
-											{config.maxConcurrentTrades}
-										</span>
-										<span className="text-zinc-500">
-											Bot Allowance
-										</span>
-										<span className="text-right">
-											${config.botAllowance}
-										</span>
-									</div>
-								</div>
-								<div className="space-y-2">
-									<h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">
-										Strategy Guards
-									</h3>
-									<div className="grid grid-cols-2 gap-2 text-sm">
-										<span className="text-zinc-500">
-											Min Confidence
-										</span>
-										<span className="text-right">
-											{config.confidenceThreshold * 100}%
-										</span>
-										<span className="text-zinc-500">
-											Min Entry Price
-										</span>
-										<span className="text-right">
-											${config.minEntryPrice}
-										</span>
-										<span className="text-zinc-500">
-											Min Market Age
-										</span>
-										<span className="text-right">
-											{config.minMarketAgeMinutes} min
-										</span>
-										<span className="text-zinc-500">
-											Take Profit
-										</span>
-										<span className="text-right">
-											+{config.takeProfitPct * 100}%
-										</span>
-										<span className="text-zinc-500">
-											Stop Loss
-										</span>
-										<span className="text-right">
-											-{config.stopLossPct * 100}%
-										</span>
-									</div>
-								</div>
-								<div className="space-y-2">
-									<h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">
-										Technical Analysis
-									</h3>
-									<div className="grid grid-cols-2 gap-2 text-sm">
-										<span className="text-zinc-500">
-											Candles Fetched
-										</span>
-										<span className="text-right">
-											{config.candleCount}
-										</span>
-										<span className="text-zinc-500">
-											RSI Period
-										</span>
-										<span className="text-right">
-											{config.rsiPeriod}
-										</span>
-										<span className="text-zinc-500">
-											EMA Fast
-										</span>
-										<span className="text-right">
-											{config.emaFast}
-										</span>
-										<span className="text-zinc-500">
-											EMA Slow
-										</span>
-										<span className="text-right">
-											{config.emaSlow}
-										</span>
-									</div>
-								</div>
+								<ConfigSection title="Trading Limits">
+									<ConfigRow
+										label="Min Order Size"
+										field="minOrderSizeUsd"
+										prefix="$"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="Max Order Size"
+										field="maxOrderSizeUsd"
+										prefix="$"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="Max Open Trades"
+										field="maxConcurrentTrades"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="Bot Allowance"
+										field="botAllowance"
+										prefix="$"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+								</ConfigSection>
+								<ConfigSection title="Strategy Guards">
+									<ConfigRow
+										label="Min Confidence"
+										field="confidenceThreshold"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="Min Entry Price"
+										field="minEntryPrice"
+										prefix="$"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="Min Market Age"
+										field="minMarketAgeMinutes"
+										suffix=" min"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="Take Profit"
+										field="takeProfitPct"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="Stop Loss"
+										field="stopLossPct"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+								</ConfigSection>
+								<ConfigSection title="Technical Analysis">
+									<ConfigRow
+										label="Candles Fetched"
+										field="candleCount"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="RSI Period"
+										field="rsiPeriod"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="EMA Fast"
+										field="emaFast"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="EMA Slow"
+										field="emaSlow"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+								</ConfigSection>
+								<ConfigSection title="Advanced">
+									<ConfigRow
+										label="Risk Monitor Interval"
+										field="riskMonitorIntervalMs"
+										suffix=" ms"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="High Price Threshold"
+										field="highPriceThreshold"
+										prefix="$"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="High Price Bonus"
+										field="highPriceMaxBonusPct"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+								</ConfigSection>
 							</div>
 						) : (
 							<div className="py-8 text-center text-zinc-500 animate-pulse">
 								Loading configuration...
 							</div>
 						)}
+						{editing && (
+							<DialogFooter className="gap-2 sm:gap-0">
+								<Button
+									variant="outline"
+									className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+									onClick={() => {
+										resetEditValues();
+									}}
+								>
+									Cancel
+								</Button>
+								<Button
+									className="bg-blue-600 hover:bg-blue-700 text-white"
+									disabled={updateConfig.isPending}
+									onClick={() => {
+										updateConfig.mutate(editValues, {
+											onSuccess: () => {
+												setEditing(false);
+												refetchConfig();
+											},
+										});
+									}}
+								>
+									{updateConfig.isPending
+										? '⌛ Saving...'
+										: 'Save Changes'}
+								</Button>
+							</DialogFooter>
+						)}
 					</DialogContent>
 				</Dialog>
 			</div>
 		</div>
+	);
+}
+
+function ConfigSection({
+	title,
+	children,
+}: {
+	title: string;
+	children: React.ReactNode;
+}) {
+	return (
+		<div className="space-y-2">
+			<h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">
+				{title}
+			</h3>
+			<div className="grid grid-cols-2 gap-2 text-sm">{children}</div>
+		</div>
+	);
+}
+
+function ConfigRow({
+	label,
+	field,
+	prefix,
+	suffix,
+	editing,
+	editValues,
+	setEditValues,
+}: {
+	label: string;
+	field: keyof StrategyConfig;
+	prefix?: string;
+	suffix?: string;
+	editing: boolean;
+	editValues: Partial<StrategyConfig>;
+	setEditValues: React.Dispatch<
+		React.SetStateAction<Partial<StrategyConfig>>
+	>;
+}) {
+	const value = editValues[field];
+
+	if (editing) {
+		return (
+			<>
+				<span className="text-zinc-500 flex items-center">{label}</span>
+				<input
+					type="number"
+					step="any"
+					value={value ?? ''}
+					onChange={(e) =>
+						setEditValues((prev: Partial<StrategyConfig>) => ({
+							...prev,
+							[field]: parseFloat(e.target.value) || 0,
+						}))
+					}
+					className="w-full px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-100 text-right text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+				/>
+			</>
+		);
+	}
+
+	return (
+		<>
+			<span className="text-zinc-500">{label}</span>
+			<span className="text-right">
+				{prefix}
+				{value}
+				{suffix}
+			</span>
+		</>
 	);
 }

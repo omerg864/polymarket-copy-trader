@@ -53,6 +53,8 @@ export interface Trade {
 	};
 }
 
+export type { StrategyConfig } from '@shared/types';
+
 export interface BotConfig {
 	mode: string;
 	minOrderSizeUsd: number;

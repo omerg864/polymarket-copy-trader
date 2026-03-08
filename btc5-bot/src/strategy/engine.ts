@@ -4,6 +4,7 @@ import demoTradingService from '../services/demoTrading';
 import polymarketService from '../services/polymarket';
 import priceAnalysisService from '../services/priceAnalysis';
 import redisService from '../services/redis';
+import { getStrategyConfig } from '../services/strategyConfig';
 import logger from '../utils/logger';
 import riskManager from './riskManager';
 
@@ -21,6 +22,7 @@ class StrategyEngine {
 
 	async start(): Promise<void> {
 		this.running = true;
+		const sc = await getStrategyConfig();
 		logger.info('');
 		logger.info('═══════════════════════════════════════════════');
 		logger.info('  🤖 Polymarket BTC 5-Min Trading Bot Started');
@@ -29,12 +31,12 @@ class StrategyEngine {
 		);
 		logger.info('  Strategy: RSI + EMA + MACD momentum');
 		logger.info(
-			`  Order Size: $${config.minOrderSizeUsd}-$${config.maxOrderSizeUsd} (dynamic) | TP: ${config.takeProfitPct * 100}% | SL: ${config.stopLossPct * 100}%`,
+			`  Order Size: $${sc.minOrderSizeUsd}-$${sc.maxOrderSizeUsd} (dynamic) | TP: ${sc.takeProfitPct * 100}% | SL: ${sc.stopLossPct * 100}%`,
 		);
 		logger.info('═══════════════════════════════════════════════');
 		logger.info('');
 
-		riskManager.startMonitoring();
+		await riskManager.startMonitoring();
 		await redisService.setBotStartTime(Date.now());
 
 		this.scheduleNextCycle(0);
@@ -79,6 +81,9 @@ class StrategyEngine {
 	 * Single execution cycle
 	 */
 	private async executeCycle(): Promise<void> {
+		// Fetch strategy config from Redis (cached locally for 10s)
+		const sc = await getStrategyConfig();
+
 		// Step 0: Check graceful stop
 		const isStopping = await redisService.isStopRequested();
 
@@ -99,9 +104,9 @@ class StrategyEngine {
 			return;
 		}
 
-		if (currentTrades.length >= config.maxConcurrentTrades) {
+		if (currentTrades.length >= sc.maxConcurrentTrades) {
 			logger.info(
-				`📋 Max concurrent trades reached (${currentTrades.length}/${config.maxConcurrentTrades}). Waiting...`,
+				`📋 Max concurrent trades reached (${currentTrades.length}/${sc.maxConcurrentTrades}). Waiting...`,
 			);
 			return;
 		}
@@ -192,9 +197,9 @@ class StrategyEngine {
 		);
 		const signal = await priceAnalysisService.getSignal(refPrice);
 
-		if (signal.confidence < config.confidenceThreshold) {
+		if (signal.confidence < sc.confidenceThreshold) {
 			logger.info(
-				`⚠️  Low confidence (${(signal.confidence * 100).toFixed(1)}% < ${config.confidenceThreshold * 100}%). Skipping.`,
+				`⚠️  Low confidence (${(signal.confidence * 100).toFixed(1)}% < ${sc.confidenceThreshold * 100}%). Skipping.`,
 			);
 			return;
 		}
@@ -212,9 +217,9 @@ class StrategyEngine {
 		const price = direction === 'UP' ? prices.upPrice : prices.downPrice;
 
 		// Guard: Minimum Entry Price
-		if (price < config.minEntryPrice) {
+		if (price < sc.minEntryPrice) {
 			logger.info(
-				`⚠️  Price too low ($${price.toFixed(3)} < $${config.minEntryPrice.toFixed(2)}). Skipping trade.`,
+				`⚠️  Price too low ($${price.toFixed(3)} < $${sc.minEntryPrice.toFixed(2)}). Skipping trade.`,
 			);
 			return;
 		}
@@ -223,9 +228,9 @@ class StrategyEngine {
 		now = new Date();
 		const marketAgeMinutes =
 			(now.getTime() - market.startTime.getTime()) / (1000 * 60);
-		if (marketAgeMinutes < config.minMarketAgeMinutes) {
+		if (marketAgeMinutes < sc.minMarketAgeMinutes) {
 			logger.info(
-				`⏳ Market too young (${marketAgeMinutes.toFixed(1)}m < ${config.minMarketAgeMinutes}m). Skipping trade.`,
+				`⏳ Market too young (${marketAgeMinutes.toFixed(1)}m < ${sc.minMarketAgeMinutes}m). Skipping trade.`,
 			);
 			return;
 		}
@@ -239,24 +244,22 @@ class StrategyEngine {
 		}
 
 		// Calculate dynamic order size
-		const confidenceRange = 1.0 - config.confidenceThreshold;
+		const confidenceRange = 1.0 - sc.confidenceThreshold;
 		const confidenceRatio =
 			confidenceRange > 0
-				? (signal.confidence - config.confidenceThreshold) /
-				confidenceRange
+				? (signal.confidence - sc.confidenceThreshold) / confidenceRange
 				: 0;
 		const orderBudgetBase =
-			config.minOrderSizeUsd +
-			confidenceRatio * (config.maxOrderSizeUsd - config.minOrderSizeUsd);
-
+			sc.minOrderSizeUsd +
+			confidenceRatio * (sc.maxOrderSizeUsd - sc.minOrderSizeUsd);
 		// High price sizing bonus
 		let orderBudget = orderBudgetBase;
 		let multiplier = 1.0;
 
-		if (price >= config.highPriceThreshold) {
-			const range = 1.0 - config.highPriceThreshold;
-			const progress = (price - config.highPriceThreshold) / range;
-			multiplier = 1.0 + progress * config.highPriceMaxBonusPct;
+		if (price >= sc.highPriceThreshold) {
+			const range = 1.0 - sc.highPriceThreshold;
+			const progress = (price - sc.highPriceThreshold) / range;
+			multiplier = 1.0 + progress * sc.highPriceMaxBonusPct;
 			orderBudget = orderBudgetBase * multiplier;
 		}
 
@@ -349,7 +352,7 @@ class StrategyEngine {
 			} else {
 				const bal = await redisService.getBotBalance();
 				logger.info(
-					`📊 LIVE STATS | Bot Allowance Used: $${bal.toFixed(2)} / $${config.botAllowance.toFixed(2)} | Trades: ${stats.totalTrades} | Win: ${stats.wins} | Loss: ${stats.losses}`,
+					`📊 LIVE STATS | Bot Allowance Used: $${bal.toFixed(2)} / $${sc.botAllowance.toFixed(2)} | Trades: ${stats.totalTrades} | Win: ${stats.wins} | Loss: ${stats.losses}`,
 				);
 			}
 		}

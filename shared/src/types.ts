@@ -73,6 +73,50 @@ export interface BotConfig {
 	highPriceMaxBonusPct: number;
 }
 
+export interface StrategyConfig {
+	minOrderSizeUsd: number;
+	maxOrderSizeUsd: number;
+	confidenceThreshold: number;
+	takeProfitPct: number;
+	stopLossPct: number;
+	maxConcurrentTrades: number;
+	minEntryPrice: number;
+	minMarketAgeMinutes: number;
+	candleCount: number;
+	rsiPeriod: number;
+	emaFast: number;
+	emaSlow: number;
+	riskMonitorIntervalMs: number;
+	botAllowance: number;
+	highPriceThreshold: number;
+	highPriceMaxBonusPct: number;
+}
+
+export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
+	minOrderSizeUsd: 5,
+	maxOrderSizeUsd: 20,
+	confidenceThreshold: 0.7,
+	takeProfitPct: 0.3,
+	stopLossPct: 0.2,
+	maxConcurrentTrades: 3,
+	minEntryPrice: 0.8,
+	minMarketAgeMinutes: 2,
+	candleCount: 60,
+	rsiPeriod: 14,
+	emaFast: 9,
+	emaSlow: 21,
+	riskMonitorIntervalMs: 2000,
+	botAllowance: 100,
+	highPriceThreshold: 0.9,
+	highPriceMaxBonusPct: 1.0,
+};
+
+export function resolveStrategyConfig(
+	partial: Partial<StrategyConfig>,
+): StrategyConfig {
+	return { ...DEFAULT_STRATEGY_CONFIG, ...partial };
+}
+
 export interface Market {
 	conditionId: string;
 	questionId: string;

@@ -7,8 +7,8 @@ import {
 	StochasticRSI,
 	VWAP,
 } from 'technicalindicators';
-import config from '../config';
 import logger from '../utils/logger';
+import { getStrategyConfig } from './strategyConfig';
 
 class PriceAnalysisService {
 	private binanceApi: AxiosInstance;
@@ -23,13 +23,14 @@ class PriceAnalysisService {
 	/**
 	 * Fetch 1-minute OHLCV candles from Binance
 	 */
-	async getCandles(limit: number = config.candleCount): Promise<Candle[]> {
+	async getCandles(limit?: number): Promise<Candle[]> {
 		try {
+			const count = limit ?? (await getStrategyConfig()).candleCount;
 			const response = await this.binanceApi.get<unknown[][]>('/klines', {
 				params: {
 					symbol: 'BTCUSDT',
 					interval: '1m',
-					limit,
+					limit: count,
 				},
 			});
 
@@ -177,7 +178,7 @@ class PriceAnalysisService {
 		const mean10 = recent10.reduce((a, b) => a + b, 0) / recent10.length;
 		const stdDev = Math.sqrt(
 			recent10.reduce((sum, v) => sum + (v - mean10) ** 2, 0) /
-			recent10.length,
+				recent10.length,
 		);
 		const volatilityPct = mean10 > 0 ? stdDev / mean10 : 0;
 
@@ -312,9 +313,9 @@ class PriceAnalysisService {
 				priceToBeat: priceToBeat || 'N/A',
 				distFromRef: priceToBeat
 					? (
-						((currentPrice - priceToBeat) / priceToBeat) *
-						100
-					).toFixed(4) + '%'
+							((currentPrice - priceToBeat) / priceToBeat) *
+							100
+						).toFixed(4) + '%'
 					: 'N/A',
 				vwap: vwap.toFixed(2),
 				microRsi: microRsi.toFixed(1),
@@ -342,7 +343,7 @@ class PriceAnalysisService {
 					momentum3: signal.indicators?.momentum3,
 				},
 			}) +
-			` ${emoji} [SIGNAL] ${direction} (confidence: ${(confidence * 100).toFixed(1)}%)`,
+				` ${emoji} [SIGNAL] ${direction} (confidence: ${(confidence * 100).toFixed(1)}%)`,
 		);
 
 		return signal;

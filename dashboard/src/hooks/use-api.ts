@@ -1,4 +1,4 @@
-import type { BotConfig, Trade, TradeSummary } from '@/types';
+import type { BotConfig, StrategyConfig, Trade, TradeSummary } from '@/types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
@@ -161,6 +161,24 @@ export function useFlushRedis() {
 			});
 			if (!res.ok) throw new Error(`API error: ${res.statusText}`);
 			return res.json();
+		},
+	});
+}
+
+export function useUpdateConfig() {
+	return useMutation({
+		mutationFn: async (updates: Partial<StrategyConfig>) => {
+			const res = await fetch(`${API_BASE}/config`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					...getAuthHeaders(),
+				},
+				body: JSON.stringify(updates),
+			});
+			if (res.status === 403) throw new Error('Admin access required');
+			if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+			return res.json() as Promise<StrategyConfig>;
 		},
 	});
 }

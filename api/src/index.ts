@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
+import mongoose from 'mongoose';
 import config from './config';
 import { errorHandler } from './middleware/errorHandler';
 import botRoutes from './routes/bot.routes';
@@ -27,8 +28,18 @@ app.use('/api', botRoutes);
 
 app.use(errorHandler);
 
-app.listen(config.port, () => {
-	console.log(`Dashboard API running on http://localhost:${config.port}`);
+async function start() {
+	await mongoose.connect(config.mongoUri);
+	console.log('Connected to MongoDB');
+
+	app.listen(config.port, () => {
+		console.log(`Dashboard API running on http://localhost:${config.port}`);
+	});
+}
+
+start().catch((err) => {
+	console.error('Failed to start API:', err);
+	process.exit(1);
 });
 
 export default app;

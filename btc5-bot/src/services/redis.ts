@@ -1,4 +1,8 @@
-import type { BotStats, Trade } from '@shared/types';
+import {
+	DEFAULT_STRATEGY_CONFIG,
+	type BotStats,
+	type Trade,
+} from '@shared/types';
 import Redis from 'ioredis';
 import config from '../config';
 import logger from '../utils/logger';
@@ -44,6 +48,14 @@ class RedisService {
 	private getClient(): Redis {
 		if (!this.client) throw new Error('Redis client not connected');
 		return this.client;
+	}
+
+	/**
+	 * Read a raw key from Redis (used by strategyConfig service).
+	 */
+	async getRaw(key: string): Promise<string | null> {
+		const client = this.getClient();
+		return client.get(key);
 	}
 
 	// ---- Active Trades ----
@@ -161,15 +173,18 @@ class RedisService {
 		const client = this.getClient();
 		const prefix = config.isDemo ? 'demo' : 'live';
 		const raw = await client.get(`${this.prefix}${prefix}:balance`);
-		if (raw === null || raw === undefined) return config.botAllowance;
+		if (raw === null || raw === undefined)
+			return DEFAULT_STRATEGY_CONFIG.botAllowance;
 		const balance = parseFloat(raw);
-		return isNaN(balance) ? config.botAllowance : balance;
+		return isNaN(balance) ? DEFAULT_STRATEGY_CONFIG.botAllowance : balance;
 	}
 
 	async setBotBalance(balance: number): Promise<void> {
 		const client = this.getClient();
 		const prefix = config.isDemo ? 'demo' : 'live';
-		const val = isNaN(balance) ? config.botAllowance : balance;
+		const val = isNaN(balance)
+			? DEFAULT_STRATEGY_CONFIG.botAllowance
+			: balance;
 		await client.set(`${this.prefix}${prefix}:balance`, val.toString());
 	}
 

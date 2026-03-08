@@ -1,4 +1,4 @@
-import type { BotConfig, TradeSummary } from '@shared/types';
+import type { BotConfig, StrategyConfig, TradeSummary } from '@shared/types';
 import type { Request, Response } from 'express';
 import config from '../config';
 import { resolveRole } from '../middleware/auth';
@@ -13,20 +13,31 @@ import {
 	getTradeHistory,
 	setStopRequested,
 } from '../services/redis';
+import {
+	getStrategyConfig,
+	updateStrategyConfig,
+} from '../services/strategyConfig';
 
 export async function getSummary(_req: Request, res: Response): Promise<void> {
-	const [stats, balance, activeTrades, botStartTime, isStopping] =
-		await Promise.all([
-			getBotStats(),
-			getBotBalance(),
-			getActiveTrades(),
-			getBotStartTime(),
-			getStopRequested(),
-		]);
+	const [
+		stats,
+		balance,
+		activeTrades,
+		botStartTime,
+		isStopping,
+		strategyConfig,
+	] = await Promise.all([
+		getBotStats(),
+		getBotBalance(),
+		getActiveTrades(),
+		getBotStartTime(),
+		getStopRequested(),
+		getStrategyConfig(),
+	]);
 
 	const summary: TradeSummary = {
 		balance,
-		initialBalance: config.botAllowance,
+		initialBalance: strategyConfig.botAllowance,
 		totalPnl: stats.totalPnl,
 		totalTrades: stats.totalTrades,
 		wins: stats.wins,
@@ -66,28 +77,22 @@ export async function stopBot(req: Request, res: Response): Promise<void> {
 	res.json({ success: true, isStopping: !!stop });
 }
 
-export function getBotConfig(_req: Request, res: Response): void {
+export async function getBotConfig(
+	_req: Request,
+	res: Response,
+): Promise<void> {
+	const strategy = await getStrategyConfig();
 	const botConfig: BotConfig = {
 		mode: config.mode,
-		minOrderSizeUsd: config.minOrderSizeUsd,
-		maxOrderSizeUsd: config.maxOrderSizeUsd,
-		confidenceThreshold: config.confidenceThreshold,
-		takeProfitPct: config.takeProfitPct,
-		stopLossPct: config.stopLossPct,
-		maxConcurrentTrades: config.maxConcurrentTrades,
-		minEntryPrice: config.minEntryPrice,
-		minMarketAgeMinutes: config.minMarketAgeMinutes,
-		candleCount: config.candleCount,
-		rsiPeriod: config.rsiPeriod,
-		emaFast: config.emaFast,
-		emaSlow: config.emaSlow,
-		riskMonitorIntervalMs: config.riskMonitorIntervalMs,
-		botAllowance: config.botAllowance,
-		highPriceThreshold: config.highPriceThreshold,
-		highPriceMaxBonusPct: config.highPriceMaxBonusPct,
+		...strategy,
 	};
-
 	res.json(botConfig);
+}
+
+export async function updateConfig(req: Request, res: Response): Promise<void> {
+	const updates = req.body as Partial<StrategyConfig>;
+	const updated = await updateStrategyConfig(updates);
+	res.json(updated);
 }
 
 export async function getRedisStats(
