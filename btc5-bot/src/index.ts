@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import config, { validateLiveConfig } from './config';
 import demoTradingService from './services/demoTrading';
 import polymarketService from './services/polymarket';
@@ -49,6 +50,24 @@ async function main(): Promise<void> {
 		process.exit(1);
 	}
 
+	// Initialize MongoDB
+	if (config.mongoUri) {
+		try {
+			await mongoose.connect(config.mongoUri);
+			logger.info('📦 Connected to MongoDB');
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			logger.warn(
+				`Failed to connect to MongoDB: ${message}. Strategy config will use Redis/defaults only.`,
+			);
+		}
+	} else {
+		logger.warn(
+			'MONGO_URI not set. Strategy config will use Redis/defaults only.',
+		);
+	}
+
 	// Initialize Polymarket service
 	try {
 		await polymarketService.initialize();
@@ -78,6 +97,7 @@ async function shutdown(signal: string): Promise<void> {
 	try {
 		await strategyEngine.stop();
 		await redisService.disconnect();
+		await mongoose.disconnect();
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		logger.error(`Error during shutdown: ${message}`);

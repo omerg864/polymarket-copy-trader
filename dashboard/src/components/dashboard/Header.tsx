@@ -333,6 +333,14 @@ export function Header() {
 										editValues={editValues}
 										setEditValues={setEditValues}
 									/>
+									<ConfigRow
+										label="Force Close Before End"
+										field="maxSecLoseFct"
+										suffix="s"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
 								</ConfigSection>
 								<ConfigSection title="Technical Analysis">
 									<ConfigRow

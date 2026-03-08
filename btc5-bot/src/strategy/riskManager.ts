@@ -69,6 +69,29 @@ class RiskManager {
 		const now = new Date();
 		if (now >= endTime) return;
 
+		const sc = await getStrategyConfig();
+
+		// Force-close before market ends to avoid an unfavorable resolution
+		const secUntilEnd = (endTime.getTime() - now.getTime()) / 1000;
+		if (secUntilEnd <= sc.maxSecLoseFct) {
+			const currentPrice = await polymarketService.getTokenPrice(
+				trade.tokenId,
+				trade.conditionId,
+				trade.direction,
+			);
+			if (currentPrice && currentPrice > 0) {
+				const pctChange =
+					(currentPrice - trade.entryPrice) / trade.entryPrice;
+				if (pctChange < 0) {
+					logger.info(
+						`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.direction} losing ${(pctChange * 100).toFixed(1)}%. Selling to avoid resolution loss.`,
+					);
+					await this.executeSell(trade, currentPrice, 'fct');
+					return;
+				}
+			}
+		}
+
 		const priceToBeat = parseFloat(String(trade.priceToBeat));
 		if (!priceToBeat || priceToBeat <= 0) return;
 
@@ -88,8 +111,6 @@ class RiskManager {
 		// Update current price in trade
 		trade.currentPrice = currentPrice;
 		await redisService.saveTrade(trade);
-
-		const sc = await getStrategyConfig();
 
 		// Take profit check
 		if (pctChange >= sc.takeProfitPct) {

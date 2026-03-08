@@ -7,7 +7,6 @@ import { StrategyConfigModel } from '../models/StrategyConfig';
 import { redis } from './redis';
 
 const CACHE_KEY = 'pmbot:strategy_config';
-const CACHE_TTL = 60; // seconds
 
 const STRATEGY_KEYS = Object.keys(
 	DEFAULT_STRATEGY_CONFIG,
@@ -36,7 +35,7 @@ export async function getStrategyConfig(): Promise<StrategyConfig> {
 	const result = resolveStrategyConfig(partial);
 
 	// Write to cache
-	await redis.set(CACHE_KEY, JSON.stringify(result), 'EX', CACHE_TTL);
+	await redis.set(CACHE_KEY, JSON.stringify(result));
 
 	return result;
 }
