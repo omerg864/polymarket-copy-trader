@@ -22,8 +22,8 @@ export function Dashboard() {
 		<div className="min-h-screen bg-zinc-950 text-zinc-100 p-3 sm:p-6">
 			<div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
 				<Header />
-				<MarketPricesCards />
 				<StatsSummary />
+				<MarketPricesCards />
 				<ActiveTradesTable />
 				<TradeHistoryTable />
 			</div>
