@@ -73,6 +73,17 @@ export async function flushRedis(): Promise<void> {
 	await redis.flushdb();
 }
 
+export interface MarketPricesData {
+	btcPrice: number;
+	priceToBeat: number | null;
+	updatedAt: number;
+}
+
+export async function getMarketPrices(): Promise<MarketPricesData | null> {
+	const raw = await redis.get(`${PREFIX}market_prices`);
+	return raw ? (JSON.parse(raw) as MarketPricesData) : null;
+}
+
 export async function getRedisInfo(): Promise<{
 	memoryUsed: string;
 	totalKeys: number;

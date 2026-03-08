@@ -12,6 +12,7 @@ import {
 	getBotBalance,
 	getBotStartTime,
 	getBotStats,
+	getMarketPrices,
 	getRedisInfo,
 	getStopRequested,
 	getTradeHistory,
@@ -105,6 +106,14 @@ export async function getRedisStats(
 ): Promise<void> {
 	const stats = await getRedisInfo();
 	res.json(stats);
+}
+
+export async function getMarketPricesData(
+	_req: Request,
+	res: Response,
+): Promise<void> {
+	const data = await getMarketPrices();
+	res.json(data);
 }
 
 export async function flushRedisData(

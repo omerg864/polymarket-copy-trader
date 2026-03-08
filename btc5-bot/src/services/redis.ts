@@ -206,6 +206,17 @@ class RedisService {
 		);
 	}
 
+	async setMarketPrices(
+		btcPrice: number,
+		priceToBeat: number | null,
+	): Promise<void> {
+		const client = this.getClient();
+		await client.set(
+			`${this.prefix}market_prices`,
+			JSON.stringify({ btcPrice, priceToBeat, updatedAt: Date.now() }),
+		);
+	}
+
 	async getSystemStats(): Promise<{ memoryUsed: string; totalKeys: number }> {
 		try {
 			const client = this.getClient();

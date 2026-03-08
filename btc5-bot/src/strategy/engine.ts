@@ -85,6 +85,19 @@ class StrategyEngine {
 		// Fetch strategy config from Redis (cached locally for 10s)
 		const sc = await getStrategyConfig();
 
+		// Update BTC price in Redis for dashboard
+		try {
+			const btcPrice = await priceAnalysisService.getCurrentPrice();
+			if (btcPrice) {
+				// Try to get current market's priceToBeat for the dashboard
+				const market = await polymarketService.getNextMarket();
+				const refPrice = market?.priceToBeat ?? null;
+				await redisService.setMarketPrices(btcPrice, refPrice);
+			}
+		} catch (_) {
+			/* ignore */
+		}
+
 		// Step 0: Check graceful stop
 		const isStopping = await redisService.isStopRequested();
 

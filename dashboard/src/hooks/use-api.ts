@@ -152,6 +152,20 @@ export function useRedisStats() {
 	});
 }
 
+export interface MarketPricesData {
+	btcPrice: number;
+	priceToBeat: number | null;
+	updatedAt: number;
+}
+
+export function useMarketPrices() {
+	return useQuery<MarketPricesData | null>({
+		queryKey: ['market-prices'],
+		queryFn: () => fetchJson('/market-prices'),
+		refetchInterval: 2000,
+	});
+}
+
 export function useFlushRedis() {
 	return useMutation({
 		mutationFn: async () => {
