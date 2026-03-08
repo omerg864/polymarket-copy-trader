@@ -6,7 +6,7 @@
 	"scripts": {
 		"start": "node -r tsconfig-paths/register dist/api/src/index.js",
 		"dev": "nodemon --watch src --watch ../shared/src --ext ts --exec ts-node -r tsconfig-paths/register src/index.ts",
-		"build": "tsc && tsc-alias"
+		"build": "tsc"
 	},
 	"dependencies": {
 		"cors": "^2.8.5",
