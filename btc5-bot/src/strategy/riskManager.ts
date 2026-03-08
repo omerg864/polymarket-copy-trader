@@ -71,23 +71,33 @@ class RiskManager {
 
 		const sc = await getStrategyConfig();
 
-		// Force-close before market ends to avoid an unfavorable resolution
+		// Force-close before market ends if BTC price indicates resolution against our direction
 		const secUntilEnd = (endTime.getTime() - now.getTime()) / 1000;
 		if (secUntilEnd <= sc.maxSecLoseFct) {
-			const currentPrice = await polymarketService.getTokenPrice(
-				trade.tokenId,
-				trade.conditionId,
-				trade.direction,
-			);
-			if (currentPrice && currentPrice > 0) {
-				const pctChange =
-					(currentPrice - trade.entryPrice) / trade.entryPrice;
-				if (pctChange < 0) {
-					logger.info(
-						`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.direction} losing ${(pctChange * 100).toFixed(1)}%. Selling to avoid resolution loss.`,
-					);
-					await this.executeSell(trade, currentPrice, 'fct');
-					return;
+			const priceToBeat = parseFloat(String(trade.priceToBeat));
+			if (priceToBeat && priceToBeat > 0) {
+				const btcPrice = await priceAnalysisService.getCurrentPrice();
+				if (btcPrice) {
+					const resolvesUp = btcPrice >= priceToBeat;
+					const wouldLose =
+						(trade.direction === 'UP' && !resolvesUp) ||
+						(trade.direction === 'DOWN' && resolvesUp);
+
+					if (wouldLose) {
+						const currentPrice =
+							await polymarketService.getTokenPrice(
+								trade.tokenId,
+								trade.conditionId,
+								trade.direction,
+							);
+						if (currentPrice && currentPrice > 0) {
+							logger.info(
+								`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.direction} but BTC $${btcPrice.toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. Selling to avoid resolution loss.`,
+							);
+							await this.executeSell(trade, currentPrice, 'fct');
+							return;
+						}
+					}
 				}
 			}
 		}

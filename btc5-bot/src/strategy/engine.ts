@@ -73,7 +73,8 @@ class StrategyEngine {
 				logger.error(`Strategy cycle error: ${message}`);
 				if (stack) logger.error(stack);
 			}
-			this.scheduleNextCycle(15000);
+			const sc = await getStrategyConfig();
+			this.scheduleNextCycle(sc.cycleIntervalMs);
 		}, delayMs);
 	}
 

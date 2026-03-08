@@ -72,6 +72,7 @@ export interface BotConfig {
 	highPriceThreshold: number;
 	highPriceMaxBonusPct: number;
 	maxSecLoseFct: number;
+	cycleIntervalMs: number;
 }
 
 export interface StrategyConfig {
@@ -92,6 +93,7 @@ export interface StrategyConfig {
 	highPriceThreshold: number;
 	highPriceMaxBonusPct: number;
 	maxSecLoseFct: number;
+	cycleIntervalMs: number;
 }
 
 export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
@@ -112,6 +114,7 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 	highPriceThreshold: 0.9,
 	highPriceMaxBonusPct: 1.0,
 	maxSecLoseFct: 13,
+	cycleIntervalMs: 5000,
 };
 
 export function resolveStrategyConfig(

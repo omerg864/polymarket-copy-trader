@@ -396,6 +396,14 @@ export function Header() {
 										editValues={editValues}
 										setEditValues={setEditValues}
 									/>
+									<ConfigRow
+										label="Cycle Interval"
+										field="cycleIntervalMs"
+										suffix=" ms"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
 								</ConfigSection>
 							</div>
 						) : (
