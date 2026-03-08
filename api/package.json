@@ -4,7 +4,7 @@
 	"description": "Dashboard API for Polymarket Bot",
 	"main": "dist/api/src/index.js",
 	"scripts": {
-		"start": "node dist/api/src/index.js",
+		"start": "node -r tsconfig-paths/register dist/api/src/index.js",
 		"dev": "nodemon --watch src --watch ../shared/src --ext ts --exec ts-node -r tsconfig-paths/register src/index.ts",
 		"build": "tsc && tsc-alias",
 		"vercel-build": "npm run build"
