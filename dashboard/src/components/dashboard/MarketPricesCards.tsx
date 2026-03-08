@@ -24,8 +24,9 @@ export function MarketPricesCards() {
 
 	if (!marketPrices?.btcPrice) return null;
 
-	const { btcPrice, priceToBeat, updatedAt } = marketPrices;
+	const { btcPrice, priceToBeat, updatedAt, marketTitle } = marketPrices;
 	const diff = priceToBeat ? btcPrice - priceToBeat : null;
+	const diffPercent = priceToBeat ? (diff! / priceToBeat) * 100 : null;
 	const isAbove = diff !== null && diff >= 0;
 
 	return (
@@ -56,32 +57,25 @@ export function MarketPricesCards() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<p
+						<span
 							className={`text-2xl font-bold font-mono ${
 								isAbove ? 'text-emerald-400' : 'text-red-400'
 							}`}
 						>
 							${fmtPrice(priceToBeat)}
-						</p>
-					</CardContent>
-				</Card>
-			)}
-
-			{diff !== null && (
-				<Card className="bg-zinc-900 border-zinc-800">
-					<CardHeader className="pb-2">
-						<CardDescription className="text-xs text-zinc-500">
-							{isAbove ? '📈' : '📉'} Diff
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<p
-							className={`text-2xl font-bold font-mono ${
-								isAbove ? 'text-emerald-400' : 'text-red-400'
-							}`}
-						>
-							{isAbove ? '+' : ''}${fmtPrice(diff)}
-						</p>
+						</span>
+						<br />
+						<span className="text-sm font-normal text-zinc-500">
+							({isAbove ? '+' : ''}${fmtPrice(diff!)})
+						</span>{' '}
+						<span className="text-sm font-normal text-zinc-500">
+							({isAbove ? '+' : ''}${diffPercent?.toFixed(3)}%)
+						</span>
+						{marketTitle && (
+							<p className="text-xs text-zinc-500 mt-1 truncate">
+								{marketTitle}
+							</p>
+						)}
 					</CardContent>
 				</Card>
 			)}

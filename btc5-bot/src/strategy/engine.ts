@@ -85,14 +85,11 @@ class StrategyEngine {
 		// Fetch strategy config from Redis (cached locally for 10s)
 		const sc = await getStrategyConfig();
 
-		// Update BTC price in Redis for dashboard
+		// Update BTC price in Redis for dashboard (ref price updated separately)
 		try {
 			const btcPrice = await priceAnalysisService.getCurrentPrice();
 			if (btcPrice) {
-				// Try to get current market's priceToBeat for the dashboard
-				const market = await polymarketService.getNextMarket();
-				const refPrice = market?.priceToBeat ?? null;
-				await redisService.setMarketPrices(btcPrice, refPrice);
+				await redisService.setBtcPrice(btcPrice);
 			}
 		} catch (_) {
 			/* ignore */
@@ -205,15 +202,8 @@ class StrategyEngine {
 			return;
 		}
 
-		// Update Redis with the resolved priceToBeat for the dashboard
-		try {
-			const btcPrice = await priceAnalysisService.getCurrentPrice();
-			if (btcPrice) {
-				await redisService.setMarketPrices(btcPrice, refPrice);
-			}
-		} catch (_) {
-			/* ignore */
-		}
+		// Update ref price in Redis for dashboard (only when resolved)
+		await redisService.setPriceToBeat(refPrice, market.title);
 
 		// Step 5: Analyze BTC price for signal
 		logger.info(

@@ -206,14 +206,22 @@ class RedisService {
 		);
 	}
 
-	async setMarketPrices(
-		btcPrice: number,
+	async setBtcPrice(btcPrice: number): Promise<void> {
+		const client = this.getClient();
+		await client.set(
+			`${this.prefix}btc_price`,
+			JSON.stringify({ btcPrice, updatedAt: Date.now() }),
+		);
+	}
+
+	async setPriceToBeat(
 		priceToBeat: number | null,
+		marketTitle: string,
 	): Promise<void> {
 		const client = this.getClient();
 		await client.set(
-			`${this.prefix}market_prices`,
-			JSON.stringify({ btcPrice, priceToBeat, updatedAt: Date.now() }),
+			`${this.prefix}ref_price`,
+			JSON.stringify({ priceToBeat, marketTitle }),
 		);
 	}
 

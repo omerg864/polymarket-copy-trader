@@ -156,6 +156,7 @@ export interface MarketPricesData {
 	btcPrice: number;
 	priceToBeat: number | null;
 	updatedAt: number;
+	marketTitle: string | null;
 }
 
 export function useMarketPrices() {

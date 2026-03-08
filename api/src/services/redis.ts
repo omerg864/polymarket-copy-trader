@@ -77,11 +77,31 @@ export interface MarketPricesData {
 	btcPrice: number;
 	priceToBeat: number | null;
 	updatedAt: number;
+	marketTitle: string | null;
 }
 
 export async function getMarketPrices(): Promise<MarketPricesData | null> {
-	const raw = await redis.get(`${PREFIX}market_prices`);
-	return raw ? (JSON.parse(raw) as MarketPricesData) : null;
+	const [btcRaw, refRaw] = await Promise.all([
+		redis.get(`${PREFIX}btc_price`),
+		redis.get(`${PREFIX}ref_price`),
+	]);
+	if (!btcRaw) return null;
+	const btcData = JSON.parse(btcRaw) as {
+		btcPrice: number;
+		updatedAt: number;
+	};
+	const refData = refRaw
+		? (JSON.parse(refRaw) as {
+				priceToBeat: number | null;
+				marketTitle: string;
+			})
+		: null;
+	return {
+		btcPrice: btcData.btcPrice,
+		updatedAt: btcData.updatedAt,
+		priceToBeat: refData?.priceToBeat ?? null,
+		marketTitle: refData?.marketTitle ?? null,
+	};
 }
 
 export async function getRedisInfo(): Promise<{
