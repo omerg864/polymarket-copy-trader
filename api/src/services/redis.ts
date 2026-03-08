@@ -1,6 +1,6 @@
-import type { Trade } from '@shared/types';
-import { DEFAULT_STRATEGY_CONFIG } from '@shared/types';
 import Redis from 'ioredis';
+import type { Trade } from '../../../shared/src/types';
+import { DEFAULT_STRATEGY_CONFIG } from '../../../shared/src/types';
 import config from '../config';
 
 const PREFIX = 'pmbot:';

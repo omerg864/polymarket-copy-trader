@@ -2,7 +2,7 @@ import {
 	DEFAULT_STRATEGY_CONFIG,
 	resolveStrategyConfig,
 	type StrategyConfig,
-} from '@shared/types';
+} from '../../../shared/src/types';
 import { StrategyConfigModel } from '../models/StrategyConfig';
 import { redis } from './redis';
 

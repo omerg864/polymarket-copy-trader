@@ -1,5 +1,9 @@
-import type { BotConfig, StrategyConfig, TradeSummary } from '@shared/types';
 import type { Request, Response } from 'express';
+import type {
+	BotConfig,
+	StrategyConfig,
+	TradeSummary,
+} from '../../../shared/src/types';
 import config from '../config';
 import { resolveRole } from '../middleware/auth';
 import {
