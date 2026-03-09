@@ -72,8 +72,10 @@ export async function listTradeHistory(
 	req: Request,
 	res: Response,
 ): Promise<void> {
-	const limit = parseInt((req.query.limit as string) || '100', 10);
-	const trades = await getTradeHistory(limit);
+	const limit = parseInt((req.query.limit as string) || '1000', 10);
+	const trades = await getTradeHistory(
+		req.query.limit && !isNaN(limit) ? limit : undefined,
+	);
 	res.json(trades);
 }
 

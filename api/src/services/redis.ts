@@ -29,8 +29,13 @@ export async function getActiveTrades(): Promise<Trade[]> {
 	return trades.filter((t): t is Trade => t !== null);
 }
 
-export async function getTradeHistory(limit: number = 100): Promise<Trade[]> {
-	const records = await redis.lrange(`${PREFIX}history`, 0, limit - 1);
+export async function getTradeHistory(limit?: number): Promise<Trade[]> {
+	let records: string[];
+	if (limit) {
+		records = await redis.lrange(`${PREFIX}history`, 0, limit - 1);
+	} else {
+		records = await redis.lrange(`${PREFIX}history`, 0, -1);
+	}
 	return records.map((r) => JSON.parse(r) as Trade);
 }
 
