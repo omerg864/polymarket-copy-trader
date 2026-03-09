@@ -76,10 +76,10 @@ class DemoTradingService {
 			return null;
 		}
 
-		this.balance -= cost;
-		await redisService.setBotBalance(this.balance);
-
 		const fee = calculateFee(size, price);
+
+		this.balance -= cost + fee;
+		await redisService.setBotBalance(this.balance);
 
 		const trade: Trade = {
 			id: randomUUID(),
@@ -139,7 +139,7 @@ class DemoTradingService {
 				: 0;
 
 		this.balance = await redisService.getBotBalance();
-		this.balance += revenue;
+		this.balance += revenue - sellFee;
 		await redisService.setBotBalance(this.balance);
 
 		trade.status =

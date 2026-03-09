@@ -366,6 +366,18 @@ export function TradeHistoryTable() {
 											? `$${selectedTrade.fee.toFixed(4)}`
 											: '—'}
 									</span>
+									<span className="text-zinc-500">
+										P&L Before Fee
+									</span>
+									<span className="text-right">
+										<PnlBadge
+											pnl={
+												selectedTrade.pnl +
+												(selectedTrade.fee || 0)
+											}
+											cost={selectedTrade.cost}
+										/>
+									</span>
 									<span className="text-zinc-500">P&L</span>
 									<span className="text-right">
 										<PnlBadge

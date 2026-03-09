@@ -351,7 +351,9 @@ class StrategyEngine {
 						indicators: signal.indicators,
 					};
 					await redisService.saveTrade(trade);
-					await redisService.setBotBalance(botBalance - trade.cost);
+					await redisService.setBotBalance(
+						botBalance - trade.cost - fee,
+					);
 				}
 			} catch (error) {
 				const message =

@@ -184,7 +184,7 @@ class RiskManager {
 				await redisService.saveTradeHistory(trade);
 
 				const bal = await redisService.getBotBalance();
-				await redisService.setBotBalance(bal + revenue);
+				await redisService.setBotBalance(bal + revenue - sellFee);
 
 				const stats = await redisService.getBotStats();
 				stats.totalTrades += 1;
