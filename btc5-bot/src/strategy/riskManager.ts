@@ -1,4 +1,4 @@
-import type { Trade } from '@shared/types';
+import { calculateFee, type Trade } from '@shared/types';
 import config from '../config';
 import demoTradingService from '../services/demoTrading';
 import polymarketService from '../services/polymarket';
@@ -174,7 +174,10 @@ class RiskManager {
 				trade.status = 'closed_sell';
 				trade.exitPrice = currentPrice;
 				const revenue = currentPrice * trade.size;
-				trade.pnl = revenue - trade.cost;
+				const sellFee = calculateFee(trade.size, currentPrice);
+				const totalFee = (trade.fee || 0) + sellFee;
+				trade.pnl = revenue - trade.cost - totalFee;
+				trade.fee = totalFee;
 				trade.closedAt = new Date().toISOString();
 
 				await redisService.removeTrade(trade.id);
@@ -188,6 +191,7 @@ class RiskManager {
 				if (trade.pnl >= 0) stats.wins += 1;
 				else stats.losses += 1;
 				stats.totalPnl += trade.pnl;
+				stats.totalFees += totalFee;
 				await redisService.updateBotStats(stats);
 			}
 		} catch (error) {

@@ -1,5 +1,6 @@
 import {
 	DEFAULT_STRATEGY_CONFIG,
+	calculateFee,
 	type Market,
 	type Trade,
 } from '@shared/types';
@@ -78,6 +79,8 @@ class DemoTradingService {
 		this.balance -= cost;
 		await redisService.setBotBalance(this.balance);
 
+		const fee = calculateFee(size, price);
+
 		const trade: Trade = {
 			id: randomUUID(),
 			type: 'demo',
@@ -92,6 +95,7 @@ class DemoTradingService {
 			currentPrice: price,
 			size,
 			cost,
+			fee,
 			status: 'open',
 			startTime: market.startTime.toISOString(),
 			endTime: market.endTime.toISOString(),
@@ -109,6 +113,7 @@ class DemoTradingService {
 			price: price.toFixed(3),
 			size,
 			cost: `$${cost.toFixed(2)}`,
+			fee: `$${fee.toFixed(4)}`,
 			balance: `$${this.balance.toFixed(2)}`,
 			market: market.title,
 		});
@@ -124,8 +129,10 @@ class DemoTradingService {
 		currentPrice: number,
 		reason: string = 'sell',
 	): Promise<Trade> {
+		const sellFee = calculateFee(trade.size, currentPrice);
 		const revenue = currentPrice * trade.size;
-		const pnl = revenue - trade.cost;
+		const totalFee = trade.fee + sellFee;
+		const pnl = revenue - trade.cost - totalFee;
 		const pctChange =
 			trade.entryPrice > 0
 				? (currentPrice - trade.entryPrice) / trade.entryPrice
@@ -143,6 +150,7 @@ class DemoTradingService {
 					: 'closed_sell';
 		trade.exitPrice = currentPrice;
 		trade.pnl = pnl;
+		trade.fee = totalFee;
 		trade.pctChange = pctChange;
 		trade.closedAt = new Date().toISOString();
 
@@ -154,6 +162,7 @@ class DemoTradingService {
 		if (pnl >= 0) stats.wins += 1;
 		else stats.losses += 1;
 		stats.totalPnl += pnl;
+		stats.totalFees += totalFee;
 		await redisService.updateBotStats(stats);
 
 		const logLabel = pctChange >= 0 ? '🟢 TAKE PROFIT' : '🔴 STOP LOSS';
@@ -162,6 +171,7 @@ class DemoTradingService {
 			entry: trade.entryPrice.toFixed(3),
 			exit: currentPrice.toFixed(3),
 			pnl: `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`,
+			fee: `$${totalFee.toFixed(4)}`,
 			change: `${(pctChange * 100).toFixed(1)}%`,
 			balance: `$${this.balance.toFixed(2)}`,
 		});
@@ -177,7 +187,8 @@ class DemoTradingService {
 	async resolveTrade(trade: Trade, won: boolean): Promise<Trade> {
 		const finalPrice = won ? 1.0 : 0.0;
 		const revenue = finalPrice * trade.size;
-		const pnl = revenue - trade.cost;
+		const totalFee = trade.fee; // buy fee already included; no sell on resolution
+		const pnl = revenue - trade.cost - totalFee;
 		const pctChange =
 			trade.entryPrice > 0
 				? (finalPrice - trade.entryPrice) / trade.entryPrice
@@ -201,6 +212,7 @@ class DemoTradingService {
 		if (pnl >= 0) stats.wins += 1;
 		else stats.losses += 1;
 		stats.totalPnl += pnl;
+		stats.totalFees += totalFee;
 		await redisService.updateBotStats(stats);
 
 		const emoji = won ? '🏆' : '❌';
@@ -208,6 +220,7 @@ class DemoTradingService {
 			direction: trade.direction,
 			entry: trade.entryPrice.toFixed(3),
 			pnl: `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`,
+			fee: `$${totalFee.toFixed(4)}`,
 			balance: `$${this.balance.toFixed(2)}`,
 		});
 
@@ -232,6 +245,7 @@ class DemoTradingService {
 		logger.info(
 			`   Total P&L:    ${stats.totalPnl >= 0 ? '+' : ''}$${stats.totalPnl.toFixed(2)}`,
 		);
+		logger.info(`   Total Fees:   $${stats.totalFees.toFixed(4)}`);
 		logger.info('═══════════════════════════════════════');
 	}
 }

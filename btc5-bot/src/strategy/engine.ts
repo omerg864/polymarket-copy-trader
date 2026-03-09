@@ -1,4 +1,4 @@
-import type { Trade } from '@shared/types';
+import { calculateFee, type Trade } from '@shared/types';
 import config from '../config';
 import demoTradingService from '../services/demoTrading';
 import polymarketService from '../services/polymarket';
@@ -324,6 +324,7 @@ class StrategyEngine {
 				);
 				if (order) {
 					const orderRecord = order as Record<string, unknown>;
+					const fee = calculateFee(size, price);
 					const trade: Trade = {
 						id:
 							(orderRecord.orderID as string) ||
@@ -340,6 +341,7 @@ class StrategyEngine {
 						currentPrice: price,
 						size,
 						cost: price * size,
+						fee,
 						status: 'open',
 						startTime: market.startTime.toISOString(),
 						endTime: market.endTime.toISOString(),
@@ -410,7 +412,8 @@ class StrategyEngine {
 
 				const finalPrice = won ? 1.0 : 0.0;
 				const revenue = finalPrice * trade.size;
-				trade.pnl = revenue - trade.cost;
+				const totalFee = trade.fee || 0;
+				trade.pnl = revenue - trade.cost - totalFee;
 				trade.exitPrice = finalPrice;
 
 				await redisService.removeTrade(trade.id);
@@ -424,6 +427,7 @@ class StrategyEngine {
 				if (trade.pnl >= 0) stats.wins += 1;
 				else stats.losses += 1;
 				stats.totalPnl += trade.pnl;
+				stats.totalFees += totalFee;
 				await redisService.updateBotStats(stats);
 
 				logger.trade('Trade resolved (on-chain)', {

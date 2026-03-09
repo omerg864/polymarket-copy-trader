@@ -4,8 +4,8 @@ import {
 	CardDescription,
 	CardHeader,
 } from '@/components/ui/card';
-import type { Trade } from '@/types';
 import { useSummary, useTradeHistory } from '@/hooks/use-api';
+import type { Trade } from '@/types';
 
 export function StatsSummary() {
 	const { data: summary } = useSummary();
@@ -15,6 +15,7 @@ export function StatsSummary() {
 
 	const winRate = parseFloat(summary.winRate);
 	const totalPnl = summary.totalPnl;
+	const totalFees = summary.totalFees ?? 0;
 	const initialBalance = summary.initialBalance ?? 100;
 	const pnlPercentage =
 		initialBalance > 0 ? (totalPnl / initialBalance) * 100 : 0;
@@ -140,7 +141,19 @@ export function StatsSummary() {
 			</div>
 
 			{/* Bottom Row: Advanced Stats */}
-			<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+			<div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+				<Card className="bg-zinc-900 border-zinc-800">
+					<CardHeader className="pb-2">
+						<CardDescription className="text-xs text-zinc-500">
+							Total Fees
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<p className="text-2xl font-bold font-mono text-orange-400">
+							${totalFees.toFixed(4)}
+						</p>
+					</CardContent>
+				</Card>
 				<Card className="bg-zinc-900 border-zinc-800">
 					<CardHeader className="pb-2">
 						<CardDescription className="text-xs text-zinc-500">

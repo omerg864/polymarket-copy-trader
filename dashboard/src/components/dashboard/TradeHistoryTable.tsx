@@ -360,6 +360,12 @@ export function TradeHistoryTable() {
 											? `$${selectedTrade.exitPrice.toFixed(3)}`
 											: '—'}
 									</span>
+									<span className="text-zinc-500">Fee</span>
+									<span className="text-right font-mono text-orange-400">
+										{selectedTrade.fee
+											? `$${selectedTrade.fee.toFixed(4)}`
+											: '—'}
+									</span>
 									<span className="text-zinc-500">P&L</span>
 									<span className="text-right">
 										<PnlBadge

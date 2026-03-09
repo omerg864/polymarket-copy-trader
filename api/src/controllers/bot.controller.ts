@@ -44,6 +44,7 @@ export async function getSummary(_req: Request, res: Response): Promise<void> {
 		balance,
 		initialBalance: strategyConfig.botAllowance,
 		totalPnl: stats.totalPnl,
+		totalFees: stats.totalFees,
 		totalTrades: stats.totalTrades,
 		wins: stats.wins,
 		losses: stats.losses,

@@ -194,7 +194,7 @@ class RedisService {
 		const data = await client.get(`${this.prefix}${prefix}:stats`);
 		return data
 			? (JSON.parse(data) as BotStats)
-			: { totalTrades: 0, wins: 0, losses: 0, totalPnl: 0 };
+			: { totalTrades: 0, wins: 0, losses: 0, totalPnl: 0, totalFees: 0 };
 	}
 
 	async updateBotStats(stats: BotStats): Promise<void> {

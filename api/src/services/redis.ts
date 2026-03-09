@@ -39,6 +39,7 @@ interface BotStats {
 	wins: number;
 	losses: number;
 	totalPnl: number;
+	totalFees: number;
 }
 
 export async function getBotStats(): Promise<BotStats> {
@@ -46,7 +47,7 @@ export async function getBotStats(): Promise<BotStats> {
 	const raw = await redis.get(key);
 	return raw
 		? (JSON.parse(raw) as BotStats)
-		: { totalTrades: 0, wins: 0, losses: 0, totalPnl: 0 };
+		: { totalTrades: 0, wins: 0, losses: 0, totalPnl: 0, totalFees: 0 };
 }
 
 export async function getBotBalance(): Promise<number> {
