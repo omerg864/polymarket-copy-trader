@@ -49,7 +49,14 @@ function groupNestedInterval(
 		// 1. Calculate parent bucket (e.g. 80-89)
 		let pStart = Math.floor(val / parentInterval) * parentInterval;
 		if (pStart > maxVal) pStart = maxVal;
-		const pEnd = Math.min(maxVal, pStart + parentInterval - 1); // e.g. 80 to 89
+		const pEnd = Math.min(
+			maxVal,
+			pStart +
+				parentInterval -
+				(Number.isInteger(parentInterval) && parentInterval > 1
+					? 1
+					: 0.01),
+		);
 		const pKey = formatLabel(pStart, pEnd);
 
 		// 2. Calculate child bucket (e.g. 81-81)
@@ -214,8 +221,8 @@ export function AnalysisDashboard() {
 		const byVWAPRaw = groupNestedInterval(
 			resolved,
 			getVwapDist,
-			1,
-			0.25,
+			0.5,
+			0.1,
 			(s, e) => `${s.toFixed(2)}% - ${e.toFixed(2)}%`,
 		);
 		const byVWAP = byVWAPRaw.reduce(
@@ -231,6 +238,24 @@ export function AnalysisDashboard() {
 				{ main: ReturnType<typeof calculateStats>; children: any[] }
 			>,
 		);
+
+		// VWAP Sentiment: Above vs Below
+		const vwapAbove = resolved.filter((t) => (getVwapDist(t) ?? 0) > 0);
+		const vwapBelow = resolved.filter((t) => (getVwapDist(t) ?? 0) < 0);
+		const vwapSentiment = {
+			above: calculateStats(vwapAbove),
+			below: calculateStats(vwapBelow),
+			avgDistAbove:
+				vwapAbove.length > 0
+					? vwapAbove.reduce((s, t) => s + (getVwapDist(t) ?? 0), 0) /
+						vwapAbove.length
+					: 0,
+			avgDistBelow:
+				vwapBelow.length > 0
+					? vwapBelow.reduce((s, t) => s + (getVwapDist(t) ?? 0), 0) /
+						vwapBelow.length
+					: 0,
+		};
 
 		// 5. By Direction
 		const byDirection = {
@@ -311,6 +336,7 @@ export function AnalysisDashboard() {
 			marketAge: byMarketAge,
 			stochRSI: byStochRSI,
 			vwap: byVWAP,
+			vwapSentiment,
 			timeOfDay: byTimeOfDay,
 		};
 	}, [history]);
@@ -755,7 +781,90 @@ export function AnalysisDashboard() {
 							Weighted Average Price
 						</CardDescription>
 					</CardHeader>
-					<CardContent>
+					<CardContent className="space-y-4">
+						{/* Above vs Below VWAP Summary */}
+						<div className="grid grid-cols-2 gap-3">
+							<div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+								<div className="text-xs text-emerald-400 font-medium mb-1">
+									Above VWAP (Bullish)
+								</div>
+								<div className="text-lg font-bold text-zinc-100">
+									{analysis.vwapSentiment.above.winRate.toFixed(
+										1,
+									)}
+									%
+								</div>
+								<div className="text-xs text-zinc-400">
+									{analysis.vwapSentiment.above.total} trades
+									&middot;{' '}
+									<span
+										className={
+											analysis.vwapSentiment.above
+												.totalPnl >= 0
+												? 'text-emerald-400'
+												: 'text-red-400'
+										}
+									>
+										{analysis.vwapSentiment.above
+											.totalPnl >= 0
+											? '+'
+											: ''}
+										$
+										{analysis.vwapSentiment.above.totalPnl.toFixed(
+											2,
+										)}
+									</span>
+								</div>
+								<div className="text-xs text-zinc-500 mt-1">
+									Avg dist: +
+									{analysis.vwapSentiment.avgDistAbove.toFixed(
+										3,
+									)}
+									%
+								</div>
+							</div>
+							<div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+								<div className="text-xs text-red-400 font-medium mb-1">
+									Below VWAP (Bearish)
+								</div>
+								<div className="text-lg font-bold text-zinc-100">
+									{analysis.vwapSentiment.below.winRate.toFixed(
+										1,
+									)}
+									%
+								</div>
+								<div className="text-xs text-zinc-400">
+									{analysis.vwapSentiment.below.total} trades
+									&middot;{' '}
+									<span
+										className={
+											analysis.vwapSentiment.below
+												.totalPnl >= 0
+												? 'text-emerald-400'
+												: 'text-red-400'
+										}
+									>
+										{analysis.vwapSentiment.below
+											.totalPnl >= 0
+											? '+'
+											: ''}
+										$
+										{analysis.vwapSentiment.below.totalPnl.toFixed(
+											2,
+										)}
+									</span>
+								</div>
+								<div className="text-xs text-zinc-500 mt-1">
+									Avg dist:{' '}
+									{analysis.vwapSentiment.avgDistBelow.toFixed(
+										3,
+									)}
+									%
+								</div>
+							</div>
+						</div>
+
+						{/* Detailed VWAP Distance Buckets */}
 						<Accordion type="multiple" className="w-full">
 							{Object.entries(analysis.vwap).map(
 								([label, group]) => (
