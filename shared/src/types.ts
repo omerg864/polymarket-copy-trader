@@ -64,6 +64,7 @@ export interface BotConfig {
 	stopLossPct: number;
 	maxConcurrentTrades: number;
 	minEntryPrice: number;
+	maxEntryPrice: number;
 	minMarketAgeMinutes: number;
 	candleCount: number;
 	rsiPeriod: number;
@@ -85,6 +86,7 @@ export interface StrategyConfig {
 	stopLossPct: number;
 	maxConcurrentTrades: number;
 	minEntryPrice: number;
+	maxEntryPrice: number;
 	minMarketAgeMinutes: number;
 	candleCount: number;
 	rsiPeriod: number;
@@ -106,6 +108,7 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 	stopLossPct: 0.2,
 	maxConcurrentTrades: 3,
 	minEntryPrice: 0.8,
+	maxEntryPrice: 0.95,
 	minMarketAgeMinutes: 2,
 	candleCount: 60,
 	rsiPeriod: 14,
@@ -180,6 +183,7 @@ export interface BotStats {
 export function calculateFee(shares: number, price: number): number {
 	const FEE_RATE = 0.0175;
 	const EXPONENT = 1;
-	const raw = shares * price * FEE_RATE * Math.pow(price * (1 - price), EXPONENT);
+	const raw =
+		shares * price * FEE_RATE * Math.pow(price * (1 - price), EXPONENT);
 	return Math.round(raw * 10000) / 10000; // 4 decimal precision
 }

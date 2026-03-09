@@ -238,6 +238,14 @@ class StrategyEngine {
 			return;
 		}
 
+		// Guard: Maximum Price to Open
+		if (price > sc.maxEntryPrice) {
+			logger.info(
+				`⚠️  Price too high ($${price.toFixed(3)} > $${sc.maxEntryPrice.toFixed(2)}). Skipping trade.`,
+			);
+			return;
+		}
+
 		// Guard: Minimum Market Age
 		now = new Date();
 		const marketAgeMinutes =
