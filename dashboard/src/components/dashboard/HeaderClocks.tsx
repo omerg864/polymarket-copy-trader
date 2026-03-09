@@ -1,3 +1,4 @@
+import { Duration } from 'luxon';
 import { useEffect, useState } from 'react';
 
 export function HeaderClocks({ startTime }: { startTime?: number | null }) {
@@ -10,20 +11,10 @@ export function HeaderClocks({ startTime }: { startTime?: number | null }) {
 
 	let uptimeStr = '';
 	if (startTime) {
-		const diff = Math.max(
-			0,
-			Math.floor((currentTime.getTime() - startTime) / 1000),
-		);
-		const h = Math.floor(diff / 3600);
-		const m = Math.floor((diff % 3600) / 60);
-		const s = diff % 60;
-		if (h > 0) {
-			uptimeStr = `${h}h ${m}m ${s}s`;
-		} else if (m > 0) {
-			uptimeStr = `${m}m ${s}s`;
-		} else {
-			uptimeStr = `${s}s`;
-		}
+		const diffMs = Math.max(0, currentTime.getTime() - startTime);
+		uptimeStr = Duration.fromMillis(diffMs)
+			.shiftTo('weeks', 'days', 'hours', 'minutes', 'seconds')
+			.toHuman();
 	}
 
 	return (
