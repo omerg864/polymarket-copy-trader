@@ -12,9 +12,20 @@ export function HeaderClocks({ startTime }: { startTime?: number | null }) {
 	let uptimeStr = '';
 	if (startTime) {
 		const diffMs = Math.max(0, currentTime.getTime() - startTime);
-		uptimeStr = Duration.fromMillis(diffMs)
-			.shiftTo('weeks', 'days', 'hours', 'minutes', 'seconds')
-			.toHuman();
+		const dur = Duration.fromMillis(diffMs).shiftTo(
+			'weeks',
+			'days',
+			'hours',
+			'minutes',
+			'seconds',
+		);
+		const parts: string[] = [];
+		if (dur.weeks >= 1) parts.push(`${Math.floor(dur.weeks)}w`);
+		if (dur.days >= 1) parts.push(`${Math.floor(dur.days)}d`);
+		if (dur.hours >= 1) parts.push(`${Math.floor(dur.hours)}h`);
+		if (dur.minutes >= 1) parts.push(`${Math.floor(dur.minutes)}m`);
+		parts.push(`${Math.floor(dur.seconds)}s`);
+		uptimeStr = parts.join(' ');
 	}
 
 	return (
