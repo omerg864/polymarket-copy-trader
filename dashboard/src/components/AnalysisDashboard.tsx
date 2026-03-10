@@ -193,6 +193,79 @@ export function AnalysisDashboard() {
 			return new Date(t.enteredAt).getHours();
 		};
 
+		// Helper to extract Day of Week (0=Sunday..6=Saturday)
+		const getDayOfWeek = (t: Trade) => {
+			if (!t.enteredAt) return undefined;
+			return new Date(t.enteredAt).getDay();
+		};
+		const dayNames = [
+			'Sunday',
+			'Monday',
+			'Tuesday',
+			'Wednesday',
+			'Thursday',
+			'Friday',
+			'Saturday',
+		];
+
+		// Helpers for additional indicators
+		const getMicroRsi = (t: Trade) => {
+			if (!t.indicators?.microRsi) return undefined;
+			const val = parseFloat(t.indicators.microRsi);
+			return isNaN(val) ? undefined : val;
+		};
+
+		const getRsi14 = (t: Trade) => {
+			if (!t.indicators?.rsi14) return undefined;
+			const val = parseFloat(t.indicators.rsi14);
+			return isNaN(val) ? undefined : val;
+		};
+
+		const getEma3 = (t: Trade) => {
+			if (!t.indicators?.ema3 || !t.indicators?.currentPrice)
+				return undefined;
+			const price = parseFloat(t.indicators.currentPrice.toString());
+			const ema = parseFloat(t.indicators.ema3);
+			if (isNaN(price) || isNaN(ema)) return undefined;
+			return ((price - ema) / ema) * 100;
+		};
+
+		const getEma8 = (t: Trade) => {
+			if (!t.indicators?.ema8 || !t.indicators?.currentPrice)
+				return undefined;
+			const price = parseFloat(t.indicators.currentPrice.toString());
+			const ema = parseFloat(t.indicators.ema8);
+			if (isNaN(price) || isNaN(ema)) return undefined;
+			return ((price - ema) / ema) * 100;
+		};
+
+		const getBbPosition = (t: Trade) => {
+			if (
+				!t.indicators?.bbLower ||
+				!t.indicators?.bbUpper ||
+				!t.indicators?.currentPrice
+			)
+				return undefined;
+			const price = parseFloat(t.indicators.currentPrice.toString());
+			const lower = parseFloat(t.indicators.bbLower);
+			const upper = parseFloat(t.indicators.bbUpper);
+			if (isNaN(price) || isNaN(lower) || isNaN(upper) || upper === lower)
+				return undefined;
+			return ((price - lower) / (upper - lower)) * 100;
+		};
+
+		const getMomentum3 = (t: Trade) => {
+			if (!t.indicators?.momentum3) return undefined;
+			const val = parseFloat(t.indicators.momentum3);
+			return isNaN(val) ? undefined : val;
+		};
+
+		const getVolatility = (t: Trade) => {
+			if (!t.indicators?.volatility) return undefined;
+			const val = parseFloat(t.indicators.volatility);
+			return isNaN(val) ? undefined : val;
+		};
+
 		// 3. By StochRSI
 		const stochRsiRaw = groupNestedInterval(
 			resolved,
@@ -338,6 +411,108 @@ export function AnalysisDashboard() {
 			vwap: byVWAP,
 			vwapSentiment,
 			timeOfDay: byTimeOfDay,
+			dayOfWeek: dayNames
+				.map((dayName, dayIdx) => {
+					const dayTrades = resolved.filter(
+						(t) => getDayOfWeek(t) === dayIdx,
+					);
+					const hourGroups: {
+						label: string;
+						stats: ReturnType<typeof calculateStats>;
+					}[] = [];
+					for (let h = 0; h < 24; h++) {
+						const hourTrades = dayTrades.filter(
+							(t) => getHourOfDay(t) === h,
+						);
+						if (hourTrades.length > 0) {
+							hourGroups.push({
+								label: `${h.toString().padStart(2, '0')}:00 - ${h.toString().padStart(2, '0')}:59`,
+								stats: calculateStats(hourTrades),
+							});
+						}
+					}
+					return {
+						label: dayName,
+						main: calculateStats(dayTrades),
+						children: hourGroups,
+					};
+				})
+				.filter((d) => d.main.total > 0),
+			microRsi: groupNestedInterval(
+				resolved,
+				getMicroRsi,
+				10,
+				2,
+				(s, e) => `${s} - ${e}`,
+				0,
+				100,
+			),
+			rsi14: groupNestedInterval(
+				resolved,
+				getRsi14,
+				10,
+				2,
+				(s, e) => `${s} - ${e}`,
+				0,
+				100,
+			),
+			ema3Dist: groupNestedInterval(
+				resolved,
+				getEma3,
+				0.5,
+				0.1,
+				(s, e) => `${s.toFixed(2)}% - ${e.toFixed(2)}%`,
+			),
+			ema8Dist: groupNestedInterval(
+				resolved,
+				getEma8,
+				0.5,
+				0.1,
+				(s, e) => `${s.toFixed(2)}% - ${e.toFixed(2)}%`,
+			),
+			bbPosition: groupNestedInterval(
+				resolved,
+				getBbPosition,
+				20,
+				5,
+				(s, e) => `${s.toFixed(0)}% - ${e.toFixed(0)}%`,
+				0,
+				100,
+			),
+			momentum3: groupNestedInterval(
+				resolved,
+				getMomentum3,
+				0.5,
+				0.1,
+				(s, e) => `${s.toFixed(2)}% - ${e.toFixed(2)}%`,
+			),
+			volatility: groupNestedInterval(
+				resolved,
+				getVolatility,
+				0.5,
+				0.1,
+				(s, e) => `${s.toFixed(2)}% - ${e.toFixed(2)}%`,
+			),
+			byDate: (() => {
+				const dateMap: Record<string, Trade[]> = {};
+				resolved.forEach((t) => {
+					if (!t.enteredAt) return;
+					const d = new Date(t.enteredAt);
+					const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+					if (!dateMap[dateKey]) dateMap[dateKey] = [];
+					dateMap[dateKey].push(t);
+				});
+				return Object.entries(dateMap)
+					.sort(([a], [b]) => a.localeCompare(b))
+					.map(([date, trades]) => ({
+						label: date,
+						main: calculateStats(trades),
+						children: [] as {
+							label: string;
+							stats: ReturnType<typeof calculateStats>;
+						}[],
+					}));
+			})(),
 		};
 	}, [history]);
 
@@ -484,6 +659,72 @@ export function AnalysisDashboard() {
 			</div>
 		</div>
 	);
+
+	const renderAccordionCard = (
+		title: string,
+		description: string,
+		data:
+			| ReturnType<typeof groupNestedInterval>
+			| Record<
+					string,
+					{
+						main: ReturnType<typeof calculateStats>;
+						children: any[];
+					}
+			  >,
+		colSpan?: boolean,
+	) => {
+		const entries = Array.isArray(data)
+			? data.map((b) => [b.label, { main: b.main, children: b.children }])
+			: Object.entries(data);
+		if (entries.length === 0) return null;
+		return (
+			<Card
+				className={`bg-zinc-900 border-zinc-800 ${colSpan ? 'lg:col-span-2' : ''}`}
+			>
+				<CardHeader>
+					<CardTitle className="text-lg">{title}</CardTitle>
+					<CardDescription>{description}</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<Accordion type="multiple" className="w-full">
+						{entries.map(([label, group]: any) => (
+							<AccordionItem
+								value={label}
+								key={label}
+								className="border-b-0"
+							>
+								<AccordionTrigger className="py-0 hover:no-underline [&[data-state=open]>div]:bg-zinc-800/30">
+									<div className="flex-1 text-left">
+										{renderStatRow(
+											label,
+											group.main,
+											false,
+										)}
+									</div>
+								</AccordionTrigger>
+								{group.children &&
+									group.children.length > 0 && (
+										<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
+											<div className="space-y-1">
+												{group.children.map(
+													(child: any) =>
+														renderStatRow(
+															child.label,
+															child.stats,
+															true,
+														),
+												)}
+											</div>
+										</AccordionContent>
+									)}
+							</AccordionItem>
+						))}
+					</Accordion>
+				</CardContent>
+			</Card>
+		);
+	};
 
 	return (
 		<div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6 pb-24">
@@ -716,6 +957,13 @@ export function AnalysisDashboard() {
 					</CardContent>
 				</Card>
 
+				{/* Individual Indicator Cards */}
+			</div>
+
+			<h3 className="text-lg font-semibold text-zinc-200 mt-2">
+				Technical Indicators
+			</h3>
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				{/* StochRSI Card */}
 				<Card className="bg-zinc-900 border-zinc-800">
 					<CardHeader>
@@ -907,59 +1155,65 @@ export function AnalysisDashboard() {
 					</CardContent>
 				</Card>
 
-				{/* Time of Day Card */}
-				<Card className="bg-zinc-900 border-zinc-800 lg:col-span-2">
-					<CardHeader>
-						<CardTitle className="text-lg">
-							Win Rate by Time of Day (Hour)
-						</CardTitle>
-						<CardDescription>
-							Performance segmented by the hour the trade was
-							executed
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<Accordion type="multiple" className="w-full">
-							{Object.entries(analysis.timeOfDay).map(
-								([label, group]) => (
-									<AccordionItem
-										value={label}
-										key={label}
-										className="border-b-0"
-									>
-										<AccordionTrigger className="py-0 hover:no-underline [&[data-state=open]>div]:bg-zinc-800/30">
-											<div className="flex-1 text-left">
-												{renderStatRow(
-													label,
-													group.main,
-													false,
-												)}
-											</div>
-										</AccordionTrigger>
-										<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
-											<div className="space-y-1">
-												{group.children.length === 0 ? (
-													<div className="text-zinc-600 text-xs py-2 italic text-center">
-														No trades in this range
-													</div>
-												) : (
-													group.children.map(
-														(child) =>
-															renderStatRow(
-																child.label,
-																child.stats,
-																true,
-															),
-													)
-												)}
-											</div>
-										</AccordionContent>
-									</AccordionItem>
-								),
-							)}
-						</Accordion>
-					</CardContent>
-				</Card>
+				{renderAccordionCard(
+					'Win Rate by Micro RSI',
+					'Short-term RSI momentum (0-100)',
+					analysis.microRsi,
+				)}
+				{renderAccordionCard(
+					'Win Rate by RSI-14',
+					'Standard 14-period RSI. Overbought (>70) vs Oversold (<30)',
+					analysis.rsi14,
+				)}
+				{renderAccordionCard(
+					'Win Rate by EMA-3 Distance',
+					'% distance of BTC price from 3-period EMA',
+					analysis.ema3Dist,
+				)}
+				{renderAccordionCard(
+					'Win Rate by EMA-8 Distance',
+					'% distance of BTC price from 8-period EMA',
+					analysis.ema8Dist,
+				)}
+				{renderAccordionCard(
+					'Win Rate by Bollinger Band Position',
+					'Price position within BB range (0%=lower, 100%=upper)',
+					analysis.bbPosition,
+				)}
+				{renderAccordionCard(
+					'Win Rate by Momentum (3-bar)',
+					'3-bar price momentum percentage',
+					analysis.momentum3,
+				)}
+				{renderAccordionCard(
+					'Win Rate by Volatility',
+					'Market volatility at trade entry',
+					analysis.volatility,
+				)}
+			</div>
+
+			<h3 className="text-lg font-semibold text-zinc-200 mt-2">
+				Date & Time
+			</h3>
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+				{renderAccordionCard(
+					'Win Rate by Time of Day (Hour)',
+					'Performance segmented by the hour the trade was executed',
+					analysis.timeOfDay,
+					true,
+				)}
+				{renderAccordionCard(
+					'Win Rate by Day of Week',
+					'Performance by day, expandable by hour',
+					analysis.dayOfWeek,
+					true,
+				)}
+				{renderAccordionCard(
+					'Win Rate by Date',
+					'Daily performance breakdown',
+					analysis.byDate,
+					true,
+				)}
 			</div>
 		</div>
 	);

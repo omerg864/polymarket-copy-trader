@@ -320,6 +320,20 @@ export function Header() {
 										setEditValues={setEditValues}
 									/>
 									<ConfigRow
+										label="Min StochRSI"
+										field="minStochRSI"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="Max StochRSI"
+										field="maxStochRSI"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
 										label="Min Market Age"
 										field="minMarketAgeMinutes"
 										suffix=" min"

@@ -257,6 +257,20 @@ class StrategyEngine {
 			return;
 		}
 
+		// Guard: StochRSI Range
+		if (signal.indicators?.stochRsi) {
+			const stochVal = parseFloat(signal.indicators.stochRsi);
+			if (
+				!isNaN(stochVal) &&
+				(stochVal < sc.minStochRSI || stochVal > sc.maxStochRSI)
+			) {
+				logger.info(
+					`⚠️  StochRSI ${stochVal.toFixed(1)} outside range [${sc.minStochRSI}, ${sc.maxStochRSI}]. Skipping trade.`,
+				);
+				return;
+			}
+		}
+
 		// Validate price
 		if (!price || price <= 0 || price >= 1 || !isFinite(price)) {
 			logger.warn(
