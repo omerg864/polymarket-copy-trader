@@ -473,6 +473,8 @@ export function AnalysisDashboard() {
 					const hourGroups: {
 						label: string;
 						stats: ReturnType<typeof calculateStats>;
+						upStats: ReturnType<typeof calculateStats>;
+						downStats: ReturnType<typeof calculateStats>;
 					}[] = [];
 					for (let h = 0; h < 24; h++) {
 						const hourTrades = dayTrades.filter(
@@ -586,6 +588,8 @@ export function AnalysisDashboard() {
 						children: [] as {
 							label: string;
 							stats: ReturnType<typeof calculateStats>;
+							upStats: ReturnType<typeof calculateStats>;
+							downStats: ReturnType<typeof calculateStats>;
 						}[],
 					}));
 			})(),
@@ -866,7 +870,7 @@ export function AnalysisDashboard() {
 				</p>
 			</div>
 
-			<div className="bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent border border-indigo-500/20 rounded-lg p-5 mt-4">
+			<div className="bg-linear-to-br from-indigo-500/10 via-purple-500/5 to-transparent border border-indigo-500/20 rounded-lg p-5 mt-4">
 				<div className="flex items-center gap-2 mb-3">
 					<Sparkles className="h-5 w-5 text-indigo-400" />
 					<h3 className="font-semibold text-indigo-400 tracking-wide text-sm uppercase">
