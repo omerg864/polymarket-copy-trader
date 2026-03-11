@@ -324,7 +324,16 @@ class PriceAnalysisService {
 				ema3: ema3.toFixed(2),
 				ema8: ema8.toFixed(2),
 				bbLower: bb ? bb.lower.toFixed(2) : 'N/A',
+				bbMiddle: bb ? bb.middle.toFixed(2) : 'N/A',
 				bbUpper: bb ? bb.upper.toFixed(2) : 'N/A',
+				bbPosition:
+					bb && bb.upper !== bb.lower
+						? (
+								((currentPrice - bb.lower) /
+									(bb.upper - bb.lower)) *
+								100
+							).toFixed(1) + '%'
+						: 'N/A',
 				momentum3: (momentum3 * 100).toFixed(4) + '%',
 				volatility: (volatilityPct * 100).toFixed(4) + '%',
 			},

@@ -285,6 +285,20 @@ class StrategyEngine {
 			}
 		}
 
+		// Guard: BB Position Range
+		if (signal.indicators?.bbPosition) {
+			const bbPosVal = parseFloat(signal.indicators.bbPosition);
+			if (
+				!isNaN(bbPosVal) &&
+				(bbPosVal < sc.minBBPosition || bbPosVal > sc.maxBBPosition)
+			) {
+				logger.info(
+					`⚠️  BB Position ${bbPosVal.toFixed(1)}% outside range [${sc.minBBPosition}, ${sc.maxBBPosition}]. Skipping trade.`,
+				);
+				return;
+			}
+		}
+
 		// Validate price
 		if (!price || price <= 0 || price >= 1 || !isFinite(price)) {
 			logger.warn(

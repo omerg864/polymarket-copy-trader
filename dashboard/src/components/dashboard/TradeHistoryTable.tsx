@@ -465,14 +465,24 @@ export function TradeHistoryTable() {
 											{selectedTrade.indicators.ema8}
 										</span>
 										<span className="text-zinc-500">
-											BB Lower / Upper
+											BB Lower / Middle / Upper
 										</span>
 										<span className="text-right font-mono">
 											{selectedTrade.indicators.bbLower ||
 												'—'}{' '}
 											/{' '}
+											{selectedTrade.indicators
+												.bbMiddle || '—'}{' '}
+											/{' '}
 											{selectedTrade.indicators.bbUpper ||
 												'—'}
+										</span>
+										<span className="text-zinc-500">
+											BB Position
+										</span>
+										<span className="text-right font-mono">
+											{selectedTrade.indicators
+												.bbPosition || '—'}
 										</span>
 										<span className="text-zinc-500">
 											Momentum (3m)

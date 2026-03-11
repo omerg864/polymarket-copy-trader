@@ -49,7 +49,9 @@ export interface Trade {
 		ema3: string;
 		ema8: string;
 		bbLower?: string;
+		bbMiddle?: string;
 		bbUpper?: string;
+		bbPosition?: string;
 		momentum3: string;
 		volatility: string;
 	};
@@ -69,6 +71,8 @@ export interface BotConfig {
 	maxStochRSI: number;
 	minRSI14: number;
 	maxRSI14: number;
+	minBBPosition: number;
+	maxBBPosition: number;
 	minMarketAgeMinutes: number;
 	candleCount: number;
 	rsiPeriod: number;
@@ -95,6 +99,8 @@ export interface StrategyConfig {
 	maxStochRSI: number;
 	minRSI14: number;
 	maxRSI14: number;
+	minBBPosition: number;
+	maxBBPosition: number;
 	minMarketAgeMinutes: number;
 	candleCount: number;
 	rsiPeriod: number;
@@ -121,6 +127,8 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 	maxStochRSI: 89,
 	minRSI14: 30,
 	maxRSI14: 65,
+	minBBPosition: 0,
+	maxBBPosition: 85,
 	minMarketAgeMinutes: 2,
 	candleCount: 60,
 	rsiPeriod: 14,

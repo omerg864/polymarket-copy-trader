@@ -90,7 +90,9 @@ export function Header() {
 			'EMA-3': t.indicators?.ema3 ?? '',
 			'EMA-8': t.indicators?.ema8 ?? '',
 			'BB Lower': t.indicators?.bbLower ?? '',
+			'BB Middle': t.indicators?.bbMiddle ?? '',
 			'BB Upper': t.indicators?.bbUpper ?? '',
+			'BB Position %': t.indicators?.bbPosition ?? '',
 			'Momentum (3m)': t.indicators?.momentum3 ?? '',
 			Volatility: t.indicators?.volatility ?? '',
 			'Market Start': t.startTime
@@ -363,6 +365,20 @@ export function Header() {
 									<ConfigRow
 										label="Max RSI-14"
 										field="maxRSI14"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="Min BB Position"
+										field="minBBPosition"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
+									<ConfigRow
+										label="Max BB Position"
+										field="maxBBPosition"
 										editing={editing}
 										editValues={editValues}
 										setEditValues={setEditValues}
