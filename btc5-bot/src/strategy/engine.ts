@@ -271,6 +271,20 @@ class StrategyEngine {
 			}
 		}
 
+		// Guard: RSI-14 Range
+		if (signal.indicators?.rsi14) {
+			const rsi14Val = parseFloat(signal.indicators.rsi14);
+			if (
+				!isNaN(rsi14Val) &&
+				(rsi14Val < sc.minRSI14 || rsi14Val > sc.maxRSI14)
+			) {
+				logger.info(
+					`⚠️  RSI-14 ${rsi14Val.toFixed(1)} outside range [${sc.minRSI14}, ${sc.maxRSI14}]. Skipping trade.`,
+				);
+				return;
+			}
+		}
+
 		// Validate price
 		if (!price || price <= 0 || price >= 1 || !isFinite(price)) {
 			logger.warn(

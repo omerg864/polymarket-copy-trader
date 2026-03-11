@@ -67,6 +67,8 @@ export interface BotConfig {
 	maxEntryPrice: number;
 	minStochRSI: number;
 	maxStochRSI: number;
+	minRSI14: number;
+	maxRSI14: number;
 	minMarketAgeMinutes: number;
 	candleCount: number;
 	rsiPeriod: number;
@@ -91,6 +93,8 @@ export interface StrategyConfig {
 	maxEntryPrice: number;
 	minStochRSI: number;
 	maxStochRSI: number;
+	minRSI14: number;
+	maxRSI14: number;
 	minMarketAgeMinutes: number;
 	candleCount: number;
 	rsiPeriod: number;
@@ -115,6 +119,8 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 	maxEntryPrice: 0.95,
 	minStochRSI: 20,
 	maxStochRSI: 89,
+	minRSI14: 30,
+	maxRSI14: 65,
 	minMarketAgeMinutes: 2,
 	candleCount: 60,
 	rsiPeriod: 14,
