@@ -921,19 +921,47 @@ export function AnalysisDashboard() {
 										</AccordionTrigger>
 										<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
 											<div className="space-y-1">
+												{renderDirectionRows(group)}
 												{group.children.length === 0 ? (
 													<div className="text-zinc-600 text-xs py-2 italic text-center">
 														No trades in this range
 													</div>
 												) : (
-													group.children.map(
-														(child) =>
-															renderStatRow(
-																child.label,
-																child.stats,
-																true,
+													<Accordion
+														type="multiple"
+														className="w-full"
+													>
+														{group.children.map(
+															(child) => (
+																<AccordionItem
+																	value={
+																		child.label
+																	}
+																	key={
+																		child.label
+																	}
+																	className="border-b-0"
+																>
+																	<AccordionTrigger className="py-0 hover:no-underline [&[data-state=open]>div]:bg-zinc-800/30">
+																		<div className="flex-1 text-left">
+																			{renderStatRow(
+																				child.label,
+																				child.stats,
+																				true,
+																			)}
+																		</div>
+																	</AccordionTrigger>
+																	<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
+																		<div className="space-y-1">
+																			{renderDirectionRows(
+																				child,
+																			)}
+																		</div>
+																	</AccordionContent>
+																</AccordionItem>
 															),
-													)
+														)}
+													</Accordion>
 												)}
 											</div>
 										</AccordionContent>
@@ -974,19 +1002,47 @@ export function AnalysisDashboard() {
 										</AccordionTrigger>
 										<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
 											<div className="space-y-1">
+												{renderDirectionRows(group)}
 												{group.children.length === 0 ? (
 													<div className="text-zinc-600 text-xs py-2 italic text-center">
 														No trades in this range
 													</div>
 												) : (
-													group.children.map(
-														(child) =>
-															renderStatRow(
-																child.label,
-																child.stats,
-																true,
+													<Accordion
+														type="multiple"
+														className="w-full"
+													>
+														{group.children.map(
+															(child) => (
+																<AccordionItem
+																	value={
+																		child.label
+																	}
+																	key={
+																		child.label
+																	}
+																	className="border-b-0"
+																>
+																	<AccordionTrigger className="py-0 hover:no-underline [&[data-state=open]>div]:bg-zinc-800/30">
+																		<div className="flex-1 text-left">
+																			{renderStatRow(
+																				child.label,
+																				child.stats,
+																				true,
+																			)}
+																		</div>
+																	</AccordionTrigger>
+																	<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
+																		<div className="space-y-1">
+																			{renderDirectionRows(
+																				child,
+																			)}
+																		</div>
+																	</AccordionContent>
+																</AccordionItem>
 															),
-													)
+														)}
+													</Accordion>
 												)}
 											</div>
 										</AccordionContent>

@@ -1,0 +1,4 @@
+{
+	"js/ts.tsserver.experimental.enableProjectDiagnostics": true,
+	"js/ts.tsserver.maxMemory": 8192
+}
