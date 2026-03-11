@@ -14,7 +14,10 @@ import logger from '../utils/logger';
 class RiskManager {
 	private monitoring = false;
 	private monitorInterval: ReturnType<typeof setInterval> | null = null;
+	private fctInterval: ReturnType<typeof setInterval> | null = null;
 	private checking = false;
+	private checkingFct = false;
+	private sellingTrades = new Set<string>();
 
 	async startMonitoring(): Promise<void> {
 		if (this.monitoring) return;
@@ -25,8 +28,9 @@ class RiskManager {
 			() => this.checkAllPositions(),
 			sc.riskMonitorIntervalMs,
 		);
+		this.fctInterval = setInterval(() => this.checkFctPositions(), 1000);
 		logger.info(
-			`🛡️  Risk manager started — monitoring positions every ${sc.riskMonitorIntervalMs}ms`,
+			`🛡️  Risk manager started — monitoring positions every ${sc.riskMonitorIntervalMs}ms, FCT every 1s`,
 		);
 	}
 
@@ -35,6 +39,10 @@ class RiskManager {
 		if (this.monitorInterval) {
 			clearInterval(this.monitorInterval);
 			this.monitorInterval = null;
+		}
+		if (this.fctInterval) {
+			clearInterval(this.fctInterval);
+			this.fctInterval = null;
 		}
 		logger.info('Risk manager stopped');
 	}
@@ -60,6 +68,72 @@ class RiskManager {
 	}
 
 	/**
+	 * Fast 1-second loop: force-close trades approaching market end.
+	 */
+	private async checkFctPositions(): Promise<void> {
+		if (this.checkingFct) return;
+		this.checkingFct = true;
+
+		try {
+			const trades = await redisService.getActiveTrades();
+			if (trades.length === 0) return;
+
+			const sc = await getStrategyConfig();
+			const fctBufferSec = 5;
+
+			for (const trade of trades) {
+				if (trade.status !== 'open') continue;
+				if (this.sellingTrades.has(trade.id)) continue;
+
+				const endTime = new Date(trade.endTime);
+				const now = new Date();
+				if (now >= endTime) continue;
+
+				const secUntilEnd = (endTime.getTime() - now.getTime()) / 1000;
+				if (secUntilEnd > sc.maxSecLoseFct + fctBufferSec) continue;
+
+				const priceToBeat = parseFloat(String(trade.priceToBeat));
+				if (!priceToBeat || priceToBeat <= 0) continue;
+
+				// Claim immediately (same tick as has() check) to prevent races
+				this.sellingTrades.add(trade.id);
+				try {
+					const btcPrice =
+						await priceAnalysisService.getCurrentPrice();
+					if (!btcPrice) continue;
+
+					const resolvesUp = btcPrice >= priceToBeat;
+					const wouldLose =
+						(trade.direction === 'UP' && !resolvesUp) ||
+						(trade.direction === 'DOWN' && resolvesUp);
+
+					if (!wouldLose) continue;
+
+					const currentPrice = await polymarketService.getTokenPrice(
+						trade.tokenId,
+						trade.conditionId,
+						trade.direction,
+					);
+					if (!currentPrice || currentPrice <= 0) continue;
+
+					logger.info(
+						`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.direction} but BTC $${btcPrice.toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. Selling to avoid resolution loss.`,
+					);
+					await this.executeSell(trade, currentPrice, 'fct');
+				} finally {
+					this.sellingTrades.delete(trade.id);
+				}
+			}
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			logger.error(`FCT check error: ${message}`);
+		} finally {
+			this.checkingFct = false;
+		}
+	}
+
+	/**
 	 * Check a single position against TP/SL thresholds.
 	 */
 	private async checkPosition(trade: Trade): Promise<void> {
@@ -69,38 +143,9 @@ class RiskManager {
 		const now = new Date();
 		if (now >= endTime) return;
 
+		if (this.sellingTrades.has(trade.id)) return;
+
 		const sc = await getStrategyConfig();
-
-		// Force-close before market ends if BTC price indicates resolution against our direction
-		const secUntilEnd = (endTime.getTime() - now.getTime()) / 1000;
-		if (secUntilEnd <= sc.maxSecLoseFct) {
-			const priceToBeat = parseFloat(String(trade.priceToBeat));
-			if (priceToBeat && priceToBeat > 0) {
-				const btcPrice = await priceAnalysisService.getCurrentPrice();
-				if (btcPrice) {
-					const resolvesUp = btcPrice >= priceToBeat;
-					const wouldLose =
-						(trade.direction === 'UP' && !resolvesUp) ||
-						(trade.direction === 'DOWN' && resolvesUp);
-
-					if (wouldLose) {
-						const currentPrice =
-							await polymarketService.getTokenPrice(
-								trade.tokenId,
-								trade.conditionId,
-								trade.direction,
-							);
-						if (currentPrice && currentPrice > 0) {
-							logger.info(
-								`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.direction} but BTC $${btcPrice.toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. Selling to avoid resolution loss.`,
-							);
-							await this.executeSell(trade, currentPrice, 'fct');
-							return;
-						}
-					}
-				}
-			}
-		}
 
 		const priceToBeat = parseFloat(String(trade.priceToBeat));
 		if (!priceToBeat || priceToBeat <= 0) return;
@@ -127,7 +172,12 @@ class RiskManager {
 			logger.info(
 				`🟢 TAKE PROFIT triggered for ${trade.direction} | Position: ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (+${(pctChange * 100).toFixed(1)}%) | BTC: $${btcPrice.toFixed(2)}`,
 			);
-			await this.executeSell(trade, currentPrice, 'tp');
+			this.sellingTrades.add(trade.id);
+			try {
+				await this.executeSell(trade, currentPrice, 'tp');
+			} finally {
+				this.sellingTrades.delete(trade.id);
+			}
 			return;
 		}
 
@@ -136,7 +186,12 @@ class RiskManager {
 			logger.info(
 				`🔴 STOP LOSS triggered for ${trade.direction} | Position: ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (${(pctChange * 100).toFixed(1)}%) | BTC: $${btcPrice.toFixed(2)}`,
 			);
-			await this.executeSell(trade, currentPrice, 'sl');
+			this.sellingTrades.add(trade.id);
+			try {
+				await this.executeSell(trade, currentPrice, 'sl');
+			} finally {
+				this.sellingTrades.delete(trade.id);
+			}
 			return;
 		}
 
