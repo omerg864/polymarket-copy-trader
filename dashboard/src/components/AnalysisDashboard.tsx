@@ -12,7 +12,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
-import { useTradeHistory } from '@/hooks/use-api';
+import { useConfig, useTradeHistory } from '@/hooks/use-api';
 import type { Trade } from '@/types';
 import { Lightbulb, Sparkles } from 'lucide-react';
 import { useMemo } from 'react';
@@ -117,6 +117,8 @@ function groupNestedInterval(
 
 export function AnalysisDashboard() {
 	const { data: history, isLoading } = useTradeHistory();
+	const { data: config } = useConfig();
+	const dayPnlGoal = config?.dayPnlGoal ?? 2;
 
 	const analysis = useMemo(() => {
 		if (!history || history.length === 0) return null;
@@ -1449,12 +1451,111 @@ export function AnalysisDashboard() {
 					analysis.dayOfWeek,
 					true,
 				)}
-				{renderAccordionCard(
-					'Win Rate by Date',
-					'Daily performance breakdown',
-					analysis.byDate,
-					true,
-				)}
+				{/* By Date Card with Goal */}
+				<Card className="bg-zinc-900 border-zinc-800 lg:col-span-2">
+					<CardHeader>
+						<CardTitle className="text-lg">
+							Win Rate by Date
+						</CardTitle>
+						<CardDescription>
+							Daily performance breakdown — goal: $
+							{dayPnlGoal.toFixed(2)}/day
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<Accordion type="multiple" className="w-full">
+							{analysis.byDate.map((entry) => {
+								const goalPct =
+									dayPnlGoal > 0
+										? Math.min(
+												100,
+												(entry.main.totalPnl /
+													dayPnlGoal) *
+													100,
+											)
+										: 0;
+								return (
+									<AccordionItem
+										value={entry.label}
+										key={entry.label}
+										className="border-b-0"
+									>
+										<AccordionTrigger className="py-0 hover:no-underline [&[data-state=open]>div]:bg-zinc-800/30">
+											<div className="flex-1 text-left">
+												<div className="flex flex-wrap sm:flex-nowrap items-center justify-between py-2 border-b border-zinc-800/50 last:border-0 rounded -mx-2 px-2 gap-1 hover:bg-zinc-800/30">
+													<span className="text-zinc-300 font-medium w-full sm:w-[25%] pl-2 truncate">
+														{entry.label}
+													</span>
+													<span className="text-zinc-500 text-xs font-mono w-auto sm:w-[15%] text-center">
+														{entry.main.total}{' '}
+														trades
+													</span>
+													<span
+														className={`font-mono font-medium text-xs w-auto sm:w-[15%] text-center ${entry.main.totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+													>
+														{entry.main.totalPnl >=
+														0
+															? '+'
+															: ''}
+														$
+														{entry.main.totalPnl.toFixed(
+															2,
+														)}
+													</span>
+													<div className="w-auto sm:w-[20%] flex items-center gap-1.5">
+														<div className="flex-1 bg-zinc-800 rounded-full h-1.5">
+															<div
+																className={`h-1.5 rounded-full ${
+																	entry.main
+																		.totalPnl >=
+																	dayPnlGoal
+																		? 'bg-emerald-400'
+																		: entry
+																					.main
+																					.totalPnl >=
+																			  0
+																			? 'bg-amber-400'
+																			: 'bg-red-400'
+																}`}
+																style={{
+																	width: `${Math.max(0, goalPct)}%`,
+																}}
+															/>
+														</div>
+														<span className="text-zinc-600 text-[10px] font-mono whitespace-nowrap">
+															{goalPct.toFixed(0)}
+															%
+														</span>
+													</div>
+													<div className="w-auto sm:w-[25%] text-right whitespace-nowrap">
+														<span
+															className={`font-mono font-bold ${entry.main.winRate >= 50 ? 'text-emerald-400' : 'text-red-400'}`}
+														>
+															{entry.main.winRate.toFixed(
+																1,
+															)}
+															%
+														</span>
+														<span className="text-zinc-600 text-xs ml-1">
+															({entry.main.wins}W/
+															{entry.main.losses}
+															L)
+														</span>
+													</div>
+												</div>
+											</div>
+										</AccordionTrigger>
+										<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
+											<div className="space-y-1">
+												{renderDirectionRows(entry)}
+											</div>
+										</AccordionContent>
+									</AccordionItem>
+								);
+							})}
+						</Accordion>
+					</CardContent>
+				</Card>
 			</div>
 		</div>
 	);

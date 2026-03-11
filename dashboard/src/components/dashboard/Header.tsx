@@ -476,6 +476,14 @@ export function Header() {
 										editValues={editValues}
 										setEditValues={setEditValues}
 									/>
+									<ConfigRow
+										label="Day P&L Goal"
+										field="dayPnlGoal"
+										prefix="$"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
 								</ConfigSection>
 							</div>
 						) : (

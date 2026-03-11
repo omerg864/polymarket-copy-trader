@@ -1,9 +1,5 @@
 import type { Request, Response } from 'express';
-import type {
-	BotConfig,
-	StrategyConfig,
-	TradeSummary,
-} from '../../../shared/src/types';
+import type { StrategyConfig, TradeSummary } from '../../../shared/src/types';
 import config from '../config';
 import { resolveRole } from '../middleware/auth';
 import {
@@ -90,11 +86,7 @@ export async function getBotConfig(
 	res: Response,
 ): Promise<void> {
 	const strategy = await getStrategyConfig();
-	const botConfig: BotConfig = {
-		mode: config.mode,
-		...strategy,
-	};
-	res.json(botConfig);
+	res.json({ mode: config.mode, ...strategy });
 }
 
 export async function updateConfig(req: Request, res: Response): Promise<void> {

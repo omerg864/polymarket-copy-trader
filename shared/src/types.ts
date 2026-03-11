@@ -57,36 +57,8 @@ export interface Trade {
 	};
 }
 
-export interface BotConfig {
-	mode: string;
-	minOrderSizeUsd: number;
-	maxOrderSizeUsd: number;
-	confidenceThreshold: number;
-	takeProfitPct: number;
-	stopLossPct: number;
-	maxConcurrentTrades: number;
-	minEntryPrice: number;
-	maxEntryPrice: number;
-	minStochRSI: number;
-	maxStochRSI: number;
-	minRSI14: number;
-	maxRSI14: number;
-	minBBPosition: number;
-	maxBBPosition: number;
-	minMarketAgeMinutes: number;
-	candleCount: number;
-	rsiPeriod: number;
-	emaFast: number;
-	emaSlow: number;
-	riskMonitorIntervalMs: number;
-	botAllowance: number;
-	highPriceThreshold: number;
-	highPriceMaxBonusPct: number;
-	maxSecLoseFct: number;
-	cycleIntervalMs: number;
-}
-
 export interface StrategyConfig {
+	mode?: string;
 	minOrderSizeUsd: number;
 	maxOrderSizeUsd: number;
 	confidenceThreshold: number;
@@ -112,6 +84,7 @@ export interface StrategyConfig {
 	highPriceMaxBonusPct: number;
 	maxSecLoseFct: number;
 	cycleIntervalMs: number;
+	dayPnlGoal: number;
 }
 
 export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
@@ -140,6 +113,7 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 	highPriceMaxBonusPct: 1.0,
 	maxSecLoseFct: 13,
 	cycleIntervalMs: 5000,
+	dayPnlGoal: 2,
 };
 
 export function resolveStrategyConfig(

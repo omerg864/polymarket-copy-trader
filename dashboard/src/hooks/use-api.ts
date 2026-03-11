@@ -1,4 +1,4 @@
-import type { BotConfig, StrategyConfig, Trade, TradeSummary } from '@/types';
+import type { StrategyConfig, Trade, TradeSummary } from '@/types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
@@ -96,7 +96,7 @@ export function useCheckAuth() {
 }
 
 export function useConfig() {
-	return useQuery<BotConfig>({
+	return useQuery<StrategyConfig>({
 		queryKey: ['config'],
 		queryFn: () => fetchJson('/config'),
 		refetchInterval: 30000,
