@@ -363,7 +363,7 @@ export function TradeHistoryTable() {
 									<span className="text-zinc-500">Fee</span>
 									<span className="text-right font-mono text-orange-400">
 										{selectedTrade.fee
-											? `$${selectedTrade.fee.toFixed(4)}`
+											? `$${selectedTrade.fee.toFixed(4)} (${((selectedTrade.fee / selectedTrade.cost) * 100).toFixed(2)}%)`
 											: '—'}
 									</span>
 									<span className="text-zinc-500">

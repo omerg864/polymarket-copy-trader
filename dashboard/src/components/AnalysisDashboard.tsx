@@ -93,11 +93,23 @@ function groupNestedInterval(
 				.map(([cKey, groupTrades]) => ({
 					label: cKey,
 					stats: calculateStats(groupTrades),
+					upStats: calculateStats(
+						groupTrades.filter((t) => t.direction === 'UP'),
+					),
+					downStats: calculateStats(
+						groupTrades.filter((t) => t.direction === 'DOWN'),
+					),
 				}));
 
 			return {
 				label: pKey,
 				main: calculateStats(allParentTrades),
+				upStats: calculateStats(
+					allParentTrades.filter((t) => t.direction === 'UP'),
+				),
+				downStats: calculateStats(
+					allParentTrades.filter((t) => t.direction === 'DOWN'),
+				),
 				children,
 			};
 		});
@@ -137,13 +149,20 @@ export function AnalysisDashboard() {
 			(acc, bucket) => {
 				acc[bucket.label] = {
 					main: bucket.main,
+					upStats: bucket.upStats,
+					downStats: bucket.downStats,
 					children: bucket.children,
 				};
 				return acc;
 			},
 			{} as Record<
 				string,
-				{ main: ReturnType<typeof calculateStats>; children: any[] }
+				{
+					main: ReturnType<typeof calculateStats>;
+					upStats: ReturnType<typeof calculateStats>;
+					downStats: ReturnType<typeof calculateStats>;
+					children: any[];
+				}
 			>,
 		);
 
@@ -159,13 +178,20 @@ export function AnalysisDashboard() {
 			(acc, bucket) => {
 				acc[bucket.label] = {
 					main: bucket.main,
+					upStats: bucket.upStats,
+					downStats: bucket.downStats,
 					children: bucket.children,
 				};
 				return acc;
 			},
 			{} as Record<
 				string,
-				{ main: ReturnType<typeof calculateStats>; children: any[] }
+				{
+					main: ReturnType<typeof calculateStats>;
+					upStats: ReturnType<typeof calculateStats>;
+					downStats: ReturnType<typeof calculateStats>;
+					children: any[];
+				}
 			>,
 		);
 
@@ -280,13 +306,20 @@ export function AnalysisDashboard() {
 			(acc, bucket) => {
 				acc[bucket.label] = {
 					main: bucket.main,
+					upStats: bucket.upStats,
+					downStats: bucket.downStats,
 					children: bucket.children,
 				};
 				return acc;
 			},
 			{} as Record<
 				string,
-				{ main: ReturnType<typeof calculateStats>; children: any[] }
+				{
+					main: ReturnType<typeof calculateStats>;
+					upStats: ReturnType<typeof calculateStats>;
+					downStats: ReturnType<typeof calculateStats>;
+					children: any[];
+				}
 			>,
 		);
 
@@ -302,13 +335,20 @@ export function AnalysisDashboard() {
 			(acc, bucket) => {
 				acc[bucket.label] = {
 					main: bucket.main,
+					upStats: bucket.upStats,
+					downStats: bucket.downStats,
 					children: bucket.children,
 				};
 				return acc;
 			},
 			{} as Record<
 				string,
-				{ main: ReturnType<typeof calculateStats>; children: any[] }
+				{
+					main: ReturnType<typeof calculateStats>;
+					upStats: ReturnType<typeof calculateStats>;
+					downStats: ReturnType<typeof calculateStats>;
+					children: any[];
+				}
 			>,
 		);
 
@@ -366,13 +406,20 @@ export function AnalysisDashboard() {
 			(acc, bucket) => {
 				acc[bucket.label] = {
 					main: bucket.main,
+					upStats: bucket.upStats,
+					downStats: bucket.downStats,
 					children: bucket.children,
 				};
 				return acc;
 			},
 			{} as Record<
 				string,
-				{ main: ReturnType<typeof calculateStats>; children: any[] }
+				{
+					main: ReturnType<typeof calculateStats>;
+					upStats: ReturnType<typeof calculateStats>;
+					downStats: ReturnType<typeof calculateStats>;
+					children: any[];
+				}
 			>,
 		);
 
@@ -391,13 +438,20 @@ export function AnalysisDashboard() {
 			(acc, bucket) => {
 				acc[bucket.label] = {
 					main: bucket.main,
+					upStats: bucket.upStats,
+					downStats: bucket.downStats,
 					children: bucket.children,
 				};
 				return acc;
 			},
 			{} as Record<
 				string,
-				{ main: ReturnType<typeof calculateStats>; children: any[] }
+				{
+					main: ReturnType<typeof calculateStats>;
+					upStats: ReturnType<typeof calculateStats>;
+					downStats: ReturnType<typeof calculateStats>;
+					children: any[];
+				}
 			>,
 		);
 
@@ -428,12 +482,28 @@ export function AnalysisDashboard() {
 							hourGroups.push({
 								label: `${h.toString().padStart(2, '0')}:00 - ${h.toString().padStart(2, '0')}:59`,
 								stats: calculateStats(hourTrades),
+								upStats: calculateStats(
+									hourTrades.filter(
+										(t) => t.direction === 'UP',
+									),
+								),
+								downStats: calculateStats(
+									hourTrades.filter(
+										(t) => t.direction === 'DOWN',
+									),
+								),
 							});
 						}
 					}
 					return {
 						label: dayName,
 						main: calculateStats(dayTrades),
+						upStats: calculateStats(
+							dayTrades.filter((t) => t.direction === 'UP'),
+						),
+						downStats: calculateStats(
+							dayTrades.filter((t) => t.direction === 'DOWN'),
+						),
 						children: hourGroups,
 					};
 				})
@@ -507,6 +577,12 @@ export function AnalysisDashboard() {
 					.map(([date, trades]) => ({
 						label: date,
 						main: calculateStats(trades),
+						upStats: calculateStats(
+							trades.filter((t) => t.direction === 'UP'),
+						),
+						downStats: calculateStats(
+							trades.filter((t) => t.direction === 'DOWN'),
+						),
 						children: [] as {
 							label: string;
 							stats: ReturnType<typeof calculateStats>;
@@ -660,6 +736,19 @@ export function AnalysisDashboard() {
 		</div>
 	);
 
+	const renderDirectionRows = (group: any) => {
+		if (!group.upStats && !group.downStats) return null;
+		const up = group.upStats;
+		const down = group.downStats;
+		if ((!up || up.total === 0) && (!down || down.total === 0)) return null;
+		return (
+			<>
+				{up && up.total > 0 && renderStatRow('↑ UP', up, true)}
+				{down && down.total > 0 && renderStatRow('↓ DOWN', down, true)}
+			</>
+		);
+	};
+
 	const renderAccordionCard = (
 		title: string,
 		description: string,
@@ -675,7 +764,15 @@ export function AnalysisDashboard() {
 		colSpan?: boolean,
 	) => {
 		const entries = Array.isArray(data)
-			? data.map((b) => [b.label, { main: b.main, children: b.children }])
+			? data.map((b) => [
+					b.label,
+					{
+						main: b.main,
+						upStats: b.upStats,
+						downStats: b.downStats,
+						children: b.children,
+					},
+				])
 			: Object.entries(data);
 		if (entries.length === 0) return null;
 		return (
@@ -703,21 +800,49 @@ export function AnalysisDashboard() {
 										)}
 									</div>
 								</AccordionTrigger>
-								{group.children &&
-									group.children.length > 0 && (
-										<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
-											<div className="space-y-1">
-												{group.children.map(
-													(child: any) =>
-														renderStatRow(
-															child.label,
-															child.stats,
-															true,
+								<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
+									<div className="space-y-1">
+										{renderDirectionRows(group)}
+										{group.children &&
+											group.children.length > 0 && (
+												<Accordion
+													type="multiple"
+													className="w-full"
+												>
+													{group.children.map(
+														(child: any) => (
+															<AccordionItem
+																value={
+																	child.label
+																}
+																key={
+																	child.label
+																}
+																className="border-b-0"
+															>
+																<AccordionTrigger className="py-0 hover:no-underline [&[data-state=open]>div]:bg-zinc-800/30">
+																	<div className="flex-1 text-left">
+																		{renderStatRow(
+																			child.label,
+																			child.stats,
+																			true,
+																		)}
+																	</div>
+																</AccordionTrigger>
+																<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
+																	<div className="space-y-1">
+																		{renderDirectionRows(
+																			child,
+																		)}
+																	</div>
+																</AccordionContent>
+															</AccordionItem>
 														),
-												)}
-											</div>
-										</AccordionContent>
-									)}
+													)}
+												</Accordion>
+											)}
+									</div>
+								</AccordionContent>
 							</AccordionItem>
 						))}
 					</Accordion>
@@ -995,19 +1120,47 @@ export function AnalysisDashboard() {
 										</AccordionTrigger>
 										<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
 											<div className="space-y-1">
+												{renderDirectionRows(group)}
 												{group.children.length === 0 ? (
 													<div className="text-zinc-600 text-xs py-2 italic text-center">
 														No trades in this range
 													</div>
 												) : (
-													group.children.map(
-														(child) =>
-															renderStatRow(
-																child.label,
-																child.stats,
-																true,
+													<Accordion
+														type="multiple"
+														className="w-full"
+													>
+														{group.children.map(
+															(child) => (
+																<AccordionItem
+																	value={
+																		child.label
+																	}
+																	key={
+																		child.label
+																	}
+																	className="border-b-0"
+																>
+																	<AccordionTrigger className="py-0 hover:no-underline [&[data-state=open]>div]:bg-zinc-800/30">
+																		<div className="flex-1 text-left">
+																			{renderStatRow(
+																				child.label,
+																				child.stats,
+																				true,
+																			)}
+																		</div>
+																	</AccordionTrigger>
+																	<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
+																		<div className="space-y-1">
+																			{renderDirectionRows(
+																				child,
+																			)}
+																		</div>
+																	</AccordionContent>
+																</AccordionItem>
 															),
-													)
+														)}
+													</Accordion>
 												)}
 											</div>
 										</AccordionContent>
@@ -1132,19 +1285,47 @@ export function AnalysisDashboard() {
 										</AccordionTrigger>
 										<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
 											<div className="space-y-1">
+												{renderDirectionRows(group)}
 												{group.children.length === 0 ? (
 													<div className="text-zinc-600 text-xs py-2 italic text-center">
 														No trades in this range
 													</div>
 												) : (
-													group.children.map(
-														(child) =>
-															renderStatRow(
-																child.label,
-																child.stats,
-																true,
+													<Accordion
+														type="multiple"
+														className="w-full"
+													>
+														{group.children.map(
+															(child) => (
+																<AccordionItem
+																	value={
+																		child.label
+																	}
+																	key={
+																		child.label
+																	}
+																	className="border-b-0"
+																>
+																	<AccordionTrigger className="py-0 hover:no-underline [&[data-state=open]>div]:bg-zinc-800/30">
+																		<div className="flex-1 text-left">
+																			{renderStatRow(
+																				child.label,
+																				child.stats,
+																				true,
+																			)}
+																		</div>
+																	</AccordionTrigger>
+																	<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
+																		<div className="space-y-1">
+																			{renderDirectionRows(
+																				child,
+																			)}
+																		</div>
+																	</AccordionContent>
+																</AccordionItem>
 															),
-													)
+														)}
+													</Accordion>
 												)}
 											</div>
 										</AccordionContent>

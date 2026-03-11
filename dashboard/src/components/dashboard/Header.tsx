@@ -63,9 +63,15 @@ export function Header() {
 			Market: t.title,
 			Shares: t.size,
 			'Entry Price': t.entryPrice,
-			'Exit Price': t.exitPrice || '',
+			'Exit Price': t.exitPrice ?? '',
 			Cost: t.cost,
+			Fee: t.fee ?? '',
+			'Fee %':
+				t.fee && t.cost
+					? `${((t.fee / t.cost) * 100).toFixed(2)}%`
+					: '',
 			'P&L': t.pnl,
+			'P&L Before Fee': t.fee != null ? t.pnl + t.fee : t.pnl,
 			'Result Money': t.cost + t.pnl,
 			'Pct Change': t.pctChange
 				? `${(t.pctChange * 100).toFixed(2)}%`
@@ -73,10 +79,24 @@ export function Header() {
 			Confidence: t.confidence
 				? `${(t.confidence * 100).toFixed(1)}%`
 				: '',
-			VWAP: t.indicators?.vwap || '',
-			StochRSI: t.indicators?.stochRsi || '',
-			MicroRSI: t.indicators?.microRsi || '',
-			Volatility: t.indicators?.volatility || '',
+			'Price to Beat': t.priceToBeat ?? '',
+			'BTC Price': t.indicators?.currentPrice ?? '',
+			'Dist From Ref': t.indicators?.distFromRef ?? '',
+			VWAP: t.indicators?.vwap ?? '',
+			'VWAP Distance %': t.indicators?.vwapDistancePct ?? '',
+			StochRSI: t.indicators?.stochRsi ?? '',
+			MicroRSI: t.indicators?.microRsi ?? '',
+			'RSI-14': t.indicators?.rsi14 ?? '',
+			'EMA-3': t.indicators?.ema3 ?? '',
+			'EMA-8': t.indicators?.ema8 ?? '',
+			'BB Lower': t.indicators?.bbLower ?? '',
+			'BB Upper': t.indicators?.bbUpper ?? '',
+			'Momentum (3m)': t.indicators?.momentum3 ?? '',
+			Volatility: t.indicators?.volatility ?? '',
+			'Market Start': t.startTime
+				? new Date(t.startTime).toLocaleString()
+				: '',
+			'Market End': t.endTime ? new Date(t.endTime).toLocaleString() : '',
 			'Opened At': t.enteredAt
 				? new Date(t.enteredAt).toLocaleString()
 				: '',
