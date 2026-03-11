@@ -33,6 +33,9 @@ async function main() {
 	let sumPnl = 0;
 	let activeCostTotal = 0;
 	let activeFeeTotal = 0;
+	let computedWins = 0;
+	let computedLosses = 0;
+	let computedTotalTrades = 0;
 
 	// Active trades
 	const activeIds = await redis.smembers(`${PREFIX}active_trades`);
@@ -93,6 +96,12 @@ async function main() {
 
 		sumFees += t.fee ?? 0;
 		sumPnl += t.pnl ?? 0;
+		computedTotalTrades += 1;
+		if ((t.pnl ?? 0) >= 0) {
+			computedWins += 1;
+		} else {
+			computedLosses += 1;
+		}
 	}
 
 	// Expected balance:
@@ -125,11 +134,17 @@ async function main() {
 	console.log(`  Sum of fees:      $${sumFees.toFixed(4)}`);
 	console.log(`  Sum of pnl:       $${sumPnl.toFixed(4)}`);
 	console.log(`  Expected balance: $${expectedBalance.toFixed(4)}`);
+	console.log(`  Wins:             ${computedWins}`);
+	console.log(`  Losses:           ${computedLosses}`);
+	console.log(`  Total trades:     ${computedTotalTrades}`);
 	console.log();
 	console.log('--- Current in Redis ---');
-	console.log(`  totalFees: ${stats.totalFees}`);
-	console.log(`  totalPnl:  ${stats.totalPnl}`);
-	console.log(`  balance:   ${currentBalance}`);
+	console.log(`  totalFees:   ${stats.totalFees}`);
+	console.log(`  totalPnl:    ${stats.totalPnl}`);
+	console.log(`  balance:     ${currentBalance}`);
+	console.log(`  wins:        ${stats.wins}`);
+	console.log(`  losses:      ${stats.losses}`);
+	console.log(`  totalTrades: ${stats.totalTrades}`);
 	console.log();
 
 	const feesMatch = Math.abs((stats.totalFees ?? 0) - sumFees) < 0.001;
@@ -137,20 +152,35 @@ async function main() {
 	const balMatch =
 		!isNaN(currentBalance) &&
 		Math.abs(currentBalance - expectedBalance) < 0.01;
+	const winsMatch = (stats.wins ?? 0) === computedWins;
+	const lossesMatch = (stats.losses ?? 0) === computedLosses;
+	const tradesMatch = (stats.totalTrades ?? 0) === computedTotalTrades;
 	console.log(`Fees match:    ${feesMatch ? '✅' : '❌'}`);
 	console.log(`PnL match:     ${pnlMatch ? '✅' : '❌'}`);
 	console.log(`Balance match: ${balMatch ? '✅' : '❌'}`);
+	console.log(`Wins match:    ${winsMatch ? '✅' : '❌'}`);
+	console.log(`Losses match:  ${lossesMatch ? '✅' : '❌'}`);
+	console.log(`Trades match:  ${tradesMatch ? '✅' : '❌'}`);
 
 	// Fix everything
-	let needsFix = !feesMatch || !pnlMatch || !balMatch;
+	let needsFix =
+		!feesMatch ||
+		!pnlMatch ||
+		!balMatch ||
+		!winsMatch ||
+		!lossesMatch ||
+		!tradesMatch;
 	if (needsFix) {
 		console.log('\n🔧 Fixing...');
 
 		stats.totalFees = Math.round(sumFees * 10000) / 10000;
 		stats.totalPnl = Math.round(sumPnl * 10000) / 10000;
+		stats.wins = computedWins;
+		stats.losses = computedLosses;
+		stats.totalTrades = computedTotalTrades;
 		await redis.set(statsKey, JSON.stringify(stats));
 		console.log(
-			`  Stats → totalFees=${stats.totalFees}, totalPnl=${stats.totalPnl}`,
+			`  Stats → totalFees=${stats.totalFees}, totalPnl=${stats.totalPnl}, wins=${stats.wins}, losses=${stats.losses}, totalTrades=${stats.totalTrades}`,
 		);
 
 		const fixedBalance = Math.round(expectedBalance * 10000) / 10000;
