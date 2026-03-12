@@ -7,6 +7,7 @@ import {
 import { randomUUID } from 'crypto';
 import logger from '../utils/logger';
 import redisService from './redis';
+import notificationManager from './notificationManager';
 import { getStrategyConfig } from './strategyConfig';
 
 /**
@@ -167,6 +168,9 @@ class DemoTradingService {
 		stats.totalFees += totalFee;
 		await redisService.updateBotStats(stats);
 
+		// Trigger notification via centralized manager (runs in background)
+		notificationManager.handleTradeClosed(trade, stats);
+
 		const logLabel = pctChange >= 0 ? '🟢 TAKE PROFIT' : '🔴 STOP LOSS';
 		logger.trade(`📝 DEMO SELL - ${logLabel}`, {
 			direction: trade.direction,
@@ -216,6 +220,9 @@ class DemoTradingService {
 		stats.totalPnl += pnl;
 		stats.totalFees += totalFee;
 		await redisService.updateBotStats(stats);
+
+		// Trigger notification via centralized manager (runs in background)
+		notificationManager.handleTradeClosed(trade, stats);
 
 		const emoji = won ? '🏆' : '❌';
 		logger.trade(`${emoji} DEMO RESOLVED - ${trade.status.toUpperCase()}`, {

@@ -5,6 +5,7 @@ import polymarketService from '../services/polymarket';
 import priceAnalysisService from '../services/priceAnalysis';
 import redisService from '../services/redis';
 import { getStrategyConfig } from '../services/strategyConfig';
+import notificationManager from '../services/notificationManager';
 import logger from '../utils/logger';
 
 /**
@@ -248,6 +249,9 @@ class RiskManager {
 				stats.totalPnl += trade.pnl;
 				stats.totalFees += totalFee;
 				await redisService.updateBotStats(stats);
+
+				// Trigger notification via centralized manager
+				await notificationManager.handleTradeClosed(trade, stats);
 			}
 		} catch (error) {
 			const message =
