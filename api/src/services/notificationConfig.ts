@@ -66,3 +66,36 @@ export async function updateNotificationConfig(
 
 	return getNotificationConfig();
 }
+
+/**
+ * Add a Telegram chat ID to the subscription list.
+ */
+export async function addTelegramChatId(chatId: string): Promise<void> {
+	await NotificationConfigModel.findOneAndUpdate(
+		{ key: 'telegram_chat_ids' },
+		{ $addToSet: { value: chatId } },
+		{ upsert: true },
+	);
+	await redis.del(CACHE_KEY);
+}
+
+/**
+ * Remove a Telegram chat ID from the subscription list.
+ */
+export async function removeTelegramChatId(chatId: string): Promise<void> {
+	await NotificationConfigModel.findOneAndUpdate(
+		{ key: 'telegram_chat_ids' },
+		{ $pull: { value: chatId } },
+	);
+	await redis.del(CACHE_KEY);
+}
+
+/**
+ * Get all subscribed Telegram chat IDs.
+ */
+export async function getTelegramChatIds(): Promise<string[]> {
+	const doc = await NotificationConfigModel.findOne({
+		key: 'telegram_chat_ids',
+	});
+	return Array.isArray(doc?.value) ? doc.value : [];
+}
