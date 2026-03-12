@@ -259,7 +259,7 @@ export function StatsSummary() {
 								{todayPnl >= 0 ? '+' : ''}${todayPnl.toFixed(2)}
 							</span>
 							<span className="text-xs text-zinc-500 font-mono">
-								({todayTotalTrades}t)
+								({todayTotalTrades})
 							</span>
 						</div>
 						{dayPnlGoal > 0 && (

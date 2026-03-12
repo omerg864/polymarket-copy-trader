@@ -26,7 +26,7 @@ import {
 import type { NotificationConfig, StrategyConfig } from '@/types';
 import { useMemoizedFn } from 'ahooks';
 import { saveAs } from 'file-saver';
-import { Bell, Database, Pencil } from 'lucide-react';
+import { Bell, Copy, Database, ExternalLink, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { HeaderClocks } from './HeaderClocks';
@@ -579,6 +579,40 @@ export function Header() {
 								)}
 							</DialogTitle>
 						</DialogHeader>
+						<div className="pt-2">
+							<div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 space-y-2">
+								<div className="flex items-center justify-between">
+									<span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+										Telegram Bot
+									</span>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-6 px-2 text-[10px] text-zinc-400 hover:text-zinc-200"
+										onClick={() => {
+											const url = import.meta.env.VITE_BOT_URL;
+											if (url) {
+												navigator.clipboard.writeText(url);
+											}
+										}}
+									>
+										<Copy className="h-3 w-3 mr-1" />
+										Copy
+									</Button>
+								</div>
+								<div className="flex items-center gap-2">
+									<a
+										href={import.meta.env.VITE_BOT_URL}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="text-sm text-blue-400 hover:text-blue-300 transition-colors break-all flex items-center gap-1.5"
+									>
+										{import.meta.env.VITE_BOT_URL || 'Not Configured'}
+										<ExternalLink className="h-3 w-3 shrink-0" />
+									</a>
+								</div>
+							</div>
+						</div>
 						{notificationConfig ? (
 							<div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
 								<ConfigSection title="PnL Thresholds">
