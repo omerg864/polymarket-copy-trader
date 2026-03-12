@@ -12,7 +12,7 @@ import { adminGuard, authGuard } from '../middleware/auth';
 const router = Router();
 
 router.get('/', authGuard, asyncHandler(getConfig));
-router.put('/', adminGuard, asyncHandler(updateConfig));
+router.put('/', authGuard, adminGuard, asyncHandler(updateConfig));
 router.post('/webhook', asyncHandler(handleWebhook));
 router.post('/notify', apiAuthGuard, asyncHandler(triggerNotification));
 

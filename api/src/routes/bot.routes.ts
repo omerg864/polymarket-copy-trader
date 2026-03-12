@@ -21,11 +21,16 @@ router.post('/auth/verify', verifyAuth);
 router.get('/summary', authGuard, asyncHandler(getSummary));
 router.get('/active-trades', authGuard, asyncHandler(listActiveTrades));
 router.get('/trade-history', authGuard, asyncHandler(listTradeHistory));
-router.post('/stop', adminGuard, asyncHandler(stopBot));
+router.post('/stop', authGuard, adminGuard, asyncHandler(stopBot));
 router.get('/config', authGuard, asyncHandler(getBotConfig));
-router.put('/config', adminGuard, asyncHandler(updateConfig));
-router.get('/redis-stats', asyncHandler(getRedisStats));
-router.get('/market-prices', asyncHandler(getMarketPricesData));
-router.post('/flush-redis', adminGuard, asyncHandler(flushRedisData));
+router.put('/config', authGuard, adminGuard, asyncHandler(updateConfig));
+router.get('/redis-stats', authGuard, asyncHandler(getRedisStats));
+router.get('/market-prices', authGuard, asyncHandler(getMarketPricesData));
+router.post(
+	'/flush-redis',
+	authGuard,
+	adminGuard,
+	asyncHandler(flushRedisData),
+);
 
 export default router;
