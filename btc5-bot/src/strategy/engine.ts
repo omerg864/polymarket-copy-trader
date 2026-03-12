@@ -5,6 +5,7 @@ import polymarketService from '../services/polymarket';
 import priceAnalysisService from '../services/priceAnalysis';
 import redisService from '../services/redis';
 import { getStrategyConfig } from '../services/strategyConfig';
+import notificationManager from '../services/notificationManager';
 import logger from '../utils/logger';
 import riskManager from './riskManager';
 
@@ -471,7 +472,8 @@ class StrategyEngine {
 				await redisService.removeTrade(trade.id);
 				await redisService.saveTradeHistory(trade);
 
-				const bal = await redisService.getBotBalance();
+				const sc = await getStrategyConfig();
+				const bal = await redisService.getBotBalance(sc);
 				await redisService.setBotBalance(bal + revenue);
 
 				const stats = await redisService.getBotStats();
@@ -481,6 +483,25 @@ class StrategyEngine {
 				stats.totalPnl += trade.pnl;
 				stats.totalFees += totalFee;
 				await redisService.updateBotStats(stats);
+
+				// Trigger notification in background
+				notificationManager.trigger(trade.pnl >= 0 ? 'win' : 'loss', {
+					title: trade.title,
+					pnl: trade.pnl,
+					pctChange: trade.pctChange || trade.pnl / trade.cost, // Fallback if pctChange not set
+					exitPrice: finalPrice,
+				});
+
+				if (
+					stats.totalPnl >= sc.dayPnlGoal &&
+					stats.totalPnl - trade.pnl < sc.dayPnlGoal
+				) {
+					notificationManager.trigger('goal', {
+						todayPnl: stats.totalPnl,
+						goal: sc.dayPnlGoal,
+						totalTrades: stats.totalTrades,
+					});
+				}
 
 				logger.trade('Trade resolved (on-chain)', {
 					id: trade.id,

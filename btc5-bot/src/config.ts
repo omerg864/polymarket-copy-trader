@@ -30,6 +30,9 @@ const config = {
 	tickSize: '0.01',
 	negRisk: false,
 	minOrderSize: 5,
+	// Dashboard API
+	apiUrl: process.env.API_URL || 'http://localhost:3001',
+	apiPassword: process.env.API_PASSWORD || '',
 };
 
 export function validateLiveConfig(): void {
