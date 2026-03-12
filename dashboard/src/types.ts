@@ -1,1 +1,6 @@
-export type { StrategyConfig, Trade, TradeSummary } from '@shared/types';
+export type {
+	NotificationConfig,
+	StrategyConfig,
+	Trade,
+	TradeSummary,
+} from '@shared/types';

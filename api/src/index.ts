@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import config from './config';
 import { errorHandler } from './middleware/errorHandler';
 import botRoutes from './routes/bot.routes';
+import notificationRoutes from './routes/notification.routes';
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use(limiter);
 
 app.use('/api', botRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.use(errorHandler);
 

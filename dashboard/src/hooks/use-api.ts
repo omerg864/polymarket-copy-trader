@@ -1,4 +1,9 @@
-import type { StrategyConfig, Trade, TradeSummary } from '@/types';
+import type {
+	NotificationConfig,
+	StrategyConfig,
+	Trade,
+	TradeSummary,
+} from '@/types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
@@ -194,6 +199,32 @@ export function useUpdateConfig() {
 			if (res.status === 403) throw new Error('Admin access required');
 			if (!res.ok) throw new Error(`API error: ${res.statusText}`);
 			return res.json() as Promise<StrategyConfig>;
+		},
+	});
+}
+
+export function useNotificationConfig() {
+	return useQuery<NotificationConfig>({
+		queryKey: ['notification-config'],
+		queryFn: () => fetchJson('/notifications'),
+		refetchInterval: 30000,
+	});
+}
+
+export function useUpdateNotificationConfig() {
+	return useMutation({
+		mutationFn: async (updates: Partial<NotificationConfig>) => {
+			const res = await fetch(`${API_BASE}/notifications`, {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					...getAuthHeaders(),
+				},
+				body: JSON.stringify(updates),
+			});
+			if (res.status === 403) throw new Error('Admin access required');
+			if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+			return res.json() as Promise<NotificationConfig>;
 		},
 	});
 }

@@ -116,6 +116,22 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 	dayPnlGoal: 2,
 };
 
+export interface NotificationConfig {
+	minTodayPnLNotification: number;
+	maxTodayPnLNotification: number;
+	notificationOnWin: boolean;
+	notificationOnLoss: boolean;
+	notificationOnPnlGoal: boolean;
+}
+
+export const DEFAULT_NOTIFICATION_CONFIG: NotificationConfig = {
+	minTodayPnLNotification: -10,
+	maxTodayPnLNotification: 0,
+	notificationOnWin: true,
+	notificationOnLoss: true,
+	notificationOnPnlGoal: true,
+};
+
 export function resolveStrategyConfig(
 	partial: Partial<StrategyConfig>,
 ): StrategyConfig {

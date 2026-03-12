@@ -10,6 +10,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import {
 	getAuthRole,
 	useConfig,
@@ -19,11 +20,13 @@ import {
 	useToggleStop,
 	useTradeHistory,
 	useUpdateConfig,
+	useNotificationConfig,
+	useUpdateNotificationConfig,
 } from '@/hooks/use-api';
-import type { StrategyConfig } from '@/types';
+import type { NotificationConfig, StrategyConfig } from '@/types';
 import { useMemoizedFn } from 'ahooks';
 import { saveAs } from 'file-saver';
-import { Database, Pencil } from 'lucide-react';
+import { Bell, Database, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { HeaderClocks } from './HeaderClocks';
@@ -32,16 +35,25 @@ export function Header() {
 	const { data: summary, refetch: refetchSummary } = useSummary();
 	const { data: history } = useTradeHistory();
 	const { data: config, refetch: refetchConfig } = useConfig();
+	const { data: notificationConfig, refetch: refetchNotificationConfig } =
+		useNotificationConfig();
 	const toggleStop = useToggleStop();
 	const { data: redisStats, refetch: refetchRedisStats } = useRedisStats();
 	const flushRedis = useFlushRedis();
 	const updateConfig = useUpdateConfig();
+	const updateNotificationConfig = useUpdateNotificationConfig();
 	const isReadonly = getAuthRole() === 'readonly';
 	const isAdmin = getAuthRole() === 'admin';
 
 	const [editing, setEditing] = useState(false);
 	const [editValues, setEditValues] = useState<Partial<StrategyConfig>>({});
 	const [configOpen, setConfigOpen] = useState(false);
+
+	const [notificationOpen, setNotificationOpen] = useState(false);
+	const [editingNotification, setEditingNotification] = useState(false);
+	const [editNotificationValues, setEditNotificationValues] = useState<
+		Partial<NotificationConfig>
+	>({});
 
 	const resetEditValues = () => {
 		if (config) {
@@ -50,6 +62,13 @@ export function Header() {
 			setEditValues(strategy);
 		}
 		setEditing(false);
+	};
+
+	const resetNotificationEditValues = () => {
+		if (notificationConfig) {
+			setEditNotificationValues(notificationConfig);
+		}
+		setEditingNotification(false);
 	};
 
 	const handleExport = useMemoizedFn(() => {
@@ -190,6 +209,17 @@ export function Header() {
 								: '⏸️ Pause New Trades'}
 					</Button>
 				)}
+				<Button
+					variant="outline"
+					className="h-7 px-3 text-xs font-medium rounded border bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+					onClick={() => {
+						setNotificationOpen(true);
+						resetNotificationEditValues();
+					}}
+				>
+					<Bell className="h-3.5 w-3.5 mr-1" />
+					Alerts
+				</Button>
 				<Button
 					variant="outline"
 					className="h-7 px-3 text-xs font-medium rounded border bg-blue-500/10 text-blue-400 border-blue-500/30 hover:bg-blue-500/20 hover:text-blue-300 transition-colors"
@@ -522,6 +552,124 @@ export function Header() {
 						)}
 					</DialogContent>
 				</Dialog>
+
+				<Dialog
+					open={notificationOpen}
+					onOpenChange={(open) => {
+						setNotificationOpen(open);
+						if (open) resetNotificationEditValues();
+					}}
+				>
+					<DialogContent className="sm:max-w-[425px] bg-zinc-950 border border-zinc-800 text-zinc-100">
+						<DialogHeader>
+							<DialogTitle className="text-xl flex items-center justify-between">
+								Notification Settings
+								{isAdmin && !editingNotification && (
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-7 px-2 text-zinc-400 hover:text-zinc-200"
+										onClick={() =>
+											setEditingNotification(true)
+										}
+									>
+										<Pencil className="h-3.5 w-3.5 mr-1" />
+										Edit
+									</Button>
+								)}
+							</DialogTitle>
+						</DialogHeader>
+						{notificationConfig ? (
+							<div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+								<ConfigSection title="PnL Thresholds">
+									<ConfigRowNotification
+										label="Min Today P&L"
+										field="minTodayPnLNotification"
+										prefix="$"
+										editing={editingNotification}
+										editValues={editNotificationValues}
+										setEditValues={setEditNotificationValues}
+									/>
+									<ConfigRowNotification
+										label="Max Today P&L"
+										field="maxTodayPnLNotification"
+										prefix="$"
+										editing={editingNotification}
+										editValues={editNotificationValues}
+										setEditValues={setEditNotificationValues}
+									/>
+								</ConfigSection>
+
+								<ConfigSection title="Events">
+									<ConfigRowNotification
+										label="Notify on Win"
+										field="notificationOnWin"
+										type="switch"
+										editing={editingNotification}
+										editValues={editNotificationValues}
+										setEditValues={setEditNotificationValues}
+									/>
+									<ConfigRowNotification
+										label="Notify on Loss"
+										field="notificationOnLoss"
+										type="switch"
+										editing={editingNotification}
+										editValues={editNotificationValues}
+										setEditValues={setEditNotificationValues}
+									/>
+									<ConfigRowNotification
+										label="Notify on P&L Goal"
+										field="notificationOnPnlGoal"
+										type="switch"
+										editing={editingNotification}
+										editValues={editNotificationValues}
+										setEditValues={setEditNotificationValues}
+									/>
+								</ConfigSection>
+							</div>
+						) : (
+							<div className="py-8 text-center text-zinc-500 animate-pulse">
+								Loading notification settings...
+							</div>
+						)}
+						{editingNotification && (
+							<DialogFooter className="gap-2 sm:gap-0">
+								<Button
+									variant="outline"
+									className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+									onClick={() => {
+										resetNotificationEditValues();
+									}}
+								>
+									Cancel
+								</Button>
+								<Button
+									className="bg-blue-600 hover:bg-blue-700 text-white"
+									disabled={
+										updateNotificationConfig.isPending
+									}
+									onClick={() => {
+										updateNotificationConfig.mutate(
+											editNotificationValues,
+											{
+												onSuccess: () => {
+													setEditingNotification(
+														false,
+													);
+													refetchNotificationConfig();
+												},
+											},
+										);
+									}}
+								>
+									{updateNotificationConfig.isPending
+										? '⌛ Saving...'
+										: 'Save Changes'}
+								</Button>
+							</DialogFooter>
+						)}
+					</DialogContent>
+				</Dialog>
 			</div>
 		</div>
 	);
@@ -592,6 +740,88 @@ function ConfigRow({
 				{prefix}
 				{value}
 				{suffix}
+			</span>
+		</>
+	);
+}
+
+function ConfigRowNotification({
+	label,
+	field,
+	prefix,
+	suffix,
+	type = 'number',
+	editing,
+	editValues,
+	setEditValues,
+}: {
+	label: string;
+	field: keyof NotificationConfig;
+	prefix?: string;
+	suffix?: string;
+	type?: 'number' | 'switch';
+	editing: boolean;
+	editValues: Partial<NotificationConfig>;
+	setEditValues: React.Dispatch<
+		React.SetStateAction<Partial<NotificationConfig>>
+	>;
+}) {
+	const value = editValues[field];
+
+	if (editing) {
+		return (
+			<>
+				<span className="text-zinc-500 flex items-center">{label}</span>
+				{type === 'switch' ? (
+					<Switch
+						checked={!!value}
+						onCheckedChange={(checked) =>
+							setEditValues(
+								(prev: Partial<NotificationConfig>) => ({
+									...prev,
+									[field]: checked,
+								}),
+							)
+						}
+						className="justify-self-end"
+					/>
+				) : (
+					<input
+						type="number"
+						step="any"
+						value={typeof value === 'number' ? value : ''}
+						onChange={(e) =>
+							setEditValues(
+								(prev: Partial<NotificationConfig>) => ({
+									...prev,
+									[field]: parseFloat(e.target.value) || 0,
+								}),
+							)
+						}
+						className="w-full px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-100 text-right text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+					/>
+				)}
+			</>
+		);
+	}
+
+	return (
+		<>
+			<span className="text-zinc-500">{label}</span>
+			<span className="text-right">
+				{type === 'switch' ? (
+					value ? (
+						<span className="text-emerald-400">Yes</span>
+					) : (
+						<span className="text-red-400">No</span>
+					)
+				) : (
+					<>
+						{prefix}
+						{value}
+						{suffix}
+					</>
+				)}
 			</span>
 		</>
 	);
