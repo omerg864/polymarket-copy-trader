@@ -26,6 +26,11 @@ export function StatsSummary() {
 	let highestWin = 0;
 	let highestLoss = 0;
 	let todayPnl = 0;
+	let todayProfit = 0;
+	let todayLoss = 0;
+	let todayProfitTrades = 0;
+	let todayLossTrades = 0;
+	let todayTotalTrades = 0;
 
 	const today = new Date();
 	const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -41,6 +46,14 @@ export function StatsSummary() {
 				const tradeDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 				if (tradeDate === todayStr) {
 					todayPnl += trade.pnl || 0;
+					todayTotalTrades++;
+					if (trade.pnl > 0) {
+						todayProfit += trade.pnl;
+						todayProfitTrades++;
+					} else if (trade.pnl < 0) {
+						todayLoss += trade.pnl;
+						todayLossTrades++;
+					}
 				}
 			}
 		});
@@ -52,8 +65,8 @@ export function StatsSummary() {
 
 	return (
 		<div className="flex flex-col gap-4 mb-4">
-			{/* Top Row: Basic Stats */}
-			<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+			{/* Row 1: General Stats */}
+			<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
 				<Card className="bg-zinc-900 border-zinc-800">
 					<CardHeader className="pb-2">
 						<CardDescription className="text-xs text-zinc-500">
@@ -64,49 +77,6 @@ export function StatsSummary() {
 						<p className="text-2xl font-bold font-mono">
 							${summary.balance.toFixed(2)}
 						</p>
-					</CardContent>
-				</Card>
-
-				<Card className="bg-zinc-900 border-zinc-800">
-					<CardHeader className="pb-2">
-						<CardDescription className="text-xs text-zinc-500">
-							Today P&L
-							<span className="text-zinc-600 ml-1">
-								/ ${dayPnlGoal.toFixed(2)} goal
-							</span>
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<span
-							className={`text-2xl font-bold font-mono ${
-								todayPnl >= 0
-									? 'text-emerald-400'
-									: 'text-red-400'
-							} text-nowrap`}
-						>
-							{todayPnl >= 0 ? '+' : ''}${todayPnl.toFixed(2)}
-						</span>
-						{dayPnlGoal > 0 && (
-							<div className="mt-2">
-								<div className="w-full bg-zinc-800 rounded-full h-1.5">
-									<div
-										className={`h-1.5 rounded-full transition-all ${
-											todayPnl >= dayPnlGoal
-												? 'bg-emerald-400'
-												: todayPnl >= 0
-													? 'bg-amber-400'
-													: 'bg-red-400'
-										}`}
-										style={{
-											width: `${Math.max(0, goalProgress)}%`,
-										}}
-									/>
-								</div>
-								<p className="text-xs text-zinc-600 mt-0.5 font-mono">
-									{goalProgress.toFixed(0)}% of goal
-								</p>
-							</div>
-						)}
 					</CardContent>
 				</Card>
 
@@ -199,7 +169,7 @@ export function StatsSummary() {
 				</Card>
 			</div>
 
-			{/* Bottom Row: Advanced Stats */}
+			{/* Row 2: Advanced Stats */}
 			<div className="grid grid-cols-2 md:grid-cols-5 gap-4">
 				<Card className="bg-zinc-900 border-zinc-800">
 					<CardHeader className="pb-2">
@@ -262,6 +232,93 @@ export function StatsSummary() {
 						<p className="text-2xl font-bold font-mono text-red-400">
 							${highestLoss.toFixed(2)}
 						</p>
+					</CardContent>
+				</Card>
+			</div>
+
+			{/* Row 3: Today's Performance */}
+			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<Card className="bg-zinc-900 border-zinc-800">
+					<CardHeader className="pb-2">
+						<CardDescription className="text-xs text-zinc-500">
+							Today P&L
+							<span className="text-zinc-600 ml-1">
+								/ ${dayPnlGoal.toFixed(2)} goal
+							</span>
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="flex items-baseline gap-2">
+							<span
+								className={`text-2xl font-bold font-mono ${
+									todayPnl >= 0
+										? 'text-emerald-400'
+										: 'text-red-400'
+								} text-nowrap`}
+							>
+								{todayPnl >= 0 ? '+' : ''}${todayPnl.toFixed(2)}
+							</span>
+							<span className="text-xs text-zinc-500 font-mono">
+								({todayTotalTrades}t)
+							</span>
+						</div>
+						{dayPnlGoal > 0 && (
+							<div className="mt-2">
+								<div className="w-full bg-zinc-800 rounded-full h-1.5">
+									<div
+										className={`h-1.5 rounded-full transition-all ${
+											todayPnl >= dayPnlGoal
+												? 'bg-emerald-400'
+												: todayPnl >= 0
+													? 'bg-amber-400'
+													: 'bg-red-400'
+										}`}
+										style={{
+											width: `${Math.max(0, goalProgress)}%`,
+										}}
+									/>
+								</div>
+								<p className="text-xs text-zinc-600 mt-0.5 font-mono">
+									{goalProgress.toFixed(0)}% of goal
+								</p>
+							</div>
+						)}
+					</CardContent>
+				</Card>
+
+				<Card className="bg-zinc-900 border-zinc-800">
+					<CardHeader className="pb-2">
+						<CardDescription className="text-xs text-zinc-500">
+							Today Profit
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="flex items-baseline gap-2">
+							<span className="text-2xl font-bold font-mono text-emerald-400 text-nowrap">
+								+${todayProfit.toFixed(2)}
+							</span>
+							<span className="text-xs text-zinc-500 font-mono">
+								({todayProfitTrades})
+							</span>
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card className="bg-zinc-900 border-zinc-800">
+					<CardHeader className="pb-2">
+						<CardDescription className="text-xs text-zinc-500">
+							Today Loss
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="flex items-baseline gap-2">
+							<span className="text-2xl font-bold font-mono text-red-400 text-nowrap">
+								${todayLoss.toFixed(2)}
+							</span>
+							<span className="text-xs text-zinc-500 font-mono">
+								({todayLossTrades})
+							</span>
+						</div>
 					</CardContent>
 				</Card>
 			</div>
