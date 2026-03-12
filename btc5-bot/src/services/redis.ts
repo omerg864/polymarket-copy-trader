@@ -1,5 +1,6 @@
 import {
 	DEFAULT_STRATEGY_CONFIG,
+	StrategyConfig,
 	type BotStats,
 	type Trade,
 } from '@shared/types';
@@ -169,14 +170,19 @@ class RedisService {
 
 	// ---- Bot Balance (Live or Demo) ----
 
-	async getBotBalance(): Promise<number> {
+	async getBotBalance(config?: StrategyConfig): Promise<number> {
 		const client = this.getClient();
-		const prefix = config.isDemo ? 'demo' : 'live';
+		// Prefer config.mode if present, else fallback to config.isDemo, else default true
+		const isDemo = config?.mode === 'demo' || true;
+		const prefix = isDemo ? 'demo' : 'live';
 		const raw = await client.get(`${this.prefix}${prefix}:balance`);
-		if (raw === null || raw === undefined)
-			return DEFAULT_STRATEGY_CONFIG.botAllowance;
-		const balance = parseFloat(raw);
-		return isNaN(balance) ? DEFAULT_STRATEGY_CONFIG.botAllowance : balance;
+		if (raw !== null && raw !== undefined) {
+			const balance = parseFloat(raw);
+			if (!isNaN(balance)) return balance;
+		}
+		const botAllowance =
+			config?.botAllowance ?? DEFAULT_STRATEGY_CONFIG.botAllowance;
+		return botAllowance;
 	}
 
 	async setBotBalance(balance: number): Promise<void> {

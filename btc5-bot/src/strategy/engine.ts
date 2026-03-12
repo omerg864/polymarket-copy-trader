@@ -357,7 +357,7 @@ class StrategyEngine {
 				logger.warn('Demo trade failed (likely insufficient balance)');
 			}
 		} else {
-			const botBalance = await redisService.getBotBalance();
+			const botBalance = await redisService.getBotBalance(sc);
 			if (orderBudget > botBalance) {
 				logger.warn(
 					`⚠️  Insufficient bot allowance: $${botBalance.toFixed(2)} available, but trade size requires $${orderBudget.toFixed(2)}. Skipping live trade.`,
@@ -418,7 +418,7 @@ class StrategyEngine {
 			if (config.isDemo) {
 				await demoTradingService.printStats();
 			} else {
-				const bal = await redisService.getBotBalance();
+				const bal = await redisService.getBotBalance(sc);
 				logger.info(
 					`📊 LIVE STATS | Bot Allowance Used: $${bal.toFixed(2)} / $${sc.botAllowance.toFixed(2)} | Trades: ${stats.totalTrades} | Win: ${stats.wins} | Loss: ${stats.losses}`,
 				);

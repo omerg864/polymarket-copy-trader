@@ -22,7 +22,7 @@ class DemoTradingService {
 
 	async initialize(): Promise<void> {
 		const sc = await getStrategyConfig();
-		this.balance = await redisService.getBotBalance();
+		this.balance = await redisService.getBotBalance(sc);
 		if (
 			isNaN(this.balance) ||
 			this.balance === null ||
@@ -37,7 +37,8 @@ class DemoTradingService {
 	}
 
 	async getBalance(): Promise<number> {
-		this.balance = await redisService.getBotBalance();
+		const sc = await getStrategyConfig();
+		this.balance = await redisService.getBotBalance(sc);
 		return this.balance;
 	}
 
@@ -66,7 +67,8 @@ class DemoTradingService {
 			return null;
 		}
 
-		this.balance = await redisService.getBotBalance();
+		const sc = await getStrategyConfig();
+		this.balance = await redisService.getBotBalance(sc);
 		const cost = price * size;
 
 		if (isNaN(cost) || cost > this.balance) {

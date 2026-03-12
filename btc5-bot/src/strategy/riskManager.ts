@@ -237,8 +237,8 @@ class RiskManager {
 
 				await redisService.removeTrade(trade.id);
 				await redisService.saveTradeHistory(trade);
-
-				const bal = await redisService.getBotBalance();
+				const sc = await getStrategyConfig();
+				const bal = await redisService.getBotBalance(sc);
 				await redisService.setBotBalance(bal + revenue - sellFee);
 
 				const stats = await redisService.getBotStats();

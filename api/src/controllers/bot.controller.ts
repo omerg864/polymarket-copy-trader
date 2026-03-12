@@ -20,21 +20,16 @@ import {
 } from '../services/strategyConfig';
 
 export async function getSummary(_req: Request, res: Response): Promise<void> {
-	const [
-		stats,
-		balance,
-		activeTrades,
-		botStartTime,
-		isStopping,
-		strategyConfig,
-	] = await Promise.all([
-		getBotStats(),
-		getBotBalance(),
-		getActiveTrades(),
-		getBotStartTime(),
-		getStopRequested(),
-		getStrategyConfig(),
-	]);
+	const [stats, activeTrades, botStartTime, isStopping, strategyConfig] =
+		await Promise.all([
+			getBotStats(),
+			getActiveTrades(),
+			getBotStartTime(),
+			getStopRequested(),
+			getStrategyConfig(),
+		]);
+
+	const balance = await getBotBalance(strategyConfig);
 
 	const summary: TradeSummary = {
 		balance,

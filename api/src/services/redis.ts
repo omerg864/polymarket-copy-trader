@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import type { Trade } from '../../../shared/src/types';
+import type { StrategyConfig, Trade } from '../../../shared/src/types';
 import { DEFAULT_STRATEGY_CONFIG } from '../../../shared/src/types';
 import config from '../config';
 
@@ -55,10 +55,17 @@ export async function getBotStats(): Promise<BotStats> {
 		: { totalTrades: 0, wins: 0, losses: 0, totalPnl: 0, totalFees: 0 };
 }
 
-export async function getBotBalance(): Promise<number> {
-	const key = `${PREFIX}${config.isDemo ? 'demo' : 'live'}:balance`;
+export async function getBotBalance(config?: StrategyConfig): Promise<number> {
+	const isDemo = config?.mode === 'demo' || true;
+	const key = `${PREFIX}${isDemo ? 'demo' : 'live'}:balance`;
 	const raw = await redis.get(key);
-	return raw ? parseFloat(raw) : DEFAULT_STRATEGY_CONFIG.botAllowance;
+	if (raw) {
+		const balance = parseFloat(raw);
+		if (!isNaN(balance)) return balance;
+	}
+	const botAllowance =
+		config?.botAllowance ?? DEFAULT_STRATEGY_CONFIG.botAllowance;
+	return botAllowance;
 }
 
 export async function getBotStartTime(): Promise<number | null> {
