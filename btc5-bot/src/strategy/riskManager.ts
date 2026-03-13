@@ -96,8 +96,7 @@ class RiskManager {
 				const priceToBeat = parseFloat(String(trade.priceToBeat));
 				if (!priceToBeat || priceToBeat <= 0) continue;
 
-				// Claim immediately (same tick as has() check) to prevent races
-				this.sellingTrades.add(trade.id);
+				if (secUntilEnd > sc.maxSecLoseFct + fctBufferSec) continue;
 				try {
 					const btcPrice =
 						await priceAnalysisService.getCurrentPrice();
@@ -121,8 +120,9 @@ class RiskManager {
 						`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.direction} but BTC $${btcPrice.toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. Selling to avoid resolution loss.`,
 					);
 					await this.executeSell(trade, currentPrice, 'fct');
-				} finally {
-					this.sellingTrades.delete(trade.id);
+				} catch (err) {
+					/* ignore */
+					logger.error(`Error executing sell: ${err}`);
 				}
 			}
 		} catch (error) {
@@ -173,11 +173,10 @@ class RiskManager {
 			logger.info(
 				`🟢 TAKE PROFIT triggered for ${trade.direction} | Position: ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (+${(pctChange * 100).toFixed(1)}%) | BTC: $${btcPrice.toFixed(2)}`,
 			);
-			this.sellingTrades.add(trade.id);
 			try {
 				await this.executeSell(trade, currentPrice, 'tp');
-			} finally {
-				this.sellingTrades.delete(trade.id);
+			} catch (err) {
+				logger.error(`Error executing sell: ${err}`);
 			}
 			return;
 		}
@@ -187,11 +186,10 @@ class RiskManager {
 			logger.info(
 				`🔴 STOP LOSS triggered for ${trade.direction} | Position: ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (${(pctChange * 100).toFixed(1)}%) | BTC: $${btcPrice.toFixed(2)}`,
 			);
-			this.sellingTrades.add(trade.id);
 			try {
 				await this.executeSell(trade, currentPrice, 'sl');
-			} finally {
-				this.sellingTrades.delete(trade.id);
+			} catch (err) {
+				logger.error(`Error executing sell: ${err}`);
 			}
 			return;
 		}
@@ -207,6 +205,14 @@ class RiskManager {
 		currentPrice: number,
 		reason: string = 'sell',
 	): Promise<void> {
+		if (this.sellingTrades.has(trade.id)) {
+			logger.warn(
+				`⚠️  Skip executeSell for ${trade.id} - already in progress`,
+			);
+			return;
+		}
+
+		this.sellingTrades.add(trade.id);
 		try {
 			if (config.isDemo) {
 				await demoTradingService.placeSellOrder(
@@ -257,6 +263,8 @@ class RiskManager {
 			const message =
 				error instanceof Error ? error.message : String(error);
 			logger.error(`Error executing sell: ${message}`);
+		} finally {
+			this.sellingTrades.delete(trade.id);
 		}
 	}
 }

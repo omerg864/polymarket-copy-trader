@@ -21,7 +21,9 @@
 		"api": "node src/api.js",
 		"dashboard:dev": "cd dashboard && npm run dev",
 		"dashboard": "node src/api.js & cd dashboard && npm run dev",
-		"stop": "node src/stop.js"
+		"stop": "node src/stop.js",
+		"verify-stats": "npx tsx scripts/verify-stats.ts",
+		"fix-duplicates": "npx tsx scripts/fix-duplicates.ts"
 	},
 	"keywords": [
 		"polymarket",
