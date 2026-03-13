@@ -185,6 +185,14 @@ export interface BotStats {
 	totalFees: number;
 }
 
+export type NotificationType =
+	| 'win'
+	| 'loss'
+	| 'goal'
+	| 'min_pnl'
+	| 'max_pnl'
+	| 'manual';
+
 /**
  * Calculate Polymarket taker fee for crypto markets.
  * Formula: fee = shares × price × feeRate × (price × (1 - price))^exponent

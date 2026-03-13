@@ -1,5 +1,8 @@
 import type { Request, Response } from 'express';
-import type { NotificationConfig } from '../../../shared/src/types';
+import type {
+	NotificationConfig,
+	NotificationType,
+} from '../../../shared/src/types';
 import {
 	addTelegramChatId,
 	getNotificationConfig,
@@ -55,7 +58,7 @@ export async function triggerNotification(
 	req: Request,
 	res: Response,
 ): Promise<void> {
-	const { type, data } = req.body;
+	const { type, data }: { type: NotificationType; data: any } = req.body;
 	const config = await getNotificationConfig();
 
 	let shouldNotify = false;
@@ -83,6 +86,20 @@ export async function triggerNotification(
 			`<b>🏆 DAILY GOAL REACHED!</b>\n\n` +
 			`<b>Today's P&L:</b> <code class="text-emerald-400">$${data.todayPnl?.toFixed(2)}</code>\n` +
 			`<b>Goal:</b> $${data.goal}\n` +
+			`<b>Total Trades:</b> ${data.totalTrades}`;
+	} else if (type === 'min_pnl') {
+		shouldNotify = true;
+		message =
+			`<b>⚠️ DAILY LOSS LIMIT REACHED</b>\n\n` +
+			`<b>Today's P&L:</b> <code class="text-red-400">$${data.todayPnl?.toFixed(2)}</code>\n` +
+			`<b>Limit:</b> $${data.min}\n` +
+			`<b>Total Trades:</b> ${data.totalTrades}`;
+	} else if (type === 'max_pnl') {
+		shouldNotify = true;
+		message =
+			`<b>💰 DAILY PROFIT TARGET REACHED</b>\n\n` +
+			`<b>Today's P&L:</b> <code class="text-emerald-400">$${data.todayPnl?.toFixed(2)}</code>\n` +
+			`<b>Target:</b> $${data.max}\n` +
 			`<b>Total Trades:</b> ${data.totalTrades}`;
 	} else if (type === 'manual') {
 		shouldNotify = true;
