@@ -6,15 +6,7 @@ import redisService from './services/redis';
 import strategyEngine from './strategy/engine';
 import logger from './utils/logger';
 
-// Parse CLI arguments
-const args = process.argv.slice(2);
-if (args.includes('--demo')) {
-	config.mode = 'demo';
-	config.isDemo = true;
-} else if (args.includes('--live')) {
-	config.mode = 'live';
-	config.isDemo = false;
-}
+// Bot mode is determined by MODE environment variable in config.ts
 
 async function main(): Promise<void> {
 	logger.info('');

@@ -2,8 +2,8 @@ import 'dotenv/config';
 
 const config = {
 	// Mode
-	mode: process.env.MODE || 'demo',
-	isDemo: (process.env.MODE || 'demo') === 'demo',
+	mode: process.env.MODE === 'live' ? 'live' : 'demo',
+	isDemo: process.env.MODE !== 'live',
 
 	// Polymarket credentials
 	privateKey: process.env.PRIVATE_KEY || '',
