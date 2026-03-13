@@ -119,7 +119,7 @@ class RiskManager {
 					logger.info(
 						`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.direction} but BTC $${btcPrice.toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. Selling to avoid resolution loss.`,
 					);
-					await this.executeSell(trade, currentPrice, 'fct');
+					await this.executeSell(trade, currentPrice, 'fct', btcPrice);
 				} catch (err) {
 					/* ignore */
 					logger.error(`Error executing sell: ${err}`);
@@ -174,7 +174,7 @@ class RiskManager {
 				`🟢 TAKE PROFIT triggered for ${trade.direction} | Position: ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (+${(pctChange * 100).toFixed(1)}%) | BTC: $${btcPrice.toFixed(2)}`,
 			);
 			try {
-				await this.executeSell(trade, currentPrice, 'tp');
+				await this.executeSell(trade, currentPrice, 'tp', btcPrice);
 			} catch (err) {
 				logger.error(`Error executing sell: ${err}`);
 			}
@@ -187,7 +187,7 @@ class RiskManager {
 				`🔴 STOP LOSS triggered for ${trade.direction} | Position: ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (${(pctChange * 100).toFixed(1)}%) | BTC: $${btcPrice.toFixed(2)}`,
 			);
 			try {
-				await this.executeSell(trade, currentPrice, 'sl');
+				await this.executeSell(trade, currentPrice, 'sl', btcPrice);
 			} catch (err) {
 				logger.error(`Error executing sell: ${err}`);
 			}
@@ -204,6 +204,7 @@ class RiskManager {
 		trade: Trade,
 		currentPrice: number,
 		reason: string = 'sell',
+		btcPrice?: number,
 	): Promise<void> {
 		if (this.sellingTrades.has(trade.id)) {
 			logger.warn(
@@ -219,6 +220,7 @@ class RiskManager {
 					trade,
 					currentPrice,
 					reason,
+					btcPrice,
 				);
 			} else {
 				const market = {
@@ -240,6 +242,7 @@ class RiskManager {
 				const totalFee = (trade.fee || 0) + sellFee;
 				trade.pnl = revenue - trade.cost - totalFee;
 				trade.fee = totalFee;
+				trade.exitBtcPrice = btcPrice;
 				trade.closedAt = new Date().toISOString();
 
 				await redisService.removeTrade(trade.id);

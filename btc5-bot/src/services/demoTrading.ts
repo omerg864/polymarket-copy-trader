@@ -131,6 +131,7 @@ class DemoTradingService {
 		trade: Trade,
 		currentPrice: number,
 		reason: string = 'sell',
+		btcPrice?: number,
 	): Promise<Trade> {
 		const sellFee = calculateFee(trade.size, currentPrice);
 		const revenue = currentPrice * trade.size;
@@ -152,6 +153,7 @@ class DemoTradingService {
 					? 'closed_sl'
 					: 'closed_sell';
 		trade.exitPrice = currentPrice;
+		trade.exitBtcPrice = btcPrice;
 		trade.pnl = pnl;
 		trade.fee = totalFee;
 		trade.pctChange = pctChange;
@@ -190,7 +192,11 @@ class DemoTradingService {
 	/**
 	 * Resolve a trade at market close (simulate final resolution)
 	 */
-	async resolveTrade(trade: Trade, won: boolean): Promise<Trade> {
+	async resolveTrade(
+		trade: Trade,
+		won: boolean,
+		btcPrice?: number,
+	): Promise<Trade> {
 		const finalPrice = won ? 1.0 : 0.0;
 		const revenue = finalPrice * trade.size;
 		const totalFee = trade.fee; // buy fee already included; no sell on resolution
@@ -206,6 +212,7 @@ class DemoTradingService {
 
 		trade.status = won ? 'won' : 'lost';
 		trade.exitPrice = finalPrice;
+		trade.exitBtcPrice = btcPrice;
 		trade.pnl = pnl;
 		trade.pctChange = pctChange;
 		trade.closedAt = new Date().toISOString();

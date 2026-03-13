@@ -443,6 +443,7 @@ class StrategyEngine {
 			if (msSinceEnd < 30000) continue;
 
 			logger.info(`⏰ Resolving expired trade: ${trade.title}`);
+			const btcPrice = await priceAnalysisService.getCurrentPrice();
 
 			const winner = await polymarketService.getMarketOutcome(
 				trade.eventTicker,
@@ -468,6 +469,7 @@ class StrategyEngine {
 				const totalFee = trade.fee || 0;
 				trade.pnl = revenue - trade.cost - totalFee;
 				trade.exitPrice = finalPrice;
+				trade.exitBtcPrice = btcPrice ?? undefined;
 
 				await redisService.removeTrade(trade.id);
 				await redisService.saveTradeHistory(trade);

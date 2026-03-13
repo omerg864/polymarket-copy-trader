@@ -360,6 +360,22 @@ export function TradeHistoryTable() {
 											? `$${selectedTrade.exitPrice.toFixed(3)}`
 											: '—'}
 									</span>
+									{selectedTrade.exitBtcPrice != null && (
+										<>
+											<span className="text-zinc-500">
+												Exit BTC Price
+											</span>
+											<span className="text-right font-mono text-zinc-300">
+												${selectedTrade.exitBtcPrice.toLocaleString(
+													undefined,
+													{
+														minimumFractionDigits: 2,
+														maximumFractionDigits: 2,
+													},
+												)}
+											</span>
+										</>
+									)}
 									<span className="text-zinc-500">Fee</span>
 									<span className="text-right font-mono text-orange-400">
 										{selectedTrade.fee

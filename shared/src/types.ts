@@ -25,6 +25,7 @@ export interface Trade {
 	entryPrice: number;
 	currentPrice: number;
 	exitPrice?: number;
+	exitBtcPrice?: number;
 	size: number;
 	cost: number;
 	fee: number;
