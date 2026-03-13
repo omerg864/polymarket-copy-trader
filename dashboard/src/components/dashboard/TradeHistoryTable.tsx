@@ -28,7 +28,7 @@ import { DirectionBadge, PnlBadge, StatusBadge } from './badges';
 
 type SortField = 'time' | 'pnl' | 'confidence' | 'cost';
 type SortDir = 'asc' | 'desc';
-type FilterStatus = 'all' | 'won' | 'lost' | 'closed_tp' | 'closed_sl';
+type FilterStatus = 'all' | 'won' | 'lost' | 'closed_tp' | 'closed_sl' | 'closed_sell';
 
 export function TradeHistoryTable() {
 	const { data: history } = useTradeHistory();
@@ -112,6 +112,7 @@ export function TradeHistoryTable() {
 							<option value="lost">❌ Lost</option>
 							<option value="closed_tp">🟢 Take Profit</option>
 							<option value="closed_sl">🔴 Stop Loss</option>
+							<option value="closed_sell">💰 Sold</option>
 						</select>
 						<select
 							value={filterDir}
