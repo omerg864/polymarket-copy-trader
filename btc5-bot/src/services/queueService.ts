@@ -79,12 +79,20 @@ class QueueService {
 	 */
 	async addSellJob(data: SellJobData): Promise<void> {
 		try {
+			const isResolve = data.type === 'RESOLVE';
+			
+			// Resolve jobs need much longer retry windows because Polymarket 
+			// resolution metadata can lag behind market end time.
+			const attempts = isResolve ? 30 : 5; 
+			const backoffDelay = isResolve ? 30000 : 2000; // Resolution: 30s | Sell: 2s
+			const backoffType = isResolve ? 'fixed' : 'exponential';
+
 			await this.sellQueue.add(`sell-${data.trade.id}`, data, {
 				jobId: data.trade.id,
 				removeOnComplete: true,
 				removeOnFail: false,
-				attempts: 3,
-				backoff: { type: 'exponential', delay: 1000 },
+				attempts,
+				backoff: { type: backoffType, delay: backoffDelay },
 			});
 			logger.info(`📦 Queued ${data.type} for trade ${data.trade.id}`);
 		} catch (error) {

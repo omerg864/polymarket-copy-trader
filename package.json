@@ -24,7 +24,8 @@
 		"stop": "node src/stop.js",
 		"verify-stats": "npx tsx scripts/verify-stats.ts",
 		"fix-duplicates": "npx tsx scripts/fix-duplicates.ts",
-		"sync-history": "npx tsx scripts/sync-history-ids.ts"
+		"sync-history": "npx tsx scripts/sync-history-ids.ts",
+		"fix-missing-exit-price": "npx tsx scripts/fix-missing-exit-price.ts"
 	},
 	"keywords": [
 		"polymarket",
