@@ -10,11 +10,12 @@ dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
 import Redis from 'ioredis';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const PREFIX = 'pmbot:';
 
 async function main() {
 	const redis = new Redis(REDIS_URL, { maxRetriesPerRequest: 3 });
 
-	const keys = await redis.keys('pmbot:*');
+	const keys = await redis.keys('*');
 	console.log(`Total keys: ${keys.length}\n`);
 
 	for (const key of keys.sort()) {
@@ -32,6 +33,12 @@ async function main() {
 		} else if (type === 'set') {
 			const members = await redis.smembers(key);
 			console.log(`${key} (${type}): ${JSON.stringify(members)}`);
+			if (key === `${PREFIX}active_trades`) {
+				for (const id of members) {
+					const tradeData = await redis.get(`${PREFIX}trade:${id}`);
+					console.log(`  - Details for ${id}: ${tradeData}`);
+				}
+			}
 		} else {
 			console.log(`${key} (${type})`);
 		}
