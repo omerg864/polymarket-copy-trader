@@ -13,6 +13,7 @@ const config = {
 	// Polymarket API
 	clobHost: 'https://clob.polymarket.com',
 	gammaHost: 'https://gamma-api.polymarket.com',
+	mainHost: 'https://polymarket.com',
 	chainId: 137, // Polygon
 
 	// Redis

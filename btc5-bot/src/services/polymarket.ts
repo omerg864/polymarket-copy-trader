@@ -12,26 +12,45 @@ interface OrderBook {
 	asks?: Array<{ price: string; size: string }>;
 }
 
+interface GammaMarket {
+	id: string;
+	question: string;
+	conditionId: string;
+	slug: string;
+	resolutionSource: string;
+	endDate: string;
+	eventStartTime?: string;
+	closed: boolean;
+	clobTokenIds: string; // JSON string
+	orderPriceMinTickSize?: number;
+	negRisk?: boolean;
+	orderMinSize?: number;
+	outcomePrices: string; // JSON string
+	outcomes: string; // JSON string
+	groupItemThreshold?: string;
+	questionID: string;
+}
+
 interface GammaEvent {
+	id: string;
 	ticker: string;
 	slug: string;
 	title: string;
-	startTime?: string;
-	eventMetadata?: { priceToBeat?: number };
-	markets?: Array<{
-		conditionId: string;
-		questionID: string;
-		slug: string;
-		endDate: string;
-		eventStartTime?: string;
-		closed: boolean;
-		clobTokenIds: string;
-		orderPriceMinTickSize?: number;
-		negRisk?: boolean;
-		orderMinSize?: number;
-		outcomePrices: string;
-		outcomes: string;
-	}>;
+	description: string;
+	startDate: string;
+	endDate: string;
+	active: boolean;
+	closed: boolean;
+	markets: GammaMarket[];
+}
+
+interface CryptoPriceResponse {
+	openPrice: number;
+	closePrice: number | null;
+	timestamp: number;
+	completed: boolean;
+	incomplete: boolean;
+	cached: boolean;
 }
 
 class PolymarketService {
@@ -73,6 +92,44 @@ class PolymarketService {
 		);
 
 		logger.info('✅ Polymarket CLOB client initialized for LIVE trading');
+	}
+
+	async getPriceToBeat(
+		symbol: string,
+		eventStartTime: string | Date,
+		endDate: string | Date,
+	): Promise<number | null> {
+		try {
+			const startStr =
+				typeof eventStartTime === 'string'
+					? eventStartTime
+					: eventStartTime.toISOString();
+			const endStr =
+				typeof endDate === 'string' ? endDate : endDate.toISOString();
+
+			const url = `${config.mainHost}/api/crypto/crypto-price`;
+			const response = await axios.get<CryptoPriceResponse>(url, {
+				params: {
+					symbol,
+					eventStartTime: startStr,
+					variant: 'fiveminute',
+					endDate: endStr,
+				},
+				timeout: 5000,
+			});
+
+			if (response.data && typeof response.data.openPrice === 'number') {
+				return response.data.openPrice;
+			}
+			return null;
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			logger.warn(
+				`Failed to fetch priceToBeat from Polymarket: ${message}`,
+			);
+			return null;
+		}
 	}
 
 	// ---- Market Discovery ----
@@ -143,11 +200,11 @@ class PolymarketService {
 			);
 			if (!event) return null;
 
-			const market = event.markets?.[0];
-			if (!market || !market.closed) return null;
+			const marketData = event.markets?.[0];
+			if (!marketData || !marketData.closed) return null;
 
-			const prices: string[] = JSON.parse(market.outcomePrices);
-			const outcomes: string[] = JSON.parse(market.outcomes);
+			const prices: string[] = JSON.parse(marketData.outcomePrices);
+			const outcomes: string[] = JSON.parse(marketData.outcomes);
 
 			for (let i = 0; i < prices.length; i++) {
 				if (parseFloat(prices[i]) === 1) {
@@ -184,31 +241,39 @@ class PolymarketService {
 			if (!event) return null;
 
 			logger.info(`Found market event: ${JSON.stringify(event)}`);
-			const market = event.markets?.[0];
-			if (!market || market.closed) return null;
+			const marketData = event.markets?.[0];
+			if (!marketData || marketData.closed) return null;
 
-			const endDate = new Date(market.endDate);
+			const endDate = new Date(marketData.endDate);
 			const now = new Date();
 			if (endDate <= now) return null;
 
-			const tokenIds: string[] = JSON.parse(market.clobTokenIds);
+			const tokenIds: string[] = JSON.parse(marketData.clobTokenIds);
+
+			// Fetch priceToBeat from the dedicated endpoint
+			const eventStartTime = marketData.eventStartTime || event.startDate;
+			const priceToBeat = await this.getPriceToBeat(
+				'BTC',
+				eventStartTime,
+				marketData.endDate,
+			);
+
 			return {
-				conditionId: market.conditionId,
-				questionId: market.questionID,
-				slug: market.slug,
+				conditionId: marketData.conditionId,
+				questionId: marketData.questionID,
+				slug: marketData.slug,
 				eventTicker: event.ticker,
 				title: event.title,
-				startTime: new Date(
-					event.startTime || market.eventStartTime || '',
-				),
+				startTime: new Date(eventStartTime),
 				endTime: endDate,
 				upTokenId: tokenIds[0],
 				downTokenId: tokenIds[1],
 				tickSize:
-					market.orderPriceMinTickSize?.toString() || config.tickSize,
-				negRisk: market.negRisk || false,
-				minOrderSize: market.orderMinSize || config.minOrderSize,
-				priceToBeat: event.eventMetadata?.priceToBeat ?? null,
+					marketData.orderPriceMinTickSize?.toString() ||
+					config.tickSize,
+				negRisk: marketData.negRisk || false,
+				minOrderSize: marketData.orderMinSize || config.minOrderSize,
+				priceToBeat,
 			};
 		} catch (error) {
 			const message =
