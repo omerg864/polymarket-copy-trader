@@ -138,6 +138,7 @@ export function AnalysisDashboard() {
 				t.status === TradeStatus.LOST ||
 				t.status === TradeStatus.CLOSED_TP ||
 				t.status === TradeStatus.CLOSED_SL ||
+				t.status === TradeStatus.CLOSED_FCT ||
 				t.status === TradeStatus.CLOSED_SELL,
 		);
 
@@ -604,7 +605,7 @@ export function AnalysisDashboard() {
 			})(),
 			stopLoss: (() => {
 				const slTrades = resolved.filter(
-					(t) => t.status === 'closed_sl',
+					(t) => t.status === TradeStatus.CLOSED_SL,
 				);
 				const total = slTrades.length;
 				if (total === 0) return null;
@@ -630,6 +631,8 @@ export function AnalysisDashboard() {
 				};
 			})(),
 			fct: (() => {
+				console.log('fct');
+				console.log(resolved);
 				const fctTrades = resolved.filter(
 					(t) => t.status === TradeStatus.CLOSED_FCT,
 				);
