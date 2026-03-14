@@ -118,6 +118,18 @@ class RedisService {
 		return records.map((r) => JSON.parse(r) as Trade);
 	}
 
+	async updateTradeInHistory(trade: Trade): Promise<void> {
+		const client = this.getClient();
+		const key = REDIS_KEYS.HISTORY(this.mode);
+		const records = await client.lrange(key, 0, -1);
+		const trades = records.map((r) => JSON.parse(r) as Trade);
+		
+		const index = trades.findIndex(t => t.id === trade.id);
+		if (index !== -1) {
+			await client.lset(key, index, JSON.stringify(trade));
+		}
+	}
+
 	async isTradeInHistory(tradeId: string): Promise<boolean> {
 		const client = this.getClient();
 		const result = await client.sismember(

@@ -14,7 +14,15 @@ import {
 } from '@/components/ui/card';
 import { useConfig, useTradeHistory } from '@/hooks/use-api';
 import type { Trade } from '@/types';
-import { Lightbulb, Sparkles } from 'lucide-react';
+import { TradeStatus } from '@shared/types';
+import {
+	AlertTriangle,
+	CheckCircle2,
+	Clock,
+	Lightbulb,
+	Sparkles,
+	XCircle,
+} from 'lucide-react';
 import { useMemo } from 'react';
 
 function calculateStats(trades: Trade[]) {
@@ -126,12 +134,11 @@ export function AnalysisDashboard() {
 		// Only analyze resolved trades
 		const resolved = history.filter(
 			(t: Trade) =>
-				t.status === 'won' ||
-				t.status === 'lost' ||
-				t.status === 'resolved' ||
-				t.status === 'closed_tp' ||
-				t.status === 'closed_sl' ||
-				t.status === 'closed_sell',
+				t.status === TradeStatus.WON ||
+				t.status === TradeStatus.LOST ||
+				t.status === TradeStatus.CLOSED_TP ||
+				t.status === TradeStatus.CLOSED_SL ||
+				t.status === TradeStatus.CLOSED_SELL,
 		);
 
 		const byConfidenceRaw = groupNestedInterval(
@@ -595,6 +602,68 @@ export function AnalysisDashboard() {
 						}[],
 					}));
 			})(),
+			stopLoss: (() => {
+				const slTrades = resolved.filter(
+					(t) => t.status === 'closed_sl',
+				);
+				const total = slTrades.length;
+				if (total === 0) return null;
+
+				const saved = slTrades.filter(
+					(t) =>
+						t.actualOutcome !== 'UNKNOWN' &&
+						t.actualOutcome !== t.direction,
+				).length;
+				const hurt = slTrades.filter(
+					(t) => t.actualOutcome === t.direction,
+				).length;
+				const unknown = slTrades.filter(
+					(t) => t.actualOutcome === 'UNKNOWN',
+				).length;
+
+				return {
+					total,
+					saved,
+					hurt,
+					unknown,
+					saveRate: (saved / (saved + hurt || 1)) * 100,
+				};
+			})(),
+			fct: (() => {
+				const fctTrades = resolved.filter(
+					(t) => t.status === TradeStatus.CLOSED_FCT,
+				);
+				const total = fctTrades.length;
+				if (total === 0) return null;
+
+				const saved = fctTrades.filter(
+					(t) =>
+						t.actualOutcome !== 'UNKNOWN' &&
+						t.actualOutcome !== t.direction,
+				).length;
+				const hurt = fctTrades.filter(
+					(t) => t.actualOutcome === t.direction,
+				).length;
+				const unknown = fctTrades.filter(
+					(t) => t.actualOutcome === 'UNKNOWN',
+				).length;
+
+				return {
+					total,
+					saved,
+					hurt,
+					unknown,
+					saveRate: (saved / (saved + hurt || 1)) * 100,
+				};
+			})(),
+			actualOutcomes: {
+				up: calculateStats(
+					resolved.filter((t) => t.actualOutcome === 'UP'),
+				),
+				down: calculateStats(
+					resolved.filter((t) => t.actualOutcome === 'DOWN'),
+				),
+			},
 		};
 	}, [history]);
 
@@ -617,12 +686,11 @@ export function AnalysisDashboard() {
 	const suggestions: string[] = [];
 	const resolvedBase = history.filter(
 		(t: Trade) =>
-			t.status === 'won' ||
-			t.status === 'lost' ||
-			t.status === 'resolved' ||
-			t.status === 'closed_tp' ||
-			t.status === 'closed_sl' ||
-			t.status === 'closed_sell',
+			t.status === TradeStatus.WON ||
+			t.status === TradeStatus.LOST ||
+			t.status === TradeStatus.CLOSED_TP ||
+			t.status === TradeStatus.CLOSED_SL ||
+			t.status === TradeStatus.CLOSED_SELL,
 	);
 
 	const lowConf = calculateStats(
@@ -890,6 +958,232 @@ export function AnalysisDashboard() {
 						</li>
 					))}
 				</ul>
+			</div>
+
+			{/* New Actual Outcome, Stop Loss & FCT Section */}
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+				{/* <Card className="bg-zinc-900 border-zinc-800 border-l-4 border-l-blue-500/50">
+					<CardHeader className="pb-2">
+						<CardTitle className="text-lg flex items-center gap-2">
+							<CheckCircle2 className="h-5 w-5 text-blue-400" />
+							Market Actual Output
+						</CardTitle>
+						<CardDescription>
+							Performance based on final market results (regardless of bot exit)
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="grid grid-cols-2 gap-4">
+							<div className="space-y-1">
+								<p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">↑ UP Markets</p>
+								<p className="text-2xl font-bold font-mono text-zinc-100">{analysis.actualOutcomes.up.total}</p>
+								<p className="text-xs text-zinc-400">Wins: {analysis.actualOutcomes.up.wins} / Losses: {analysis.actualOutcomes.up.losses}</p>
+							</div>
+							<div className="space-y-1">
+								<p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">↓ DOWN Markets</p>
+								<p className="text-2xl font-bold font-mono text-zinc-100">{analysis.actualOutcomes.down.total}</p>
+								<p className="text-xs text-zinc-400">Wins: {analysis.actualOutcomes.down.wins} / Losses: {analysis.actualOutcomes.down.losses}</p>
+							</div>
+						</div>
+					</CardContent>
+				</Card> */}
+
+				<Card className="bg-zinc-900 border-zinc-800 border-l-4 border-l-amber-500/50">
+					<CardHeader className="pb-2">
+						<CardTitle className="text-lg flex items-center gap-2">
+							<AlertTriangle className="h-5 w-5 text-amber-400" />
+							Stop Loss Evaluation
+						</CardTitle>
+						<CardDescription>
+							What would have happened to trades that hit SL?
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						{!analysis.stopLoss ? (
+							<p className="text-sm text-zinc-500 italic py-4">
+								No stop loss trades recorded yet.
+							</p>
+						) : (
+							<div className="space-y-4">
+								<div className="flex justify-between items-end">
+									<div>
+										<p className="text-3xl font-bold font-mono text-zinc-100">
+											{analysis.stopLoss.total}
+										</p>
+										<p className="text-xs text-zinc-500 uppercase font-semibold">
+											Total SL Trades
+										</p>
+									</div>
+									<div className="text-right">
+										<p
+											className={`text-2xl font-bold font-mono ${analysis.stopLoss.saveRate > 50 ? 'text-emerald-400' : 'text-amber-400'}`}
+										>
+											{analysis.stopLoss.saveRate.toFixed(
+												1,
+											)}
+											%
+										</p>
+										<p className="text-xs text-zinc-500 uppercase font-semibold text-nowrap">
+											"Good" Stop Rate
+										</p>
+									</div>
+								</div>
+
+								<div className="space-y-2">
+									<div className="flex items-center justify-between text-sm">
+										<span className="flex items-center gap-1.5 text-emerald-400">
+											<CheckCircle2 className="h-3.5 w-3.5" />
+											Good Stops (Saved from loss)
+										</span>
+										<span className="font-mono font-bold text-zinc-200">
+											{analysis.stopLoss.saved}
+										</span>
+									</div>
+									<div className="flex items-center justify-between text-sm">
+										<span className="flex items-center gap-1.5 text-red-400">
+											<XCircle className="h-3.5 w-3.5" />
+											Bad Stops (Would have won)
+										</span>
+										<span className="font-mono font-bold text-zinc-200">
+											{analysis.stopLoss.hurt}
+										</span>
+									</div>
+									{analysis.stopLoss.unknown > 0 && (
+										<div className="flex items-center justify-between text-sm">
+											<span className="text-zinc-500 italic">
+												Unsettled / Unknown
+											</span>
+											<span className="font-mono text-zinc-500">
+												{analysis.stopLoss.unknown}
+											</span>
+										</div>
+									)}
+								</div>
+
+								<div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden flex">
+									<div
+										className="bg-emerald-500 h-full"
+										style={{
+											width: `${(analysis.stopLoss.saved / analysis.stopLoss.total) * 100}%`,
+										}}
+										title="Good Stops"
+									/>
+									<div
+										className="bg-red-500 h-full"
+										style={{
+											width: `${(analysis.stopLoss.hurt / analysis.stopLoss.total) * 100}%`,
+										}}
+										title="Bad Stops"
+									/>
+									<div
+										className="bg-zinc-700 h-full"
+										style={{
+											width: `${(analysis.stopLoss.unknown / analysis.stopLoss.total) * 100}%`,
+										}}
+										title="Unknown"
+									/>
+								</div>
+							</div>
+						)}
+					</CardContent>
+				</Card>
+
+				<Card className="bg-zinc-900 border-zinc-800 border-l-4 border-l-purple-500/50">
+					<CardHeader className="pb-2">
+						<CardTitle className="text-lg flex items-center gap-2">
+							<Clock className="h-5 w-5 text-purple-400" />
+							FCT Evaluation
+						</CardTitle>
+						<CardDescription>
+							Was Force Close Trade (FCT) a good move?
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						{!analysis.fct ? (
+							<p className="text-sm text-zinc-500 italic py-4">
+								No FCT trades recorded yet.
+							</p>
+						) : (
+							<div className="space-y-4">
+								<div className="flex justify-between items-end">
+									<div>
+										<p className="text-3xl font-bold font-mono text-zinc-100">
+											{analysis.fct.total}
+										</p>
+										<p className="text-xs text-zinc-500 uppercase font-semibold">
+											Total FCT Trades
+										</p>
+									</div>
+									<div className="text-right">
+										<p
+											className={`text-2xl font-bold font-mono ${analysis.fct.saveRate > 50 ? 'text-emerald-400' : 'text-amber-400'}`}
+										>
+											{analysis.fct.saveRate.toFixed(1)}%
+										</p>
+										<p className="text-xs text-zinc-500 uppercase font-semibold text-nowrap">
+											"Good" FCT Rate
+										</p>
+									</div>
+								</div>
+
+								<div className="space-y-2">
+									<div className="flex items-center justify-between text-sm">
+										<span className="flex items-center gap-1.5 text-emerald-400">
+											<CheckCircle2 className="h-3.5 w-3.5" />
+											Good FCTs (Avoided loss)
+										</span>
+										<span className="font-mono font-bold text-zinc-200">
+											{analysis.fct.saved}
+										</span>
+									</div>
+									<div className="flex items-center justify-between text-sm">
+										<span className="flex items-center gap-1.5 text-red-400">
+											<XCircle className="h-3.5 w-3.5" />
+											Bad FCTs (Would have won)
+										</span>
+										<span className="font-mono font-bold text-zinc-200">
+											{analysis.fct.hurt}
+										</span>
+									</div>
+									{analysis.fct.unknown > 0 && (
+										<div className="flex items-center justify-between text-sm">
+											<span className="text-zinc-500 italic">
+												Unsettled / Unknown
+											</span>
+											<span className="font-mono text-zinc-500">
+												{analysis.fct.unknown}
+											</span>
+										</div>
+									)}
+								</div>
+
+								<div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden flex">
+									<div
+										className="bg-emerald-500 h-full"
+										style={{
+											width: `${(analysis.fct.saved / analysis.fct.total) * 100}%`,
+										}}
+										title="Good FCTs"
+									/>
+									<div
+										className="bg-red-500 h-full"
+										style={{
+											width: `${(analysis.fct.hurt / analysis.fct.total) * 100}%`,
+										}}
+										title="Bad FCTs"
+									/>
+									<div
+										className="bg-zinc-700 h-full"
+										style={{
+											width: `${(analysis.fct.unknown / analysis.fct.total) * 100}%`,
+										}}
+										title="Unknown"
+									/>
+								</div>
+							</div>
+						)}
+					</CardContent>
+				</Card>
 			</div>
 
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

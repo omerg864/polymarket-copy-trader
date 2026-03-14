@@ -12,9 +12,24 @@ export interface TradeSummary {
 	botStartTime?: number | null;
 }
 
+export enum TradeType {
+	DEMO = 'demo',
+	LIVE = 'live',
+}
+
+export enum TradeStatus {
+	OPEN = 'open',
+	WON = 'won',
+	LOST = 'lost',
+	CLOSED_TP = 'closed_tp',
+	CLOSED_SL = 'closed_sl',
+	CLOSED_FCT = 'closed_fct',
+	CLOSED_SELL = 'closed_sell',
+}
+
 export interface Trade {
 	id: string;
-	type: 'demo' | 'live';
+	type: TradeType;
 	direction: 'UP' | 'DOWN';
 	tokenId: string;
 	conditionId: string;
@@ -29,7 +44,7 @@ export interface Trade {
 	size: number;
 	cost: number;
 	fee: number;
-	status: string;
+	status: TradeStatus;
 	startTime: string;
 	endTime: string;
 	enteredAt: string;
@@ -56,6 +71,7 @@ export interface Trade {
 		momentum3: string;
 		volatility: string;
 	};
+	actualOutcome?: 'UP' | 'DOWN' | 'UNKNOWN';
 }
 
 export interface StrategyConfig {

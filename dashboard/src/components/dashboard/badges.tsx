@@ -62,9 +62,29 @@ export function StatusBadge({ status }: { status: string }) {
 			label: '💰 Sold',
 			cls: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
 		},
+		closed_fct: {
+			label: '⏱️ Force Close',
+			cls: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+		},
 	};
 	const s = map[status];
 	if (s)
 		return <Badge className={`${s.cls} hover:${s.cls}`}>{s.label}</Badge>;
 	return <Badge variant="outline">{status}</Badge>;
+}
+
+export function MarketOutcomeBadge({ outcome }: { outcome?: 'UP' | 'DOWN' | 'UNKNOWN' }) {
+	if (outcome === 'UP')
+		return (
+			<Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20">
+				▲ UP
+			</Badge>
+		);
+	if (outcome === 'DOWN')
+		return (
+			<Badge className="bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/20">
+				▼ DOWN
+			</Badge>
+		);
+	return <Badge variant="outline" className="text-zinc-500 border-zinc-800">UNKNOWN</Badge>;
 }

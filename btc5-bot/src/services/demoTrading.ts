@@ -1,5 +1,7 @@
 import {
 	DEFAULT_STRATEGY_CONFIG,
+	TradeStatus,
+	TradeType,
 	calculateFee,
 	type Market,
 	type Trade,
@@ -7,7 +9,6 @@ import {
 import { randomUUID } from 'crypto';
 import logger from '../utils/logger';
 import redisService from './redis';
-import notificationManager from './notificationManager';
 import { getStrategyConfig } from './strategyConfig';
 
 /**
@@ -86,7 +87,7 @@ class DemoTradingService {
 
 		const trade: Trade = {
 			id: randomUUID(),
-			type: 'demo',
+			type: TradeType.DEMO,
 			direction,
 			tokenId,
 			conditionId: market.conditionId,
@@ -99,7 +100,7 @@ class DemoTradingService {
 			size,
 			cost,
 			fee,
-			status: 'open',
+			status: TradeStatus.OPEN,
 			startTime: market.startTime.toISOString(),
 			endTime: market.endTime.toISOString(),
 			enteredAt: new Date().toISOString(),

@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/dialog';
 import { formatDate } from '@/lib/utils';
 import type { Trade } from '@/types';
-import { DirectionBadge, PnlBadge, StatusBadge } from './badges';
+import { DirectionBadge, MarketOutcomeBadge, PnlBadge, StatusBadge } from './badges';
 
 interface TradeDetailsDialogProps {
 	trade: Trade | null;
@@ -98,6 +98,10 @@ export function TradeDetailsDialog({ trade, onClose }: TradeDetailsDialogProps) 
 							<span className="text-zinc-500">Result Money</span>
 							<span className="text-right font-mono text-zinc-300">
 								${(trade.cost + trade.pnl).toFixed(2)}
+							</span>
+							<span className="text-zinc-500">Market Outcome</span>
+							<span className="text-right">
+								<MarketOutcomeBadge outcome={trade.actualOutcome} />
 							</span>
 						</div>
 					</div>

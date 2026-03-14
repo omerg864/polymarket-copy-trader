@@ -4,6 +4,7 @@ import demoTradingService from './services/demoTrading';
 import polymarketService from './services/polymarket';
 import redisService from './services/redis';
 import queueService from './services/queueService';
+import outcomeSyncService from './services/outcomeSync';
 import strategyEngine from './strategy/engine';
 import logger from './utils/logger';
 
@@ -78,6 +79,9 @@ async function main(): Promise<void> {
 	// Start BullMQ workers
 	await queueService.startWorkers();
 
+	// Start outcome sync service
+	outcomeSyncService.start();
+
 	// Start the strategy engine
 	await strategyEngine.start();
 }
@@ -93,6 +97,7 @@ async function shutdown(signal: string): Promise<void> {
 	try {
 		await strategyEngine.stop();
 		await queueService.stopWorkers();
+		outcomeSyncService.stop();
 		await redisService.disconnect();
 		await mongoose.disconnect();
 	} catch (error) {

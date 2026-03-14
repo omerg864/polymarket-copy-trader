@@ -1,11 +1,8 @@
-import { calculateFee, type Trade } from '@shared/types';
-import config from '../config';
-import demoTradingService from '../services/demoTrading';
+import { type Trade } from '@shared/types';
 import polymarketService from '../services/polymarket';
 import priceAnalysisService from '../services/priceAnalysis';
 import redisService from '../services/redis';
 import { getStrategyConfig } from '../services/strategyConfig';
-import notificationManager from '../services/notificationManager';
 import queueService from '../services/queueService';
 import logger from '../utils/logger';
 
@@ -120,7 +117,12 @@ class RiskManager {
 					logger.info(
 						`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.direction} but BTC $${btcPrice.toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. Selling to avoid resolution loss.`,
 					);
-					await this.executeSell(trade, currentPrice, 'fct', btcPrice);
+					await this.executeSell(
+						trade,
+						currentPrice,
+						'fct',
+						btcPrice,
+					);
 				} catch (err) {
 					/* ignore */
 					logger.error(`Error executing sell: ${err}`);
@@ -221,7 +223,7 @@ class RiskManager {
 				type: 'SELL_ORDER',
 				exitPrice: currentPrice,
 				btcPrice,
-				reason
+				reason,
 			});
 		} catch (error) {
 			const message =

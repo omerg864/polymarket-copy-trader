@@ -1,11 +1,10 @@
 import { Queue, Worker, type Job } from 'bullmq';
 import Redis from 'ioredis';
-import { type Trade } from '@shared/types';
+import { type Trade, TradeStatus } from '@shared/types';
 import config from '../config';
 import logger from '../utils/logger';
 import redisService from './redis';
 import polymarketService from './polymarket';
-import demoTradingService from './demoTrading';
 import notificationManager from './notificationManager';
 import { getStrategyConfig } from './strategyConfig';
 
@@ -31,6 +30,7 @@ export interface TradeCompletionJobData {
 	status: Trade['status'];
 	exitPrice: number;
 	exitBtcPrice?: number;
+	reason?: string;
 }
 
 class QueueService {
@@ -137,7 +137,9 @@ class QueueService {
 		try {
 			await redisService.connect();
 		} catch (error) {
-			logger.error(`Failed to ensure Redis connection for job ${job.id}: ${error}`);
+			logger.error(
+				`Failed to ensure Redis connection for job ${job.id}: ${error}`,
+			);
 			throw new Error('Redis connection required');
 		}
 
@@ -153,7 +155,7 @@ class QueueService {
 		let won = false;
 		let finalPrice = exitPrice ?? 0;
 		let sellFee = 0;
-		let status: Trade['status'] = 'open';
+		let status: TradeStatus = TradeStatus.OPEN;
 
 		if (type === 'RESOLVE') {
 			logger.info(
@@ -167,7 +169,7 @@ class QueueService {
 			}
 			won = trade.direction === winner;
 			finalPrice = won ? 1.0 : 0.0;
-			status = won ? 'won' : 'lost';
+			status = won ? TradeStatus.WON : TradeStatus.LOST;
 		} else {
 			// SELL_ORDER (TP/SL/FCT)
 			logger.info(
@@ -191,10 +193,12 @@ class QueueService {
 			won = finalPrice > trade.entryPrice;
 			status =
 				reason === 'tp'
-					? 'closed_tp'
+					? TradeStatus.CLOSED_TP
 					: reason === 'sl'
-						? 'closed_sl'
-						: 'closed_sell';
+						? TradeStatus.CLOSED_SL
+						: reason === 'fct'
+							? TradeStatus.CLOSED_FCT
+							: TradeStatus.CLOSED_SELL;
 		}
 
 		// Prepare data for sequential completion
@@ -208,6 +212,7 @@ class QueueService {
 				status,
 				exitPrice: finalPrice,
 				exitBtcPrice: btcPrice,
+				reason,
 			},
 			{
 				jobId: `complete-${trade.id}`,
@@ -228,7 +233,9 @@ class QueueService {
 		try {
 			await redisService.connect();
 		} catch (error) {
-			logger.error(`Failed to ensure Redis connection for completion job ${job.id}: ${error}`);
+			logger.error(
+				`Failed to ensure Redis connection for completion job ${job.id}: ${error}`,
+			);
 			throw new Error('Redis connection required');
 		}
 

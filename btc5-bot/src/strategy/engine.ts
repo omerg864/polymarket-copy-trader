@@ -1,4 +1,4 @@
-import { calculateFee, type Trade } from '@shared/types';
+import { calculateFee, TradeStatus, TradeType, type Trade } from '@shared/types';
 import config from '../config';
 import demoTradingService from '../services/demoTrading';
 import polymarketService from '../services/polymarket';
@@ -367,7 +367,7 @@ class StrategyEngine {
 						id:
 							(orderRecord.orderID as string) ||
 							`live-${Date.now()}`,
-						type: 'live',
+						type: TradeType.LIVE,
 						direction,
 						tokenId,
 						conditionId: market.conditionId,
@@ -380,7 +380,7 @@ class StrategyEngine {
 						size,
 						cost: price * size,
 						fee,
-						status: 'open',
+						status: TradeStatus.OPEN,
 						startTime: market.startTime.toISOString(),
 						endTime: market.endTime.toISOString(),
 						enteredAt: new Date().toISOString(),
