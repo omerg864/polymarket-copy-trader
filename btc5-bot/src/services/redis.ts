@@ -1,16 +1,18 @@
 import {
 	DEFAULT_STRATEGY_CONFIG,
+	REDIS_KEYS,
+	REDIS_PREFIX,
 	StrategyConfig,
 	type BotStats,
 	type Trade,
-} from '@shared/types';
+} from '@shared/index';
 import Redis from 'ioredis';
 import config from '../config';
 import logger from '../utils/logger';
 
 class RedisService {
 	private client: Redis | null = null;
-	private readonly prefix = 'pmbot:';
+	private readonly mode = config.isDemo ? 'demo' : 'live';
 
 	async connect(): Promise<void> {
 		this.client = new Redis(config.redisUrl, {
@@ -42,10 +44,6 @@ class RedisService {
 		}
 	}
 
-	private _key(type: string, id: string): string {
-		return `${this.prefix}${type}:${id}`;
-	}
-
 	private getClient(): Redis {
 		if (!this.client) throw new Error('Redis client not connected');
 		return this.client;
@@ -63,21 +61,23 @@ class RedisService {
 
 	async saveTrade(trade: Trade): Promise<Trade> {
 		const client = this.getClient();
-		const key = this._key('trade', trade.id);
+		const key = `${REDIS_KEYS.TRADE_PREFIX(this.mode)}${trade.id}`;
 		await client.set(key, JSON.stringify(trade));
-		await client.sadd(`${this.prefix}active_trades`, trade.id);
+		await client.sadd(REDIS_KEYS.ACTIVE_TRADES(this.mode), trade.id);
 		return trade;
 	}
 
 	async getTrade(tradeId: string): Promise<Trade | null> {
 		const client = this.getClient();
-		const data = await client.get(this._key('trade', tradeId));
+		const data = await client.get(
+			`${REDIS_KEYS.TRADE_PREFIX(this.mode)}${tradeId}`,
+		);
 		return data ? (JSON.parse(data) as Trade) : null;
 	}
 
 	async getActiveTrades(): Promise<Trade[]> {
 		const client = this.getClient();
-		const ids = await client.smembers(`${this.prefix}active_trades`);
+		const ids = await client.smembers(REDIS_KEYS.ACTIVE_TRADES(this.mode));
 		if (ids.length === 0) return [];
 
 		const trades = await Promise.all(ids.map((id) => this.getTrade(id)));
@@ -86,30 +86,31 @@ class RedisService {
 
 	async removeTrade(tradeId: string): Promise<void> {
 		const client = this.getClient();
-		await client.del(this._key('trade', tradeId));
-		await client.srem(`${this.prefix}active_trades`, tradeId);
+		await client.del(`${REDIS_KEYS.TRADE_PREFIX(this.mode)}${tradeId}`);
+		await client.srem(REDIS_KEYS.ACTIVE_TRADES(this.mode), tradeId);
 	}
 
 	// ---- Trade History ----
 
 	async saveTradeHistory(trade: Trade): Promise<Trade> {
 		const client = this.getClient();
-		const key = `${this.prefix}history`;
-		const idsKey = `${this.prefix}history_ids`;
+		const historyKey = REDIS_KEYS.HISTORY(this.mode);
+		const idsKey = REDIS_KEYS.HISTORY_IDS(this.mode);
+		
 		const record: Trade = {
 			...trade,
 			closedAt: new Date().toISOString(),
 		};
-		await client.lpush(key, JSON.stringify(record));
+		await client.lpush(historyKey, JSON.stringify(record));
 		await client.sadd(idsKey, trade.id);
 		// Keep last 500 trades
-		await client.ltrim(key, 0, 499);
+		await client.ltrim(historyKey, 0, 499);
 		return record;
 	}
 
 	async getTradeHistory(limit: number = 50): Promise<Trade[]> {
 		const client = this.getClient();
-		const key = `${this.prefix}history`;
+		const key = REDIS_KEYS.HISTORY(this.mode);
 		const records = await client.lrange(key, 0, limit - 1);
 		return records.map((r) => JSON.parse(r) as Trade);
 	}
@@ -117,7 +118,7 @@ class RedisService {
 	async isTradeInHistory(tradeId: string): Promise<boolean> {
 		const client = this.getClient();
 		const result = await client.sismember(
-			`${this.prefix}history_ids`,
+			REDIS_KEYS.HISTORY_IDS(this.mode),
 			tradeId,
 		);
 		return result === 1;
@@ -131,13 +132,14 @@ class RedisService {
 		ttlSeconds: number = 600,
 	): Promise<void> {
 		const client = this.getClient();
-		const key = this._key('market', conditionId);
+		const key = `${REDIS_PREFIX}market:${conditionId}`;
 		await client.set(key, JSON.stringify(marketData), 'EX', ttlSeconds);
 	}
 
 	async getMarketCache(conditionId: string): Promise<unknown | null> {
 		const client = this.getClient();
-		const data = await client.get(this._key('market', conditionId));
+		const key = `${REDIS_PREFIX}market:${conditionId}`;
+		const data = await client.get(key);
 		return data ? JSON.parse(data) : null;
 	}
 
@@ -145,37 +147,37 @@ class RedisService {
 
 	async saveBotState(state: Record<string, unknown>): Promise<void> {
 		const client = this.getClient();
-		await client.set(`${this.prefix}state:bot`, JSON.stringify(state));
+		await client.set(`${REDIS_PREFIX}state:bot`, JSON.stringify(state));
 	}
 
 	async getBotState(): Promise<Record<string, unknown> | null> {
 		const client = this.getClient();
-		const data = await client.get(`${this.prefix}state:bot`);
+		const data = await client.get(`${REDIS_PREFIX}state:bot`);
 		return data ? (JSON.parse(data) as Record<string, unknown>) : null;
 	}
 
 	async isStopRequested(): Promise<boolean> {
 		const client = this.getClient();
-		const raw = await client.get(`${this.prefix}state:stop_requested`);
+		const raw = await client.get(REDIS_KEYS.STOP_REQUESTED(this.mode));
 		return raw === 'true';
 	}
 
 	async setStopRequested(requested: boolean): Promise<void> {
 		const client = this.getClient();
 		await client.set(
-			`${this.prefix}state:stop_requested`,
+			REDIS_KEYS.STOP_REQUESTED(this.mode),
 			requested ? 'true' : 'false',
 		);
 	}
 
 	async setBotStartTime(ms: number): Promise<void> {
 		const client = this.getClient();
-		await client.set(`${this.prefix}state:start_time`, ms.toString());
+		await client.set(REDIS_KEYS.START_TIME(this.mode), ms.toString());
 	}
 
 	async getBotStartTime(): Promise<number | null> {
 		const client = this.getClient();
-		const raw = await client.get(`${this.prefix}state:start_time`);
+		const raw = await client.get(REDIS_KEYS.START_TIME(this.mode));
 		return raw ? parseInt(raw, 10) : null;
 	}
 
@@ -183,10 +185,9 @@ class RedisService {
 
 	async getBotBalance(config?: StrategyConfig): Promise<number> {
 		const client = this.getClient();
-		// Prefer config.mode if present, else fallback to config.isDemo, else default true
-		const isDemo = config?.mode === 'demo' || true;
-		const prefix = isDemo ? 'demo' : 'live';
-		const raw = await client.get(`${this.prefix}${prefix}:balance`);
+		const mode = config?.mode || this.mode;
+		const key = REDIS_KEYS.BALANCE(mode);
+		const raw = await client.get(key);
 		if (raw !== null && raw !== undefined) {
 			const balance = parseFloat(raw);
 			if (!isNaN(balance)) return balance;
@@ -198,17 +199,17 @@ class RedisService {
 
 	async setBotBalance(balance: number): Promise<void> {
 		const client = this.getClient();
-		const prefix = config.isDemo ? 'demo' : 'live';
+		const key = REDIS_KEYS.BALANCE(this.mode);
 		const val = isNaN(balance)
 			? DEFAULT_STRATEGY_CONFIG.botAllowance
 			: balance;
-		await client.set(`${this.prefix}${prefix}:balance`, val.toString());
+		await client.set(key, val.toString());
 	}
 
 	async getBotStats(): Promise<BotStats> {
 		const client = this.getClient();
-		const prefix = config.isDemo ? 'demo' : 'live';
-		const data = await client.get(`${this.prefix}${prefix}:stats`);
+		const key = REDIS_KEYS.STATS(this.mode);
+		const data = await client.get(key);
 		return data
 			? (JSON.parse(data) as BotStats)
 			: { totalTrades: 0, wins: 0, losses: 0, totalPnl: 0, totalFees: 0 };
@@ -216,17 +217,14 @@ class RedisService {
 
 	async updateBotStats(stats: BotStats): Promise<void> {
 		const client = this.getClient();
-		const prefix = config.isDemo ? 'demo' : 'live';
-		await client.set(
-			`${this.prefix}${prefix}:stats`,
-			JSON.stringify(stats),
-		);
+		const key = REDIS_KEYS.STATS(this.mode);
+		await client.set(key, JSON.stringify(stats));
 	}
 
 	async setBtcPrice(btcPrice: number): Promise<void> {
 		const client = this.getClient();
 		await client.set(
-			`${this.prefix}btc_price`,
+			REDIS_KEYS.BTC_PRICE,
 			JSON.stringify({ btcPrice, updatedAt: Date.now() }),
 		);
 	}
@@ -237,7 +235,7 @@ class RedisService {
 	): Promise<void> {
 		const client = this.getClient();
 		await client.set(
-			`${this.prefix}ref_price`,
+			REDIS_KEYS.REF_PRICE,
 			JSON.stringify({ priceToBeat, marketTitle }),
 		);
 	}

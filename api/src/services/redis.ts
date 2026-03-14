@@ -1,9 +1,7 @@
+import { REDIS_KEYS, REDIS_PREFIX, type StrategyConfig, type Trade } from '@shared/index';
+import { DEFAULT_STRATEGY_CONFIG } from '@shared/types';
 import Redis from 'ioredis';
-import type { StrategyConfig, Trade } from '../../../shared/src/types';
-import { DEFAULT_STRATEGY_CONFIG } from '../../../shared/src/types';
 import config from '../config';
-
-const PREFIX = 'pmbot:';
 
 const redis = new Redis(config.redisUrl);
 
@@ -16,12 +14,13 @@ redis.on('connect', () => {
 });
 
 export async function getActiveTrades(): Promise<Trade[]> {
-	const ids = await redis.smembers(`${PREFIX}active_trades`);
+    const isDemo = config.isDemo;
+	const ids = await redis.smembers(REDIS_KEYS.ACTIVE_TRADES(isDemo ? 'demo' : 'live'));
 	if (ids.length === 0) return [];
 
 	const trades = await Promise.all(
 		ids.map(async (id) => {
-			const data = await redis.get(`${PREFIX}trade:${id}`);
+			const data = await redis.get(`${REDIS_KEYS.TRADE_PREFIX(isDemo ? 'demo' : 'live')}${id}`);
 			return data ? (JSON.parse(data) as Trade) : null;
 		}),
 	);
@@ -30,11 +29,13 @@ export async function getActiveTrades(): Promise<Trade[]> {
 }
 
 export async function getTradeHistory(limit?: number): Promise<Trade[]> {
+    const isDemo = config.isDemo;
+    const key = REDIS_KEYS.HISTORY(isDemo ? 'demo' : 'live');
 	let records: string[];
 	if (limit) {
-		records = await redis.lrange(`${PREFIX}history`, 0, limit - 1);
+		records = await redis.lrange(key, 0, limit - 1);
 	} else {
-		records = await redis.lrange(`${PREFIX}history`, 0, -1);
+		records = await redis.lrange(key, 0, -1);
 	}
 	return records.map((r) => JSON.parse(r) as Trade);
 }
@@ -48,38 +49,41 @@ interface BotStats {
 }
 
 export async function getBotStats(): Promise<BotStats> {
-	const key = `${PREFIX}${config.isDemo ? 'demo' : 'live'}:stats`;
+	const key = REDIS_KEYS.STATS(config.isDemo ? 'demo' : 'live');
 	const raw = await redis.get(key);
 	return raw
 		? (JSON.parse(raw) as BotStats)
 		: { totalTrades: 0, wins: 0, losses: 0, totalPnl: 0, totalFees: 0 };
 }
 
-export async function getBotBalance(config?: StrategyConfig): Promise<number> {
-	const isDemo = config?.mode === 'demo' || true;
-	const key = `${PREFIX}${isDemo ? 'demo' : 'live'}:balance`;
+export async function getBotBalance(configParams?: StrategyConfig): Promise<number> {
+	const mode = configParams?.mode || (config.isDemo ? 'demo' : 'live');
+	const key = REDIS_KEYS.BALANCE(mode);
 	const raw = await redis.get(key);
 	if (raw) {
 		const balance = parseFloat(raw);
 		if (!isNaN(balance)) return balance;
 	}
 	const botAllowance =
-		config?.botAllowance ?? DEFAULT_STRATEGY_CONFIG.botAllowance;
+		configParams?.botAllowance ?? DEFAULT_STRATEGY_CONFIG.botAllowance;
 	return botAllowance;
 }
 
 export async function getBotStartTime(): Promise<number | null> {
-	const raw = await redis.get(`${PREFIX}state:start_time`);
+    const isDemo = config.isDemo;
+	const raw = await redis.get(REDIS_KEYS.START_TIME(isDemo ? 'demo' : 'live'));
 	return raw ? parseInt(raw, 10) : null;
 }
 
 export async function getStopRequested(): Promise<boolean> {
-	const val = await redis.get(`${PREFIX}state:stop_requested`);
+    const isDemo = config.isDemo;
+	const val = await redis.get(REDIS_KEYS.STOP_REQUESTED(isDemo ? 'demo' : 'live'));
 	return val === 'true';
 }
 
 export async function setStopRequested(stop: boolean): Promise<void> {
-	await redis.set(`${PREFIX}state:stop_requested`, stop ? 'true' : 'false');
+    const isDemo = config.isDemo;
+	await redis.set(REDIS_KEYS.STOP_REQUESTED(isDemo ? 'demo' : 'live'), stop ? 'true' : 'false');
 }
 
 export async function flushRedis(): Promise<void> {
@@ -95,8 +99,8 @@ export interface MarketPricesData {
 
 export async function getMarketPrices(): Promise<MarketPricesData | null> {
 	const [btcRaw, refRaw] = await Promise.all([
-		redis.get(`${PREFIX}btc_price`),
-		redis.get(`${PREFIX}ref_price`),
+		redis.get(REDIS_KEYS.BTC_PRICE),
+		redis.get(REDIS_KEYS.REF_PRICE),
 	]);
 	if (!btcRaw) return null;
 	const btcData = JSON.parse(btcRaw) as {
