@@ -86,6 +86,7 @@ export interface StrategyConfig {
 	maxSecLoseFct: number;
 	cycleIntervalMs: number;
 	dayPnlGoal: number;
+	minSecondsRemaining: number;
 }
 
 export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
@@ -115,6 +116,7 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 	maxSecLoseFct: 13,
 	cycleIntervalMs: 5000,
 	dayPnlGoal: 2,
+	minSecondsRemaining: 30,
 };
 
 export interface NotificationConfig {

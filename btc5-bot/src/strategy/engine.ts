@@ -172,9 +172,10 @@ class StrategyEngine {
 		}
 
 		// Skip if market is about to end
-		if (msUntilEnd < 60000) {
+		const minMsRemaining = sc.minSecondsRemaining * 1000;
+		if (msUntilEnd < minMsRemaining) {
 			logger.info(
-				`   ⏩ Market ends in ${(msUntilEnd / 1000).toFixed(0)}s. Too late to enter. Skipping.`,
+				`   ⏩ Market ends in ${(msUntilEnd / 1000).toFixed(0)}s. Threshold is ${(minMsRemaining / 1000).toFixed(0)}s. Skipping.`,
 			);
 			return;
 		}

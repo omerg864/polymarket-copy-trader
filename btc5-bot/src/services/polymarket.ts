@@ -5,6 +5,7 @@ import axios, { AxiosInstance } from 'axios';
 import config, { validateLiveConfig } from '../config';
 import logger from '../utils/logger';
 import NotificationManager from './notificationManager';
+import { getStrategyConfig } from './strategyConfig';
 
 interface OrderBook {
 	midpoint?: string;
@@ -155,10 +156,14 @@ class PolymarketService {
 				this._getMarketSlug(currentStart),
 			);
 
-			// If current market is found, check if it's still actionable (>60s left)
+			// If current market is found, check if it's still actionable
 			if (market) {
+				const sc = await getStrategyConfig();
+				const minMsRemaining = sc.minSecondsRemaining * 1000;
 				const msUntilEnd = market.endTime.getTime() - now.getTime();
-				if (msUntilEnd >= 60000) {
+				
+				// Return current market if it has enough time
+				if (msUntilEnd >= minMsRemaining) {
 					return market;
 				}
 			}
