@@ -3,6 +3,7 @@ import config, { validateLiveConfig } from './config';
 import demoTradingService from './services/demoTrading';
 import polymarketService from './services/polymarket';
 import redisService from './services/redis';
+import queueService from './services/queueService';
 import strategyEngine from './strategy/engine';
 import logger from './utils/logger';
 

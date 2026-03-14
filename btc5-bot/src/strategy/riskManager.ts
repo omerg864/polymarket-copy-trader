@@ -6,6 +6,7 @@ import priceAnalysisService from '../services/priceAnalysis';
 import redisService from '../services/redis';
 import { getStrategyConfig } from '../services/strategyConfig';
 import notificationManager from '../services/notificationManager';
+import queueService from '../services/queueService';
 import logger from '../utils/logger';
 
 /**
@@ -215,58 +216,17 @@ class RiskManager {
 
 		this.sellingTrades.add(trade.id);
 		try {
-			if (config.isDemo) {
-				await demoTradingService.placeSellOrder(
-					trade,
-					currentPrice,
-					reason,
-					btcPrice,
-				);
-			} else {
-				const market = {
-					conditionId: trade.conditionId,
-					tickSize: config.tickSize,
-					negRisk: config.negRisk,
-				};
-				await polymarketService.placeSellOrder(
-					trade.tokenId,
-					currentPrice,
-					trade.size,
-					market,
-				);
-
-				trade.status = 'closed_sell';
-				trade.exitPrice = currentPrice;
-				const revenue = currentPrice * trade.size;
-				const sellFee = calculateFee(trade.size, currentPrice);
-				const totalFee = (trade.fee || 0) + sellFee;
-				trade.pnl = revenue - trade.cost - totalFee;
-				trade.fee = totalFee;
-				trade.exitBtcPrice = btcPrice;
-				trade.closedAt = new Date().toISOString();
-
-				await redisService.removeTrade(trade.id);
-				await redisService.saveTradeHistory(trade);
-				const sc = await getStrategyConfig();
-				const bal = await redisService.getBotBalance(sc);
-				await redisService.setBotBalance(bal + revenue - sellFee);
-
-				const stats = await redisService.getBotStats();
-				stats.totalTrades += 1;
-				if (trade.pnl >= 0) stats.wins += 1;
-				else stats.losses += 1;
-				stats.totalPnl += trade.pnl;
-				stats.totalFees += totalFee;
-				await redisService.updateBotStats(stats);
-
-				// Trigger notification via centralized manager
-				await notificationManager.handleTradeClosed(trade, stats);
-			}
+			await queueService.addSellJob({
+				trade,
+				type: 'SELL_ORDER',
+				exitPrice: currentPrice,
+				btcPrice,
+				reason
+			});
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : String(error);
-			logger.error(`Error executing sell: ${message}`);
-		} finally {
+			logger.error(`Error queuing sell: ${message}`);
 			this.sellingTrades.delete(trade.id);
 		}
 	}

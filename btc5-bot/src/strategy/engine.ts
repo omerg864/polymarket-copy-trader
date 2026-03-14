@@ -6,6 +6,7 @@ import priceAnalysisService from '../services/priceAnalysis';
 import redisService from '../services/redis';
 import { getStrategyConfig } from '../services/strategyConfig';
 import notificationManager from '../services/notificationManager';
+import queueService from '../services/queueService';
 import logger from '../utils/logger';
 import riskManager from './riskManager';
 
@@ -430,56 +431,12 @@ class StrategyEngine {
 			logger.info(`⏰ Resolving expired trade: ${trade.title}`);
 			const btcPrice = await priceAnalysisService.getCurrentPrice();
 
-			const winner = await polymarketService.getMarketOutcome(
-				trade.eventTicker,
-			);
-
-			if (!winner) {
-				logger.info(
-					'   ⏳ Market not yet resolved on Polymarket. Will check again.',
-				);
-				continue;
-			}
-
-			const won = trade.direction === winner;
-
-			if (config.isDemo) {
-				await demoTradingService.resolveTrade(trade, won);
-			} else {
-				trade.status = 'resolved';
-				trade.closedAt = new Date().toISOString();
-
-				const finalPrice = won ? 1.0 : 0.0;
-				const revenue = finalPrice * trade.size;
-				const totalFee = trade.fee || 0;
-				trade.pnl = revenue - trade.cost - totalFee;
-				trade.exitPrice = finalPrice;
-				trade.exitBtcPrice = btcPrice ?? undefined;
-
-				await redisService.removeTrade(trade.id);
-				await redisService.saveTradeHistory(trade);
-
-				const sc = await getStrategyConfig();
-				const bal = await redisService.getBotBalance(sc);
-				await redisService.setBotBalance(bal + revenue);
-
-				const stats = await redisService.getBotStats();
-				stats.totalTrades += 1;
-				if (trade.pnl >= 0) stats.wins += 1;
-				else stats.losses += 1;
-				stats.totalPnl += trade.pnl;
-				stats.totalFees += totalFee;
-				await redisService.updateBotStats(stats);
-
-				// Trigger notification via centralized manager
-				await notificationManager.handleTradeClosed(trade, stats);
-
-				logger.trade('Trade resolved (on-chain)', {
-					id: trade.id,
-					outcome: winner,
-					won,
-				});
-			}
+			// Offload resolution to BullMQ
+			await queueService.addSellJob({
+				trade,
+				type: 'RESOLVE',
+				btcPrice: btcPrice ?? undefined
+			});
 		}
 	}
 }

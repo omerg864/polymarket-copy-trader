@@ -95,11 +95,13 @@ class RedisService {
 	async saveTradeHistory(trade: Trade): Promise<Trade> {
 		const client = this.getClient();
 		const key = `${this.prefix}history`;
+		const idsKey = `${this.prefix}history_ids`;
 		const record: Trade = {
 			...trade,
 			closedAt: new Date().toISOString(),
 		};
 		await client.lpush(key, JSON.stringify(record));
+		await client.sadd(idsKey, trade.id);
 		// Keep last 500 trades
 		await client.ltrim(key, 0, 499);
 		return record;
@@ -110,6 +112,15 @@ class RedisService {
 		const key = `${this.prefix}history`;
 		const records = await client.lrange(key, 0, limit - 1);
 		return records.map((r) => JSON.parse(r) as Trade);
+	}
+
+	async isTradeInHistory(tradeId: string): Promise<boolean> {
+		const client = this.getClient();
+		const result = await client.sismember(
+			`${this.prefix}history_ids`,
+			tradeId,
+		);
+		return result === 1;
 	}
 
 	// ---- Market Cache ----

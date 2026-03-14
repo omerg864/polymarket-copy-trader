@@ -23,7 +23,8 @@
 		"dashboard": "node src/api.js & cd dashboard && npm run dev",
 		"stop": "node src/stop.js",
 		"verify-stats": "npx tsx scripts/verify-stats.ts",
-		"fix-duplicates": "npx tsx scripts/fix-duplicates.ts"
+		"fix-duplicates": "npx tsx scripts/fix-duplicates.ts",
+		"sync-history": "npx tsx scripts/sync-history-ids.ts"
 	},
 	"keywords": [
 		"polymarket",
@@ -35,6 +36,7 @@
 	"dependencies": {
 		"@polymarket/clob-client": "^5.1.0",
 		"axios": "^1.7.0",
+		"bullmq": "^5.71.0",
 		"cors": "^2.8.6",
 		"dotenv": "^16.4.0",
 		"ethers": "^5.7.2",
