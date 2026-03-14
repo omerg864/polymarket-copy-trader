@@ -443,6 +443,14 @@ export function Header() {
 										editValues={editValues}
 										setEditValues={setEditValues}
 									/>
+									<ConfigRow
+										label="Min Seconds Remaining"
+										field="minSecondsRemaining"
+										suffix="s"
+										editing={editing}
+										editValues={editValues}
+										setEditValues={setEditValues}
+									/>
 								</ConfigSection>
 								<ConfigSection title="Technical Analysis">
 									<ConfigRow
