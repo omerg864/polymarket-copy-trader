@@ -101,6 +101,13 @@ export async function triggerNotification(
 			`<b>Today's P&L:</b> <code class="text-emerald-400">$${data.todayPnl?.toFixed(2)}</code>\n` +
 			`<b>Target:</b> $${data.max}\n` +
 			`<b>Total Trades:</b> ${data.totalTrades}`;
+	} else if (type === 'error' && config.notificationOnError) {
+		shouldNotify = true;
+		message =
+			`<b>❌ BOT ERROR</b>\n\n` +
+			`<b>Service:</b> ${data.service || 'Unknown'}\n` +
+			`<b>Error:</b> <code>${data.message || 'Unknown error'}</code>\n` +
+			`<b>Context:</b> ${data.context || 'N/A'}`;
 	} else if (type === 'manual') {
 		shouldNotify = true;
 		message = data.message || 'Manual notification triggered.';

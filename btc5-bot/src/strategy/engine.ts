@@ -73,6 +73,7 @@ class StrategyEngine {
 				const stack = error instanceof Error ? error.stack : '';
 				logger.error(`Strategy cycle error: ${message}`);
 				if (stack) logger.error(stack);
+				await notificationManager.handleError(error, 'StrategyEngine', 'executeCycle');
 			}
 			const sc = await getStrategyConfig();
 			this.scheduleNextCycle(sc.cycleIntervalMs);

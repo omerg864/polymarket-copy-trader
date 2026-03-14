@@ -123,6 +123,7 @@ export interface NotificationConfig {
 	notificationOnWin: boolean;
 	notificationOnLoss: boolean;
 	notificationOnPnlGoal: boolean;
+	notificationOnError: boolean;
 }
 
 export const DEFAULT_NOTIFICATION_CONFIG: NotificationConfig = {
@@ -131,6 +132,7 @@ export const DEFAULT_NOTIFICATION_CONFIG: NotificationConfig = {
 	notificationOnWin: true,
 	notificationOnLoss: true,
 	notificationOnPnlGoal: true,
+	notificationOnError: true,
 };
 
 export function resolveStrategyConfig(
@@ -192,6 +194,7 @@ export type NotificationType =
 	| 'goal'
 	| 'min_pnl'
 	| 'max_pnl'
+	| 'error'
 	| 'manual';
 
 /**

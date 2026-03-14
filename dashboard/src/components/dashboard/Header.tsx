@@ -659,6 +659,14 @@ export function Header() {
 										editValues={editNotificationValues}
 										setEditValues={setEditNotificationValues}
 									/>
+									<ConfigRowNotification
+										label="Notify on Error"
+										field="notificationOnError"
+										type="switch"
+										editing={editingNotification}
+										editValues={editNotificationValues}
+										setEditValues={setEditNotificationValues}
+									/>
 								</ConfigSection>
 							</div>
 						) : (

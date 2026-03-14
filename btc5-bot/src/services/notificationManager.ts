@@ -127,6 +127,27 @@ export class NotificationManager {
 			}
 		}
 	}
+
+	/**
+	 * Centralized handler for bot errors.
+	 */
+	static async handleError(
+		error: any,
+		service: string = 'Bot',
+		context?: string,
+	): Promise<void> {
+		const nc = await this.getNotificationConfig();
+
+		if (nc?.notificationOnError) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			this.trigger('error', {
+				service,
+				message,
+				context,
+			});
+		}
+	}
 }
 
 export default NotificationManager;

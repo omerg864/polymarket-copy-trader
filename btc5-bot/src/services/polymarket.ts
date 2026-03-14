@@ -4,6 +4,7 @@ import { ClobClient, OrderType, Side } from '@polymarket/clob-client';
 import axios, { AxiosInstance } from 'axios';
 import config, { validateLiveConfig } from '../config';
 import logger from '../utils/logger';
+import NotificationManager from './notificationManager';
 
 interface OrderBook {
 	midpoint?: string;
@@ -119,6 +120,11 @@ class PolymarketService {
 			const message =
 				error instanceof Error ? error.message : String(error);
 			logger.error(`Error fetching next market: ${message}`);
+			NotificationManager.handleError(
+				error,
+				'Polymarket',
+				'getNextMarket',
+			);
 			return null;
 		}
 	}
@@ -262,6 +268,11 @@ class PolymarketService {
 			const message =
 				error instanceof Error ? error.message : String(error);
 			logger.error(`Error fetching market prices: ${message}`);
+			NotificationManager.handleError(
+				error,
+				'Polymarket',
+				'getMarketPrices',
+			);
 			return {
 				upPrice: 0.5,
 				downPrice: 0.5,

@@ -9,6 +9,7 @@ import {
 } from 'technicalindicators';
 import logger from '../utils/logger';
 import { getStrategyConfig } from './strategyConfig';
+import NotificationManager from './notificationManager';
 
 class PriceAnalysisService {
 	private binanceApi: AxiosInstance;
@@ -47,6 +48,11 @@ class PriceAnalysisService {
 			const message =
 				error instanceof Error ? error.message : String(error);
 			logger.error(`Error fetching candles: ${message}`);
+			NotificationManager.handleError(
+				error,
+				'PriceAnalysis',
+				'getCandles',
+			);
 			return [];
 		}
 	}
@@ -67,6 +73,11 @@ class PriceAnalysisService {
 			const message =
 				error instanceof Error ? error.message : String(error);
 			logger.error(`Error fetching BTC price: ${message}`);
+			NotificationManager.handleError(
+				error,
+				'PriceAnalysis',
+				'getCurrentPrice',
+			);
 			return null;
 		}
 	}
