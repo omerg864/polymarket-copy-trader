@@ -16,10 +16,13 @@ import {
 import { useActiveTrades } from '@/hooks/use-api';
 import { formatDate } from '@/lib/utils';
 import type { Trade } from '@/types';
+import { useState } from 'react';
 import { DirectionBadge } from './badges';
+import { TradeDetailsDialog } from './TradeDetailsDialog';
 
 export function ActiveTradesTable() {
 	const { data: activeTrades } = useActiveTrades();
+	const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
 
 	if (!activeTrades || activeTrades.length === 0) return null;
 
@@ -79,7 +82,8 @@ export function ActiveTradesTable() {
 								return (
 									<TableRow
 										key={trade.id}
-										className="border-zinc-800"
+										className="border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors"
+										onClick={() => setSelectedTrade(trade)}
 									>
 										<TableCell className="font-mono text-xs text-zinc-400">
 											{trade.title.replace(
@@ -133,6 +137,11 @@ export function ActiveTradesTable() {
 					</Table>
 				</div>
 			</CardContent>
+
+			<TradeDetailsDialog
+				trade={selectedTrade}
+				onClose={() => setSelectedTrade(null)}
+			/>
 		</Card>
 	);
 }

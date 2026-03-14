@@ -10,7 +10,6 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
 import {
 	getAuthRole,
 	useConfig,
@@ -19,17 +18,16 @@ import {
 	useSummary,
 	useToggleStop,
 	useTradeHistory,
-	useUpdateConfig,
 	useNotificationConfig,
-	useUpdateNotificationConfig,
 } from '@/hooks/use-api';
-import type { NotificationConfig, StrategyConfig } from '@/types';
 import { useMemoizedFn } from 'ahooks';
 import { saveAs } from 'file-saver';
-import { Bell, Copy, Database, ExternalLink, Pencil } from 'lucide-react';
+import { Bell, Database } from 'lucide-react';
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { HeaderClocks } from './HeaderClocks';
+import { NotificationConfigDialog } from './NotificationConfigDialog';
+import { StrategyConfigDialog } from './StrategyConfigDialog';
 
 export function Header() {
 	const { data: summary, refetch: refetchSummary } = useSummary();
@@ -40,36 +38,11 @@ export function Header() {
 	const toggleStop = useToggleStop();
 	const { data: redisStats, refetch: refetchRedisStats } = useRedisStats();
 	const flushRedis = useFlushRedis();
-	const updateConfig = useUpdateConfig();
-	const updateNotificationConfig = useUpdateNotificationConfig();
 	const isReadonly = getAuthRole() === 'readonly';
 	const isAdmin = getAuthRole() === 'admin';
 
-	const [editing, setEditing] = useState(false);
-	const [editValues, setEditValues] = useState<Partial<StrategyConfig>>({});
 	const [configOpen, setConfigOpen] = useState(false);
-
 	const [notificationOpen, setNotificationOpen] = useState(false);
-	const [editingNotification, setEditingNotification] = useState(false);
-	const [editNotificationValues, setEditNotificationValues] = useState<
-		Partial<NotificationConfig>
-	>({});
-
-	const resetEditValues = () => {
-		if (config) {
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const { mode: _, ...strategy } = config;
-			setEditValues(strategy);
-		}
-		setEditing(false);
-	};
-
-	const resetNotificationEditValues = () => {
-		if (notificationConfig) {
-			setEditNotificationValues(notificationConfig);
-		}
-		setEditingNotification(false);
-	};
 
 	const handleExport = useMemoizedFn(() => {
 		if (!history || !summary || !config) return;
@@ -214,7 +187,6 @@ export function Header() {
 					className="h-7 px-3 text-xs font-medium rounded border bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
 					onClick={() => {
 						setNotificationOpen(true);
-						resetNotificationEditValues();
 					}}
 				>
 					<Bell className="h-3.5 w-3.5 mr-1" />
@@ -280,599 +252,31 @@ export function Header() {
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>
-				<Dialog
+
+				<Badge
+					variant="outline"
+					className="text-xs border-zinc-700 text-zinc-400 cursor-pointer hover:bg-zinc-800 transition-colors"
+					onClick={() => setConfigOpen(true)}
+				>
+					{config?.mode?.toUpperCase() || 'LOADING'} MODE
+				</Badge>
+
+				<StrategyConfigDialog
 					open={configOpen}
-					onOpenChange={(open) => {
-						setConfigOpen(open);
-						if (open) resetEditValues();
-					}}
-				>
-					<DialogTrigger asChild>
-						<Badge
-							variant="outline"
-							className="text-xs border-zinc-700 text-zinc-400 cursor-pointer hover:bg-zinc-800 transition-colors"
-						>
-							{config?.mode?.toUpperCase() || 'LOADING'} MODE
-						</Badge>
-					</DialogTrigger>
-					<DialogContent className="sm:max-w-[425px] bg-zinc-950 border border-zinc-800 text-zinc-100">
-						<DialogHeader>
-							<DialogTitle className="text-xl flex items-center justify-between">
-								Bot Configuration
-								{isAdmin && !editing && (
-									<Button
-										variant="ghost"
-										size="sm"
-										className="h-7 px-2 text-zinc-400 hover:text-zinc-200"
-										onClick={() => setEditing(true)}
-									>
-										<Pencil className="h-3.5 w-3.5 mr-1" />
-										Edit
-									</Button>
-								)}
-							</DialogTitle>
-						</DialogHeader>
-						{config ? (
-							<div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
-								<ConfigSection title="Trading Limits">
-									<ConfigRow
-										label="Min Order Size"
-										field="minOrderSizeUsd"
-										prefix="$"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Max Order Size"
-										field="maxOrderSizeUsd"
-										prefix="$"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Max Open Trades"
-										field="maxConcurrentTrades"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Bot Allowance"
-										field="botAllowance"
-										prefix="$"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-								</ConfigSection>
-								<ConfigSection title="Strategy Guards">
-									<ConfigRow
-										label="Min Confidence"
-										field="confidenceThreshold"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Min Entry Price"
-										field="minEntryPrice"
-										prefix="$"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Max Entry Price"
-										field="maxEntryPrice"
-										prefix="$"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Min StochRSI"
-										field="minStochRSI"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Max StochRSI"
-										field="maxStochRSI"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Min RSI-14"
-										field="minRSI14"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Max RSI-14"
-										field="maxRSI14"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Min BB Position"
-										field="minBBPosition"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Max BB Position"
-										field="maxBBPosition"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Min Market Age"
-										field="minMarketAgeMinutes"
-										suffix=" min"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Take Profit"
-										field="takeProfitPct"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Stop Loss"
-										field="stopLossPct"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Force Close Before End"
-										field="maxSecLoseFct"
-										suffix="s"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Min Seconds Remaining"
-										field="minSecondsRemaining"
-										suffix="s"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-								</ConfigSection>
-								<ConfigSection title="Technical Analysis">
-									<ConfigRow
-										label="Candles Fetched"
-										field="candleCount"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="RSI Period"
-										field="rsiPeriod"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="EMA Fast"
-										field="emaFast"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="EMA Slow"
-										field="emaSlow"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-								</ConfigSection>
-								<ConfigSection title="Advanced">
-									<ConfigRow
-										label="Risk Monitor Interval"
-										field="riskMonitorIntervalMs"
-										suffix=" ms"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="High Price Threshold"
-										field="highPriceThreshold"
-										prefix="$"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="High Price Bonus"
-										field="highPriceMaxBonusPct"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Cycle Interval"
-										field="cycleIntervalMs"
-										suffix=" ms"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-									<ConfigRow
-										label="Day P&L Goal"
-										field="dayPnlGoal"
-										prefix="$"
-										editing={editing}
-										editValues={editValues}
-										setEditValues={setEditValues}
-									/>
-								</ConfigSection>
-							</div>
-						) : (
-							<div className="py-8 text-center text-zinc-500 animate-pulse">
-								Loading configuration...
-							</div>
-						)}
-						{editing && (
-							<DialogFooter className="gap-2 sm:gap-0">
-								<Button
-									variant="outline"
-									className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-									onClick={() => {
-										resetEditValues();
-									}}
-								>
-									Cancel
-								</Button>
-								<Button
-									className="bg-blue-600 hover:bg-blue-700 text-white"
-									disabled={updateConfig.isPending}
-									onClick={() => {
-										updateConfig.mutate(editValues, {
-											onSuccess: () => {
-												setEditing(false);
-												refetchConfig();
-											},
-										});
-									}}
-								>
-									{updateConfig.isPending
-										? '⌛ Saving...'
-										: 'Save Changes'}
-								</Button>
-							</DialogFooter>
-						)}
-					</DialogContent>
-				</Dialog>
+					onOpenChange={setConfigOpen}
+					config={config}
+					isAdmin={isAdmin}
+					refetchConfig={refetchConfig}
+				/>
 
-				<Dialog
+				<NotificationConfigDialog
 					open={notificationOpen}
-					onOpenChange={(open) => {
-						setNotificationOpen(open);
-						if (open) resetNotificationEditValues();
-					}}
-				>
-					<DialogContent className="sm:max-w-[425px] bg-zinc-950 border border-zinc-800 text-zinc-100">
-						<DialogHeader>
-							<DialogTitle className="text-xl flex items-center justify-between">
-								Notification Settings
-								{isAdmin && !editingNotification && (
-									<Button
-										variant="ghost"
-										size="sm"
-										className="h-7 px-2 text-zinc-400 hover:text-zinc-200"
-										onClick={() =>
-											setEditingNotification(true)
-										}
-									>
-										<Pencil className="h-3.5 w-3.5 mr-1" />
-										Edit
-									</Button>
-								)}
-							</DialogTitle>
-						</DialogHeader>
-						<div className="pt-2">
-							<div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 space-y-2">
-								<div className="flex items-center justify-between">
-									<span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
-										Telegram Bot
-									</span>
-									<Button
-										variant="ghost"
-										size="sm"
-										className="h-6 px-2 text-[10px] text-zinc-400 hover:text-zinc-200"
-										onClick={() => {
-											const url = import.meta.env.VITE_BOT_URL;
-											if (url) {
-												navigator.clipboard.writeText(url);
-											}
-										}}
-									>
-										<Copy className="h-3 w-3 mr-1" />
-										Copy
-									</Button>
-								</div>
-								<div className="flex items-center gap-2">
-									<a
-										href={import.meta.env.VITE_BOT_URL}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="text-sm text-blue-400 hover:text-blue-300 transition-colors break-all flex items-center gap-1.5"
-									>
-										{import.meta.env.VITE_BOT_URL || 'Not Configured'}
-										<ExternalLink className="h-3 w-3 shrink-0" />
-									</a>
-								</div>
-							</div>
-						</div>
-						{notificationConfig ? (
-							<div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
-								<ConfigSection title="PnL Thresholds">
-									<ConfigRowNotification
-										label="Min Today P&L"
-										field="minTodayPnLNotification"
-										prefix="$"
-										editing={editingNotification}
-										editValues={editNotificationValues}
-										setEditValues={setEditNotificationValues}
-									/>
-									<ConfigRowNotification
-										label="Max Today P&L"
-										field="maxTodayPnLNotification"
-										prefix="$"
-										editing={editingNotification}
-										editValues={editNotificationValues}
-										setEditValues={setEditNotificationValues}
-									/>
-								</ConfigSection>
-
-								<ConfigSection title="Events">
-									<ConfigRowNotification
-										label="Notify on Win"
-										field="notificationOnWin"
-										type="switch"
-										editing={editingNotification}
-										editValues={editNotificationValues}
-										setEditValues={setEditNotificationValues}
-									/>
-									<ConfigRowNotification
-										label="Notify on Loss"
-										field="notificationOnLoss"
-										type="switch"
-										editing={editingNotification}
-										editValues={editNotificationValues}
-										setEditValues={setEditNotificationValues}
-									/>
-									<ConfigRowNotification
-										label="Notify on P&L Goal"
-										field="notificationOnPnlGoal"
-										type="switch"
-										editing={editingNotification}
-										editValues={editNotificationValues}
-										setEditValues={setEditNotificationValues}
-									/>
-									<ConfigRowNotification
-										label="Notify on Error"
-										field="notificationOnError"
-										type="switch"
-										editing={editingNotification}
-										editValues={editNotificationValues}
-										setEditValues={setEditNotificationValues}
-									/>
-								</ConfigSection>
-							</div>
-						) : (
-							<div className="py-8 text-center text-zinc-500 animate-pulse">
-								Loading notification settings...
-							</div>
-						)}
-						{editingNotification && (
-							<DialogFooter className="gap-2 sm:gap-0">
-								<Button
-									variant="outline"
-									className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-									onClick={() => {
-										resetNotificationEditValues();
-									}}
-								>
-									Cancel
-								</Button>
-								<Button
-									className="bg-blue-600 hover:bg-blue-700 text-white"
-									disabled={
-										updateNotificationConfig.isPending
-									}
-									onClick={() => {
-										updateNotificationConfig.mutate(
-											editNotificationValues,
-											{
-												onSuccess: () => {
-													setEditingNotification(
-														false,
-													);
-													refetchNotificationConfig();
-												},
-											},
-										);
-									}}
-								>
-									{updateNotificationConfig.isPending
-										? '⌛ Saving...'
-										: 'Save Changes'}
-								</Button>
-							</DialogFooter>
-						)}
-					</DialogContent>
-				</Dialog>
+					onOpenChange={setNotificationOpen}
+					notificationConfig={notificationConfig}
+					isAdmin={isAdmin}
+					refetchNotificationConfig={refetchNotificationConfig}
+				/>
 			</div>
 		</div>
-	);
-}
-
-function ConfigSection({
-	title,
-	children,
-}: {
-	title: string;
-	children: React.ReactNode;
-}) {
-	return (
-		<div className="space-y-2">
-			<h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">
-				{title}
-			</h3>
-			<div className="grid grid-cols-2 gap-2 text-sm">{children}</div>
-		</div>
-	);
-}
-
-function ConfigRow({
-	label,
-	field,
-	prefix,
-	suffix,
-	editing,
-	editValues,
-	setEditValues,
-}: {
-	label: string;
-	field: keyof StrategyConfig;
-	prefix?: string;
-	suffix?: string;
-	editing: boolean;
-	editValues: Partial<StrategyConfig>;
-	setEditValues: React.Dispatch<
-		React.SetStateAction<Partial<StrategyConfig>>
-	>;
-}) {
-	const value = editValues[field];
-
-	if (editing) {
-		return (
-			<>
-				<span className="text-zinc-500 flex items-center">{label}</span>
-				<input
-					type="number"
-					step="any"
-					value={value ?? ''}
-					onChange={(e) =>
-						setEditValues((prev: Partial<StrategyConfig>) => ({
-							...prev,
-							[field]: parseFloat(e.target.value) || 0,
-						}))
-					}
-					className="w-full px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-100 text-right text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-				/>
-			</>
-		);
-	}
-
-	return (
-		<>
-			<span className="text-zinc-500">{label}</span>
-			<span className="text-right">
-				{prefix}
-				{value}
-				{suffix}
-			</span>
-		</>
-	);
-}
-
-function ConfigRowNotification({
-	label,
-	field,
-	prefix,
-	suffix,
-	type = 'number',
-	editing,
-	editValues,
-	setEditValues,
-}: {
-	label: string;
-	field: keyof NotificationConfig;
-	prefix?: string;
-	suffix?: string;
-	type?: 'number' | 'switch';
-	editing: boolean;
-	editValues: Partial<NotificationConfig>;
-	setEditValues: React.Dispatch<
-		React.SetStateAction<Partial<NotificationConfig>>
-	>;
-}) {
-	const value = editValues[field];
-
-	if (editing) {
-		return (
-			<>
-				<span className="text-zinc-500 flex items-center">{label}</span>
-				{type === 'switch' ? (
-					<Switch
-						checked={!!value}
-						onCheckedChange={(checked) =>
-							setEditValues(
-								(prev: Partial<NotificationConfig>) => ({
-									...prev,
-									[field]: checked,
-								}),
-							)
-						}
-						className="justify-self-end"
-					/>
-				) : (
-					<input
-						type="number"
-						step="any"
-						value={typeof value === 'number' ? value : ''}
-						onChange={(e) =>
-							setEditValues(
-								(prev: Partial<NotificationConfig>) => ({
-									...prev,
-									[field]: parseFloat(e.target.value) || 0,
-								}),
-							)
-						}
-						className="w-full px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-100 text-right text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-					/>
-				)}
-			</>
-		);
-	}
-
-	return (
-		<>
-			<span className="text-zinc-500">{label}</span>
-			<span className="text-right">
-				{type === 'switch' ? (
-					value ? (
-						<span className="text-emerald-400">Yes</span>
-					) : (
-						<span className="text-red-400">No</span>
-					)
-				) : (
-					<>
-						{prefix}
-						{value}
-						{suffix}
-					</>
-				)}
-			</span>
-		</>
 	);
 }
