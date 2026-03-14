@@ -75,6 +75,9 @@ async function main(): Promise<void> {
 		await demoTradingService.initialize();
 	}
 
+	// Start BullMQ workers
+	await queueService.startWorkers();
+
 	// Start the strategy engine
 	await strategyEngine.start();
 }
@@ -89,6 +92,7 @@ async function shutdown(signal: string): Promise<void> {
 
 	try {
 		await strategyEngine.stop();
+		await queueService.stopWorkers();
 		await redisService.disconnect();
 		await mongoose.disconnect();
 	} catch (error) {

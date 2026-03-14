@@ -11,10 +11,10 @@ import config from '../config';
 import logger from '../utils/logger';
 
 class RedisService {
-	private client: Redis | null = null;
+	private client: Redis;
 	private readonly mode = config.isDemo ? 'demo' : 'live';
 
-	async connect(): Promise<void> {
+	constructor() {
 		this.client = new Redis(config.redisUrl, {
 			retryStrategy: (times: number) => {
 				if (times > 3) {
@@ -24,6 +24,7 @@ class RedisService {
 				return Math.min(times * 500, 2000);
 			},
 			lazyConnect: true,
+			maxRetriesPerRequest: null,
 		});
 
 		this.client.on('error', (err: Error) => {
@@ -33,19 +34,21 @@ class RedisService {
 		this.client.on('connect', () => {
 			logger.info('✅ Connected to Redis');
 		});
+	}
 
+	async connect(): Promise<void> {
+		if (this.client.status === 'ready' || this.client.status === 'connecting') {
+			return;
+		}
 		await this.client.connect();
 	}
 
 	async disconnect(): Promise<void> {
-		if (this.client) {
-			await this.client.quit();
-			logger.info('Redis disconnected');
-		}
+		await this.client.quit();
+		logger.info('Redis disconnected');
 	}
 
 	private getClient(): Redis {
-		if (!this.client) throw new Error('Redis client not connected');
 		return this.client;
 	}
 
