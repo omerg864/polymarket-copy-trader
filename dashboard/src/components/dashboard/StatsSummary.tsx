@@ -60,8 +60,7 @@ export function StatsSummary() {
 	}
 
 	const dayPnlGoal = config?.dayPnlGoal ?? 2;
-	const goalProgress =
-		dayPnlGoal > 0 ? Math.min(100, (todayPnl / dayPnlGoal) * 100) : 0;
+	const goalProgress = dayPnlGoal > 0 ? (todayPnl / dayPnlGoal) * 100 : 0;
 
 	return (
 		<div className="flex flex-col gap-4 mb-4">
@@ -274,7 +273,7 @@ export function StatsSummary() {
 													: 'bg-red-400'
 										}`}
 										style={{
-											width: `${Math.max(0, goalProgress)}%`,
+											width: `${Math.max(0, Math.min(100, goalProgress))}%`,
 										}}
 									/>
 								</div>

@@ -1467,12 +1467,8 @@ export function AnalysisDashboard() {
 							{analysis.byDate.map((entry) => {
 								const goalPct =
 									dayPnlGoal > 0
-										? Math.min(
-												100,
-												(entry.main.totalPnl /
-													dayPnlGoal) *
-													100,
-											)
+										? (entry.main.totalPnl / dayPnlGoal) *
+											100
 										: 0;
 								return (
 									<AccordionItem
@@ -1518,7 +1514,7 @@ export function AnalysisDashboard() {
 																			: 'bg-red-400'
 																}`}
 																style={{
-																	width: `${Math.max(0, goalPct)}%`,
+																	width: `${Math.max(0, Math.min(100, goalPct))}%`,
 																}}
 															/>
 														</div>
