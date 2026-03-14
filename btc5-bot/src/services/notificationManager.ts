@@ -70,6 +70,7 @@ export class NotificationManager {
 	static async handleTradeClosed(
 		trade: Trade,
 		stats: BotStats,
+		balance: number,
 	): Promise<void> {
 		const sc = await getStrategyConfig();
 		const nc = await this.getNotificationConfig();
@@ -83,6 +84,8 @@ export class NotificationManager {
 				trade.pctChange ||
 				(trade.cost > 0 ? trade.pnl / trade.cost : 0),
 			exitPrice: trade.exitPrice,
+			balance: balance,
+			status: trade.status,
 		});
 
 		// Check for daily P&L goal achievement (from Strategy Config)

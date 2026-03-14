@@ -266,7 +266,8 @@ class QueueService {
 
 		const sc = await getStrategyConfig();
 		const bal = await redisService.getBotBalance(sc);
-		await redisService.setBotBalance(bal + revenue - sellFee);
+		const newBalance = bal + revenue - sellFee;
+		await redisService.setBotBalance(newBalance);
 
 		const stats = await redisService.getBotStats();
 		stats.totalTrades += 1;
@@ -277,7 +278,7 @@ class QueueService {
 		await redisService.updateBotStats(stats);
 
 		// Trigger notification
-		await notificationManager.handleTradeClosed(trade, stats);
+		await notificationManager.handleTradeClosed(trade, stats, newBalance);
 
 		logger.info(
 			`✅ Sequential completion update for trade ${trade.id}. PnL: $${trade.pnl.toFixed(2)}`,

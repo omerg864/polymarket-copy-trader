@@ -10,6 +10,14 @@ import {
 	removeTelegramChatId,
 	updateNotificationConfig,
 } from '../services/notificationConfig';
+import {
+	getActiveTrades,
+	getBotBalance,
+	getBotStartTime,
+	getBotStats,
+	getStopRequested,
+} from '../services/redis';
+import { getStrategyConfig } from '../services/strategyConfig';
 import { TelegramService } from '../services/telegram';
 
 export async function getConfig(_req: Request, res: Response): Promise<void> {
@@ -49,6 +57,39 @@ export async function handleWebhook(
 			chatId,
 			'❌ You have unsubscribed from Polymarket bot notifications.',
 		);
+	} else if (text === '/stats') {
+		const [stats, activeTrades, botStartTime, isStopping, strategyConfig] =
+			await Promise.all([
+				getBotStats(),
+				getActiveTrades(),
+				getBotStartTime(),
+				getStopRequested(),
+				getStrategyConfig(),
+			]);
+
+		const balance = await getBotBalance(strategyConfig);
+
+		const winRate =
+			stats.totalTrades > 0
+				? ((stats.wins / stats.totalTrades) * 100).toFixed(1)
+				: '0.0';
+
+		const uptime = botStartTime
+			? Math.floor((Date.now() - botStartTime) / (1000 * 60 * 60))
+			: 0;
+
+		const statsMessage =
+			`<b>📊 Bot Statistics</b>\n\n` +
+			`<b>Balance:</b> <code class="text-emerald-400">$${balance.toFixed(2)}</code>\n` +
+			`<b>Initial:</b> $${strategyConfig.botAllowance.toFixed(2)}\n` +
+			`<b>Total P&L:</b> <code class="${stats.totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${stats.totalPnl.toFixed(2)}</code>\n` +
+			`<b>Win Rate:</b> ${winRate}%\n` +
+			`<b>Trades:</b> ${stats.totalTrades} (${stats.wins}W / ${stats.losses}L)\n` +
+			`<b>Active Trades:</b> ${activeTrades.length}\n` +
+			`<b>Uptime:</b> ${uptime} hours\n` +
+			`<b>Status:</b> ${isStopping ? '🛑 Stopping' : '🏃 Running'}`;
+
+		await TelegramService.sendMessage(chatId, statsMessage);
 	}
 
 	res.sendStatus(200);
@@ -65,21 +106,31 @@ export async function triggerNotification(
 	let message = '';
 
 	if (type === 'win' && config.notificationOnWin) {
+		const statusText = data.status === 'closed_tp' ? 'Take Profit' : 'Win';
 		shouldNotify = true;
 		message =
 			`<b>🚀 NEW WIN!</b>\n\n` +
 			`<b>Market:</b> ${data.title || 'Unknown'}\n` +
+			`<b>Result:</b> ${statusText}\n` +
 			`<b>Profit:</b> <code class="text-emerald-400">$${data.pnl?.toFixed(2)}</code>\n` +
 			`<b>Return:</b> ${(data.pctChange * 100)?.toFixed(2)}%\n` +
-			`<b>Exit Price:</b> $${data.exitPrice}`;
+			`<b>Exit Price:</b> $${data.exitPrice}\n` +
+			`<b>Balance:</b> $${data.balance?.toFixed(2)}`;
 	} else if (type === 'loss' && config.notificationOnLoss) {
+		const statusText = data.status === 'closed_sl' 
+			? 'Stop Loss' 
+			: data.status === 'closed_fct' 
+				? 'Forced Closure' 
+				: 'Loss';
 		shouldNotify = true;
 		message =
 			`<b>📉 Trade Loss</b>\n\n` +
 			`<b>Market:</b> ${data.title || 'Unknown'}\n` +
+			`<b>Result:</b> ${statusText}\n` +
 			`<b>Loss:</b> <code class="text-red-400">$${Math.abs(data.pnl)?.toFixed(2)}</code>\n` +
 			`<b>Return:</b> ${(data.pctChange * 100)?.toFixed(2)}%\n` +
-			`<b>Exit Price:</b> $${data.exitPrice}`;
+			`<b>Exit Price:</b> $${data.exitPrice}\n` +
+			`<b>Balance:</b> $${data.balance?.toFixed(2)}`;
 	} else if (type === 'goal' && config.notificationOnPnlGoal) {
 		shouldNotify = true;
 		message =
