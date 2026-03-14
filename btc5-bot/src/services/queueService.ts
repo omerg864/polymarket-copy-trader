@@ -29,6 +29,8 @@ export interface TradeCompletionJobData {
 	sellFee: number;
 	won: boolean;
 	status: Trade['status'];
+	exitPrice: number;
+	exitBtcPrice?: number;
 }
 
 class QueueService {
@@ -158,6 +160,8 @@ class QueueService {
 				sellFee,
 				won,
 				status,
+				exitPrice: finalPrice,
+				exitBtcPrice: btcPrice,
 			},
 			{
 				jobId: `complete-${trade.id}`,
@@ -171,7 +175,8 @@ class QueueService {
 	private async processTradeCompletion(
 		job: Job<TradeCompletionJobData>,
 	): Promise<void> {
-		const { trade, revenue, sellFee, status } = job.data;
+		const { trade, revenue, sellFee, status, exitPrice, exitBtcPrice } =
+			job.data;
 
 		// Double check history IDs (concurrency: 1 makes this very safe)
 		const isProcessed = await redisService.isTradeInHistory(trade.id);
@@ -186,6 +191,12 @@ class QueueService {
 		trade.pnl = revenue - trade.cost - totalFee;
 		trade.fee = totalFee;
 		trade.status = status;
+		trade.exitPrice = exitPrice;
+		trade.exitBtcPrice = exitBtcPrice;
+		trade.pctChange =
+			trade.entryPrice > 0
+				? (exitPrice - trade.entryPrice) / trade.entryPrice
+				: 0;
 		trade.closedAt = new Date().toISOString();
 
 		// Update database/Redis
