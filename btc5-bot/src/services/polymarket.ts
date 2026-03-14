@@ -183,6 +183,7 @@ class PolymarketService {
 			);
 			if (!event) return null;
 
+			logger.info(`Found market event: ${JSON.stringify(event)}`);
 			const market = event.markets?.[0];
 			if (!market || market.closed) return null;
 

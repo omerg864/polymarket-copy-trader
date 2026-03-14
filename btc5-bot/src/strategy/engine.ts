@@ -179,27 +179,11 @@ class StrategyEngine {
 		}
 
 		// Step 4: Get priceToBeat
-		let refPrice = market.priceToBeat;
+		const refPrice = market.priceToBeat;
 
 		if (!refPrice) {
 			logger.info(
-				'   ⏳ Fetching reference price from Binance for market start time...',
-			);
-			refPrice = await priceAnalysisService.getHistoricalPrice(
-				market.startTime.getTime(),
-			);
-
-			if (refPrice) {
-				market.priceToBeat = refPrice;
-				logger.info(
-					`   ✅ Extracted reference price from Binance: $${refPrice.toFixed(2)}`,
-				);
-			}
-		}
-
-		if (!refPrice) {
-			logger.info(
-				'   ⚠️  Reference price not available yet. Will retry next cycle.',
+				'   ⏳ Reference price (priceToBeat) not available in market data yet. Waiting...',
 			);
 			return;
 		}
