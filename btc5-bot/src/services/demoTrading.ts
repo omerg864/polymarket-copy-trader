@@ -126,6 +126,7 @@ class DemoTradingService {
 
 	/**
 	 * Simulate selling a position (take profit or stop loss)
+	 * Updates local trade object only. Stats/Balance handled by QueueService.
 	 */
 	async placeSellOrder(
 		trade: Trade,
@@ -133,114 +134,46 @@ class DemoTradingService {
 		reason: string = 'sell',
 		btcPrice?: number,
 	): Promise<Trade> {
-		const sellFee = calculateFee(trade.size, currentPrice);
-		const revenue = currentPrice * trade.size;
-		const totalFee = trade.fee + sellFee;
-		const pnl = revenue - trade.cost - totalFee;
 		const pctChange =
 			trade.entryPrice > 0
 				? (currentPrice - trade.entryPrice) / trade.entryPrice
 				: 0;
 
-		this.balance = await redisService.getBotBalance();
-		this.balance += revenue - sellFee;
-		await redisService.setBotBalance(this.balance);
-
-		trade.status =
-			reason === 'tp'
-				? 'closed_tp'
-				: reason === 'sl'
-					? 'closed_sl'
-					: 'closed_sell';
-		trade.exitPrice = currentPrice;
-		trade.exitBtcPrice = btcPrice;
-		trade.pnl = pnl;
-		trade.fee = totalFee;
-		trade.pctChange = pctChange;
-		trade.closedAt = new Date().toISOString();
-
-		await redisService.removeTrade(trade.id);
-		await redisService.saveTradeHistory(trade);
-
-		const stats = await redisService.getBotStats();
-		stats.totalTrades += 1;
-		if (pnl >= 0) stats.wins += 1;
-		else stats.losses += 1;
-		stats.totalPnl += pnl;
-		stats.totalFees += totalFee;
-		await redisService.updateBotStats(stats);
-
-		// Trigger notification via centralized manager (runs in background)
-		notificationManager.handleTradeClosed(trade, stats);
-
 		const logLabel = pctChange >= 0 ? '🟢 TAKE PROFIT' : '🔴 STOP LOSS';
-		logger.trade(`📝 DEMO SELL - ${logLabel}`, {
+		logger.trade(`📝 DEMO SELL (Simulation) - ${logLabel}`, {
 			direction: trade.direction,
 			entry: trade.entryPrice.toFixed(3),
 			exit: currentPrice.toFixed(3),
-			pnl: `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`,
-			fee: `$${totalFee.toFixed(4)}`,
 			change: `${(pctChange * 100).toFixed(1)}%`,
-			balance: `$${this.balance.toFixed(2)}`,
+			market: trade.title,
 		});
 
-		logger.profit(pnl, pctChange);
+		logger.profit(0, pctChange); // Log profit but don't commit yet
 
 		return trade;
 	}
 
 	/**
 	 * Resolve a trade at market close (simulate final resolution)
+	 * Updates local trade object only. Stats/Balance handled by QueueService.
 	 */
 	async resolveTrade(
 		trade: Trade,
 		won: boolean,
 		btcPrice?: number,
 	): Promise<Trade> {
-		const finalPrice = won ? 1.0 : 0.0;
-		const revenue = finalPrice * trade.size;
-		const totalFee = trade.fee; // buy fee already included; no sell on resolution
-		const pnl = revenue - trade.cost - totalFee;
-		const pctChange =
-			trade.entryPrice > 0
-				? (finalPrice - trade.entryPrice) / trade.entryPrice
-				: 0;
-
-		this.balance = await redisService.getBotBalance();
-		this.balance += revenue;
-		await redisService.setBotBalance(this.balance);
-
-		trade.status = won ? 'won' : 'lost';
-		trade.exitPrice = finalPrice;
-		trade.exitBtcPrice = btcPrice;
-		trade.pnl = pnl;
-		trade.pctChange = pctChange;
-		trade.closedAt = new Date().toISOString();
-
-		await redisService.removeTrade(trade.id);
-		await redisService.saveTradeHistory(trade);
-
-		const stats = await redisService.getBotStats();
-		stats.totalTrades += 1;
-		if (pnl >= 0) stats.wins += 1;
-		else stats.losses += 1;
-		stats.totalPnl += pnl;
-		stats.totalFees += totalFee;
-		await redisService.updateBotStats(stats);
-
-		// Trigger notification via centralized manager (runs in background)
-		notificationManager.handleTradeClosed(trade, stats);
+		const status = won ? 'won' : 'lost';
 
 		const emoji = won ? '🏆' : '❌';
-		logger.trade(`${emoji} DEMO RESOLVED - ${trade.status.toUpperCase()}`, {
-			direction: trade.direction,
-			entry: trade.entryPrice.toFixed(3),
-			pnl: `${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`,
-			fee: `$${totalFee.toFixed(4)}`,
-			balance: `$${this.balance.toFixed(2)}`,
-		});
+		logger.trade(
+			`${emoji} DEMO RESOLVED (Simulation) - ${status.toUpperCase()}`,
+			{
+				direction: trade.direction,
+				entry: trade.entryPrice.toFixed(3),
+				market: trade.title,
+			},
+		);
 
-		logger.profit(pnl, pctChange);
 		return trade;
 	}
 

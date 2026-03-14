@@ -23,24 +23,25 @@ export interface SellJobData {
 	reason?: string;
 }
 
-export interface BalanceJobData {
+export interface TradeCompletionJobData {
 	trade: Trade;
 	revenue: number;
 	sellFee: number;
 	won: boolean;
+	status: Trade['status'];
 }
 
 class QueueService {
 	private sellQueue: Queue<SellJobData>;
-	private balanceQueue: Queue<BalanceJobData>;
+	private completionQueue: Queue<TradeCompletionJobData>;
 	private sellWorker: Worker<SellJobData>;
-	private balanceWorker: Worker<BalanceJobData>;
+	private completionWorker: Worker<TradeCompletionJobData>;
 
 	constructor() {
 		this.sellQueue = new Queue('sell-trades', {
 			connection: connection as any,
 		});
-		this.balanceQueue = new Queue('balance-update', {
+		this.completionQueue = new Queue('trade-completion', {
 			connection: connection as any,
 		});
 
@@ -51,10 +52,10 @@ class QueueService {
 			{ connection: connection as any, concurrency: 5 },
 		);
 
-		// Balance Worker: Handles strictly sequential balance updates
-		this.balanceWorker = new Worker<BalanceJobData>(
-			'balance-update',
-			async (job) => this.processBalanceUpdate(job),
+		// Completion Worker: Handles strictly sequential balance and stats updates
+		this.completionWorker = new Worker<TradeCompletionJobData>(
+			'trade-completion',
+			async (job) => this.processTradeCompletion(job),
 			{ connection: connection as any, concurrency: 1 },
 		);
 
@@ -65,8 +66,8 @@ class QueueService {
 		this.sellWorker.on('failed', (job, err) => {
 			logger.error(`Sell job ${job?.id} failed: ${err.message}`);
 		});
-		this.balanceWorker.on('failed', (job, err) => {
-			logger.error(`Balance job ${job?.id} failed: ${err.message}`);
+		this.completionWorker.on('failed', (job, err) => {
+			logger.error(`Completion job ${job?.id} failed: ${err.message}`);
 		});
 	}
 
@@ -104,6 +105,7 @@ class QueueService {
 		let won = false;
 		let finalPrice = exitPrice ?? 0;
 		let sellFee = 0;
+		let status: Trade['status'] = 'open';
 
 		if (type === 'RESOLVE') {
 			logger.info(
@@ -117,11 +119,7 @@ class QueueService {
 			}
 			won = trade.direction === winner;
 			finalPrice = won ? 1.0 : 0.0;
-
-			if (config.isDemo) {
-				// Internal demo resolution
-				await demoTradingService.resolveTrade(trade, won);
-			}
+			status = won ? 'won' : 'lost';
 		} else {
 			// SELL_ORDER (TP/SL/FCT)
 			logger.info(
@@ -140,34 +138,29 @@ class QueueService {
 					market,
 				);
 				sellFee = (trade.cost / trade.size) * trade.size * 0.0175;
-			} else {
-				await demoTradingService.placeSellOrder(
-					trade,
-					finalPrice,
-					reason || 'sell',
-					btcPrice,
-				);
 			}
+			// In both demo and live, we let the completion worker handle the final state and stats
 			won = finalPrice > trade.entryPrice;
+			status =
+				reason === 'tp'
+					? 'closed_tp'
+					: reason === 'sl'
+						? 'closed_sl'
+						: 'closed_sell';
 		}
 
-		// Prepare data for balance update
-		trade.status = type === 'RESOLVE' ? 'resolved' : 'closed_sell';
-		trade.exitPrice = finalPrice;
-		trade.exitBtcPrice = btcPrice;
-
-		const revenue = finalPrice * trade.size;
-
-		await this.balanceQueue.add(
-			`balance-${trade.id}`,
+		// Prepare data for sequential completion
+		await this.completionQueue.add(
+			`complete-${trade.id}`,
 			{
 				trade,
-				revenue,
+				revenue: finalPrice * trade.size,
 				sellFee,
 				won,
+				status,
 			},
 			{
-				jobId: `balance-${trade.id}`,
+				jobId: `complete-${trade.id}`,
 				removeOnComplete: true,
 				attempts: 5,
 				backoff: { type: 'fixed', delay: 1000 },
@@ -175,16 +168,16 @@ class QueueService {
 		);
 	}
 
-	private async processBalanceUpdate(
-		job: Job<BalanceJobData>,
+	private async processTradeCompletion(
+		job: Job<TradeCompletionJobData>,
 	): Promise<void> {
-		const { trade, revenue, sellFee, won } = job.data;
+		const { trade, revenue, sellFee, status } = job.data;
 
 		// Double check history IDs (concurrency: 1 makes this very safe)
 		const isProcessed = await redisService.isTradeInHistory(trade.id);
 		if (isProcessed) {
 			logger.warn(
-				`⚠️ Trade ${trade.id} already in history IDs. Skipping balance update.`,
+				`⚠️ Trade ${trade.id} already in history IDs. Skipping completion update.`,
 			);
 			return;
 		}
@@ -192,11 +185,12 @@ class QueueService {
 		const totalFee = (trade.fee || 0) + sellFee;
 		trade.pnl = revenue - trade.cost - totalFee;
 		trade.fee = totalFee;
+		trade.status = status;
 		trade.closedAt = new Date().toISOString();
 
 		// Update database/Redis
 		await redisService.removeTrade(trade.id);
-		await redisService.saveTradeHistory(trade); // This now also adds to history_ids
+		await redisService.saveTradeHistory(trade); // This adds to history_ids
 
 		const sc = await getStrategyConfig();
 		const bal = await redisService.getBotBalance(sc);
@@ -214,7 +208,7 @@ class QueueService {
 		await notificationManager.handleTradeClosed(trade, stats);
 
 		logger.info(
-			`✅ Sequential balance update complete for trade ${trade.id}. PnL: $${trade.pnl.toFixed(2)}`,
+			`✅ Sequential completion update for trade ${trade.id}. PnL: $${trade.pnl.toFixed(2)}`,
 		);
 	}
 }
