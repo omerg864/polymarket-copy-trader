@@ -5,7 +5,9 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
+dotenv.config({
+	path: path.resolve(__dirname, '..', 'btc5-bot', '.env.production.local'),
+});
 
 import Redis from 'ioredis';
 
@@ -38,15 +40,15 @@ async function main() {
 	let computedTotalTrades = 0;
 
 	// Active trades
-	const activeIds = await redis.smembers(`${PREFIX}active_trades`);
+	const activeIds = await redis.smembers(`${PREFIX}${MODE}:active_trades`);
 	for (const id of activeIds) {
-		const raw = await redis.get(`${PREFIX}trade:${id}`);
+		const raw = await redis.get(`${PREFIX}${MODE}:trade:${id}`);
 		if (!raw) continue;
 		const t = JSON.parse(raw);
 		// Fix fee if missing
 		if (t.fee == null) {
 			t.fee = calculateFee(t.size, t.entryPrice);
-			await redis.set(`${PREFIX}trade:${id}`, JSON.stringify(t));
+			await redis.set(`${PREFIX}${MODE}:trade:${id}`, JSON.stringify(t));
 			console.log(`  Fixed active ${id}: fee=${t.fee}`);
 		}
 		sumFees += t.fee;
@@ -55,7 +57,7 @@ async function main() {
 	}
 
 	// History trades
-	const historyKey = `${PREFIX}history`;
+	const historyKey = `${PREFIX}${MODE}:history`;
 	const historyLen = await redis.llen(historyKey);
 	for (let i = 0; i < historyLen; i++) {
 		const raw = await redis.lindex(historyKey, i);

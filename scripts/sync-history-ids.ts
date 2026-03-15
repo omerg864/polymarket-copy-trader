@@ -6,19 +6,22 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
+dotenv.config({
+	path: path.resolve(__dirname, '..', 'btc5-bot', '.env.production.local'),
+});
 
 import Redis from 'ioredis';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const PREFIX = 'pmbot:';
+const MODE = process.env.MODE || 'demo';
 
 async function main() {
 	const redis = new Redis(REDIS_URL, { maxRetriesPerRequest: 3 });
 	console.log('Connected to Redis\n');
 
-	const historyKey = `${PREFIX}history`;
-	const historyIdsKey = `${PREFIX}history_ids`;
+	const historyKey = `${PREFIX}${MODE}:history`;
+	const historyIdsKey = `${PREFIX}${MODE}:history_ids`;
 
 	const historyLen = await redis.llen(historyKey);
 	console.log(`History list length: ${historyLen}`);
@@ -46,9 +49,9 @@ async function main() {
 	console.log(`Unique IDs found in history list: ${currentIds.size}`);
 
 	// Replace the set atomically using a temp key or just SADD everything
-	// To be safe and "sync", we should probably SREM things not in list, 
+	// To be safe and "sync", we should probably SREM things not in list,
 	// but simplest is to just overwrite or clear and re-add.
-	
+
 	// Atomic replace isn't built-in for SET from LIST, so we'll just clear and rebuild.
 	await redis.del(historyIdsKey);
 	if (currentIds.size > 0) {
@@ -57,7 +60,9 @@ async function main() {
 		await redis.sadd(historyIdsKey, ...idsArray);
 	}
 
-	console.log(`✅ Sync complete. ${historyIdsKey} now contains ${currentIds.size} IDs.`);
+	console.log(
+		`✅ Sync complete. ${historyIdsKey} now contains ${currentIds.size} IDs.`,
+	);
 	await redis.quit();
 }
 

@@ -211,6 +211,23 @@ class StrategyEngine {
 			return;
 		}
 
+		// Guard: BTC Price must be on the "right side" of priceToBeat
+		const btcPrice = signal.indicators?.currentPrice;
+		if (btcPrice != null) {
+			const isRightSide =
+				signal.direction === 'UP'
+					? btcPrice >= refPrice
+					: btcPrice <= refPrice;
+
+			if (!isRightSide) {
+				const diff = btcPrice - refPrice;
+				logger.info(
+					`⚠️  BTC price on wrong side for ${signal.direction} (BTC: ${btcPrice.toFixed(2)}, Ref: ${refPrice.toFixed(2)}, Diff: ${diff.toFixed(2)}). Skipping trade.`,
+				);
+				return;
+			}
+		}
+
 		// Step 6: Get market prices
 		const prices = await polymarketService.getMarketPrices(market);
 		logger.info(
