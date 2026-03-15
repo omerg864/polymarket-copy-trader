@@ -29,6 +29,7 @@ type FilterStatus =
 	| 'lost'
 	| 'closed_tp'
 	| 'closed_sl'
+	| 'closed_fct'
 	| 'closed_sell';
 
 export function TradeHistoryTable() {
@@ -113,6 +114,7 @@ export function TradeHistoryTable() {
 							<option value="lost">❌ Lost</option>
 							<option value="closed_tp">🟢 Take Profit</option>
 							<option value="closed_sl">🔴 Stop Loss</option>
+							<option value="closed_fct">⏱️ Force Close</option>
 							<option value="closed_sell">💰 Sold</option>
 						</select>
 						<select
