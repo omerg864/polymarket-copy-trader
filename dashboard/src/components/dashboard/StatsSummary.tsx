@@ -301,7 +301,7 @@ export function StatsSummary() {
 										: 'text-red-400'
 								}`}
 							>
-								{todayWinRate.toFixed(0)}%
+								{todayWinRate.toFixed(1)}%
 							</span>
 							<span className="text-xs text-zinc-500 font-mono">
 								({todayProfitTrades}W/{todayLossTrades}L)
