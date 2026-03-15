@@ -4,10 +4,11 @@ import {
 	type NotificationConfig,
 	type Trade,
 } from '@shared/types';
+import { DateTime } from 'luxon';
 import config from '../config';
-import { getStrategyConfig } from './strategyConfig';
-import redisService from './redis';
 import logger from '../utils/logger';
+import redisService from './redis';
+import { getStrategyConfig } from './strategyConfig';
 
 export class NotificationManager {
 	/**
@@ -64,6 +65,28 @@ export class NotificationManager {
 	}
 
 	/**
+	 * Sums PnL for all trades whose enteredAt falls on today (UTC).
+	 * The current trade is included via the history since it is persisted
+	 * before this method is called. Fallback includes it explicitly if missing.
+	 */
+	private static calculateTodayPnl(
+		history: Trade[],
+		currentTrade: Trade,
+	): number {
+		const startOfToday = DateTime.utc().startOf('day');
+		const todayTrades = history.filter((t) => {
+			const enteredAt = DateTime.fromISO(t.enteredAt, { zone: 'utc' });
+			return enteredAt >= startOfToday;
+		});
+		const total = todayTrades.reduce((sum, t) => sum + t.pnl, 0);
+		// Fallback: include current trade if not yet in history snapshot
+		const alreadyIncluded = todayTrades.some(
+			(t) => t.id === currentTrade.id,
+		);
+		return alreadyIncluded ? total : total + currentTrade.pnl;
+	}
+
+	/**
 	 * Centralized handler for trade closure notifications.
 	 * Decides whether to send win/loss alert and checks for daily goal achievement.
 	 */
@@ -74,12 +97,14 @@ export class NotificationManager {
 	): Promise<void> {
 		const sc = await getStrategyConfig();
 		const nc = await this.getNotificationConfig();
+		const history = await redisService.getTradeHistory(500);
+		const todayPnl = this.calculateTodayPnl(history, trade);
 
 		// Trigger win/loss notification in background
 		this.trigger(trade.pnl >= 0 ? 'win' : 'loss', {
 			title: trade.title,
 			pnl: trade.pnl,
-			todayPnl: stats.totalPnl,
+			todayPnl,
 			pctChange:
 				trade.pctChange ||
 				(trade.cost > 0 ? trade.pnl / trade.cost : 0),
@@ -91,11 +116,11 @@ export class NotificationManager {
 		// Check for daily P&L goal achievement (from Strategy Config)
 		if (
 			sc.dayPnlGoal > 0 &&
-			stats.totalPnl >= sc.dayPnlGoal &&
-			stats.totalPnl - trade.pnl < sc.dayPnlGoal
+			todayPnl >= sc.dayPnlGoal &&
+			todayPnl - trade.pnl < sc.dayPnlGoal
 		) {
 			this.trigger('goal', {
-				todayPnl: stats.totalPnl,
+				todayPnl,
 				goal: sc.dayPnlGoal,
 				totalTrades: stats.totalTrades,
 			});
@@ -106,11 +131,11 @@ export class NotificationManager {
 			// Min Bound (Losses) - only if configured < 0
 			if (
 				nc.minTodayPnLNotification < 0 &&
-				stats.totalPnl <= nc.minTodayPnLNotification &&
-				stats.totalPnl - trade.pnl > nc.minTodayPnLNotification
+				todayPnl <= nc.minTodayPnLNotification &&
+				todayPnl - trade.pnl > nc.minTodayPnLNotification
 			) {
 				this.trigger('min_pnl', {
-					todayPnl: stats.totalPnl,
+					todayPnl,
 					min: nc.minTodayPnLNotification,
 					totalTrades: stats.totalTrades,
 				});
@@ -119,11 +144,11 @@ export class NotificationManager {
 			// Max Bound (Wins) - only if configured > 0
 			if (
 				nc.maxTodayPnLNotification > 0 &&
-				stats.totalPnl >= nc.maxTodayPnLNotification &&
-				stats.totalPnl - trade.pnl < nc.maxTodayPnLNotification
+				todayPnl >= nc.maxTodayPnLNotification &&
+				todayPnl - trade.pnl < nc.maxTodayPnLNotification
 			) {
 				this.trigger('max_pnl', {
-					todayPnl: stats.totalPnl,
+					todayPnl,
 					max: nc.maxTodayPnLNotification,
 					totalTrades: stats.totalTrades,
 				});
