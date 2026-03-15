@@ -289,6 +289,30 @@ export function StatsSummary() {
 				<Card className="bg-zinc-900 border-zinc-800">
 					<CardHeader className="pb-2">
 						<CardDescription className="text-xs text-zinc-500">
+							Today Win Rate
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="flex items-baseline gap-2">
+							<span
+								className={`text-2xl font-bold font-mono ${
+									todayWinRate >= 50
+										? 'text-emerald-400'
+										: 'text-red-400'
+								}`}
+							>
+								{todayWinRate.toFixed(0)}%
+							</span>
+							<span className="text-xs text-zinc-500 font-mono">
+								({todayProfitTrades}W/{todayLossTrades}L)
+							</span>
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card className="bg-zinc-900 border-zinc-800">
+					<CardHeader className="pb-2">
+						<CardDescription className="text-xs text-zinc-500">
 							Today Profit
 						</CardDescription>
 					</CardHeader>
@@ -317,30 +341,6 @@ export function StatsSummary() {
 							</span>
 							<span className="text-xs text-zinc-500 font-mono">
 								({todayLossTrades})
-							</span>
-						</div>
-					</CardContent>
-				</Card>
-
-				<Card className="bg-zinc-900 border-zinc-800">
-					<CardHeader className="pb-2">
-						<CardDescription className="text-xs text-zinc-500">
-							Today Win Rate
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className="flex items-baseline gap-2">
-							<span
-								className={`text-2xl font-bold font-mono ${
-									todayWinRate >= 50
-										? 'text-emerald-400'
-										: 'text-red-400'
-								}`}
-							>
-								{todayWinRate.toFixed(0)}%
-							</span>
-							<span className="text-xs text-zinc-500 font-mono">
-								({todayProfitTrades}W/{todayLossTrades}L)
 							</span>
 						</div>
 					</CardContent>
