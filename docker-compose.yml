@@ -8,5 +8,29 @@ services:
       - redis-data:/data
     restart: unless-stopped
 
+  mongo:
+    image: mongo:7
+    container_name: polymarket-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+  
+  mongo-express:
+    image: mongo-express
+    container_name: polymarket-mongo-express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_BASICAUTH_USERNAME: "admin"
+      ME_CONFIG_BASICAUTH_PASSWORD: "admin"
+    depends_on:
+      - mongo
+
+
 volumes:
   redis-data:
+  mongo-data:
