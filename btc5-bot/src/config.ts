@@ -34,6 +34,9 @@ const config = {
 	// Dashboard API
 	apiUrl: process.env.API_URL || 'http://localhost:3001',
 	apiPassword: process.env.API_PASSWORD || '',
+
+	// Polygon RPC for on-chain CTF redemption (live mode only)
+	polygonRpcUrl: process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com',
 };
 
 export function validateLiveConfig(): void {

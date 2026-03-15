@@ -170,6 +170,10 @@ class QueueService {
 			won = trade.direction === winner;
 			finalPrice = won ? 1.0 : 0.0;
 			status = won ? TradeStatus.WON : TradeStatus.LOST;
+
+			if (won) {
+				await polymarketService.redeemWinnings(trade.conditionId);
+			}
 		} else {
 			// SELL_ORDER (TP/SL/FCT)
 			logger.info(

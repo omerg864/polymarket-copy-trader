@@ -1,7 +1,8 @@
 import { Wallet } from '@ethersproject/wallet';
-import type { Market, MarketPrices } from '@shared/types';
 import { ClobClient, OrderType, Side } from '@polymarket/clob-client';
+import type { Market, MarketPrices } from '@shared/types';
 import axios, { AxiosInstance } from 'axios';
+import { ethers } from 'ethers';
 import config, { validateLiveConfig } from '../config';
 import logger from '../utils/logger';
 import NotificationManager from './notificationManager';
@@ -57,6 +58,7 @@ interface CryptoPriceResponse {
 class PolymarketService {
 	private clobClient: ClobClient | null = null;
 	private gammaApi: AxiosInstance;
+	private signer: Wallet | null = null;
 
 	constructor() {
 		this.gammaApi = axios.create({
@@ -76,17 +78,17 @@ class PolymarketService {
 
 		validateLiveConfig();
 
-		const signer = new Wallet(config.privateKey);
+		this.signer = new Wallet(config.privateKey);
 		const creds = await new ClobClient(
 			config.clobHost,
 			config.chainId,
-			signer,
+			this.signer,
 		).createOrDeriveApiKey();
 
 		this.clobClient = new ClobClient(
 			config.clobHost,
 			config.chainId,
-			signer,
+			this.signer,
 			creds,
 			config.signatureType,
 			config.funderAddress,
@@ -161,7 +163,7 @@ class PolymarketService {
 				const sc = await getStrategyConfig();
 				const minMsRemaining = sc.minSecondsRemaining * 1000;
 				const msUntilEnd = market.endTime.getTime() - now.getTime();
-				
+
 				// Return current market if it has enough time
 				if (msUntilEnd >= minMsRemaining) {
 					return market;
@@ -484,6 +486,54 @@ class PolymarketService {
 				error instanceof Error ? error.message : String(error);
 			logger.error(`Error fetching open orders: ${message}`);
 			return [];
+		}
+	}
+
+	/**
+	 * Redeems winning CTF tokens for USDC after a market resolves in our favor.
+	 * Calls redeemPositions() on the Polymarket CTF contract on Polygon.
+	 * No-op in demo mode. Errors are logged but not thrown so the trade is
+	 * still recorded in Redis even if the on-chain redemption fails.
+	 */
+	async redeemWinnings(conditionId: string): Promise<void> {
+		if (config.isDemo || !this.signer) return;
+
+		const CTF_ADDRESS = '0x4D97DCd97eC945f40cF65F87097ACe5EA0476045';
+		const USDC_ADDRESS = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
+		const CTF_ABI = [
+			'function redeemPositions(address collateralToken, bytes32 parentCollectionId, bytes32 conditionId, uint256[] indexSets) external',
+		];
+
+		try {
+			const provider = new ethers.providers.JsonRpcProvider(
+				config.polygonRpcUrl,
+			);
+			const connectedWallet = this.signer.connect(provider);
+			const ctf = new ethers.Contract(
+				CTF_ADDRESS,
+				CTF_ABI,
+				connectedWallet,
+			);
+
+			logger.info(
+				`💰 Redeeming winning position on-chain for conditionId: ${conditionId}`,
+			);
+
+			const tx = await ctf.redeemPositions(
+				USDC_ADDRESS,
+				ethers.constants.HashZero,
+				conditionId,
+				[1, 2],
+			);
+			await tx.wait();
+
+			logger.info(`✅ On-chain redemption confirmed. tx: ${tx.hash}`);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			logger.error(
+				`⚠️ Failed to redeem winning position on-chain for ${conditionId}: ${message}. Manual redemption may be required.`,
+			);
 		}
 	}
 }
