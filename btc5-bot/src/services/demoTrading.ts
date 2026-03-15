@@ -2,10 +2,10 @@ import {
 	DEFAULT_STRATEGY_CONFIG,
 	TradeStatus,
 	TradeType,
-	calculateFee,
 	type Market,
 	type Trade,
 } from '@shared/types';
+import { calculateFee } from '@shared/utils';
 import { randomUUID } from 'crypto';
 import logger from '../utils/logger';
 import redisService from './redis';

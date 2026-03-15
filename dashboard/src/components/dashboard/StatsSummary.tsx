@@ -6,6 +6,8 @@ import {
 } from '@/components/ui/card';
 import { useConfig, useSummary, useTradeHistory } from '@/hooks/use-api';
 import type { Trade } from '@/types';
+import { calculateTodayPnl } from '@shared/utils';
+import { DateTime } from 'luxon';
 
 export function StatsSummary() {
 	const { data: summary } = useSummary();
@@ -25,15 +27,14 @@ export function StatsSummary() {
 	let highestCost = 0;
 	let highestWin = 0;
 	let highestLoss = 0;
-	let todayPnl = 0;
 	let todayProfit = 0;
 	let todayLoss = 0;
 	let todayProfitTrades = 0;
 	let todayLossTrades = 0;
 	let todayTotalTrades = 0;
 
-	const today = new Date();
-	const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+	const todayPnl = calculateTodayPnl(history ?? []);
+	const startOfToday = DateTime.now().startOf('day');
 
 	if (history) {
 		history.forEach((trade: Trade) => {
@@ -42,10 +43,8 @@ export function StatsSummary() {
 			if (trade.pnl > highestWin) highestWin = trade.pnl;
 			if (trade.pnl < highestLoss) highestLoss = trade.pnl;
 			if (trade.enteredAt) {
-				const d = new Date(trade.enteredAt);
-				const tradeDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-				if (tradeDate === todayStr) {
-					todayPnl += trade.pnl || 0;
+				const enteredAt = DateTime.fromISO(trade.enteredAt);
+				if (enteredAt >= startOfToday) {
 					todayTotalTrades++;
 					if (trade.pnl > 0) {
 						todayProfit += trade.pnl;
@@ -61,6 +60,8 @@ export function StatsSummary() {
 
 	const dayPnlGoal = config?.dayPnlGoal ?? 2;
 	const goalProgress = dayPnlGoal > 0 ? (todayPnl / dayPnlGoal) * 100 : 0;
+	const todayWinRate =
+		todayTotalTrades > 0 ? (todayProfitTrades / todayTotalTrades) * 100 : 0;
 
 	return (
 		<div className="flex flex-col gap-4 mb-4">
@@ -236,7 +237,7 @@ export function StatsSummary() {
 			</div>
 
 			{/* Row 3: Today's Performance */}
-			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+			<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 				<Card className="bg-zinc-900 border-zinc-800">
 					<CardHeader className="pb-2">
 						<CardDescription className="text-xs text-zinc-500">
@@ -316,6 +317,30 @@ export function StatsSummary() {
 							</span>
 							<span className="text-xs text-zinc-500 font-mono">
 								({todayLossTrades})
+							</span>
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card className="bg-zinc-900 border-zinc-800">
+					<CardHeader className="pb-2">
+						<CardDescription className="text-xs text-zinc-500">
+							Today Win Rate
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="flex items-baseline gap-2">
+							<span
+								className={`text-2xl font-bold font-mono ${
+									todayWinRate >= 50
+										? 'text-emerald-400'
+										: 'text-red-400'
+								}`}
+							>
+								{todayWinRate.toFixed(0)}%
+							</span>
+							<span className="text-xs text-zinc-500 font-mono">
+								({todayProfitTrades}W/{todayLossTrades}L)
 							</span>
 						</div>
 					</CardContent>

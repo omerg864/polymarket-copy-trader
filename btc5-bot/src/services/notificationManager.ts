@@ -4,7 +4,7 @@ import {
 	type NotificationConfig,
 	type Trade,
 } from '@shared/types';
-import { DateTime } from 'luxon';
+import { calculateTodayPnl } from '@shared/utils';
 import config from '../config';
 import logger from '../utils/logger';
 import redisService from './redis';
@@ -65,28 +65,6 @@ export class NotificationManager {
 	}
 
 	/**
-	 * Sums PnL for all trades whose enteredAt falls on today (UTC).
-	 * The current trade is included via the history since it is persisted
-	 * before this method is called. Fallback includes it explicitly if missing.
-	 */
-	private static calculateTodayPnl(
-		history: Trade[],
-		currentTrade: Trade,
-	): number {
-		const startOfToday = DateTime.utc().startOf('day');
-		const todayTrades = history.filter((t) => {
-			const enteredAt = DateTime.fromISO(t.enteredAt, { zone: 'utc' });
-			return enteredAt >= startOfToday;
-		});
-		const total = todayTrades.reduce((sum, t) => sum + t.pnl, 0);
-		// Fallback: include current trade if not yet in history snapshot
-		const alreadyIncluded = todayTrades.some(
-			(t) => t.id === currentTrade.id,
-		);
-		return alreadyIncluded ? total : total + currentTrade.pnl;
-	}
-
-	/**
 	 * Centralized handler for trade closure notifications.
 	 * Decides whether to send win/loss alert and checks for daily goal achievement.
 	 */
@@ -98,7 +76,7 @@ export class NotificationManager {
 		const sc = await getStrategyConfig();
 		const nc = await this.getNotificationConfig();
 		const history = await redisService.getTradeHistory(500);
-		const todayPnl = this.calculateTodayPnl(history, trade);
+		const todayPnl = calculateTodayPnl(history, trade);
 
 		// Trigger win/loss notification in background
 		this.trigger(trade.pnl >= 0 ? 'win' : 'loss', {

@@ -215,15 +215,3 @@ export type NotificationType =
 	| 'error'
 	| 'manual';
 
-/**
- * Calculate Polymarket taker fee for crypto markets.
- * Formula: fee = shares × price × feeRate × (price × (1 - price))^exponent
- * Crypto: feeRate = 0.0175, exponent = 1
- */
-export function calculateFee(shares: number, price: number): number {
-	const FEE_RATE = 0.0175;
-	const EXPONENT = 1;
-	const raw =
-		shares * price * FEE_RATE * Math.pow(price * (1 - price), EXPONENT);
-	return Math.round(raw * 10000) / 10000; // 4 decimal precision
-}

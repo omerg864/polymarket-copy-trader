@@ -1,12 +1,13 @@
-import { calculateFee, TradeStatus, TradeType, type Trade } from '@shared/types';
+import { TradeStatus, TradeType, type Trade } from '@shared/types';
+import { calculateFee } from '@shared/utils';
 import config from '../config';
 import demoTradingService from '../services/demoTrading';
+import notificationManager from '../services/notificationManager';
 import polymarketService from '../services/polymarket';
 import priceAnalysisService from '../services/priceAnalysis';
+import queueService from '../services/queueService';
 import redisService from '../services/redis';
 import { getStrategyConfig } from '../services/strategyConfig';
-import notificationManager from '../services/notificationManager';
-import queueService from '../services/queueService';
 import logger from '../utils/logger';
 import riskManager from './riskManager';
 
@@ -74,7 +75,11 @@ class StrategyEngine {
 				const stack = error instanceof Error ? error.stack : '';
 				logger.error(`Strategy cycle error: ${message}`);
 				if (stack) logger.error(stack);
-				await notificationManager.handleError(error, 'StrategyEngine', 'executeCycle');
+				await notificationManager.handleError(
+					error,
+					'StrategyEngine',
+					'executeCycle',
+				);
 			}
 			const sc = await getStrategyConfig();
 			this.scheduleNextCycle(sc.cycleIntervalMs);
@@ -436,7 +441,7 @@ class StrategyEngine {
 			await queueService.addSellJob({
 				trade,
 				type: 'RESOLVE',
-				btcPrice: btcPrice ?? undefined
+				btcPrice: btcPrice ?? undefined,
 			});
 		}
 	}
