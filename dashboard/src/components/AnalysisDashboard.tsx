@@ -24,6 +24,7 @@ import {
 	XCircle,
 } from 'lucide-react';
 import { useMemo } from 'react';
+import { AnalysisGrid } from './analysis/AnalysisGrid';
 
 function calculateStats(trades: Trade[]) {
 	const total = trades.length;
@@ -943,6 +944,26 @@ export function AnalysisDashboard() {
 				</p>
 			</div>
 
+			{/* Raw Trade Data Grid */}
+			<Card className="bg-zinc-900 border-zinc-800">
+				<CardHeader>
+					<div className="flex items-center justify-between">
+						<div>
+							<CardTitle className="text-lg flex items-center gap-2">
+								<Clock className="w-5 h-5 text-indigo-400" />
+								Raw Trade Data
+							</CardTitle>
+							<CardDescription>
+								Detailed table of all trade executions and technical indicators
+							</CardDescription>
+						</div>
+					</div>
+				</CardHeader>
+				<CardContent>
+					<AnalysisGrid trades={history} />
+				</CardContent>
+			</Card>
+
 			<div className="bg-linear-to-br from-indigo-500/10 via-purple-500/5 to-transparent border border-indigo-500/20 rounded-lg p-5 mt-4">
 				<div className="flex items-center gap-2 mb-3">
 					<Sparkles className="h-5 w-5 text-indigo-400" />
@@ -1761,7 +1782,7 @@ export function AnalysisDashboard() {
 					</CardHeader>
 					<CardContent>
 						<Accordion type="multiple" className="w-full">
-							{analysis.byDate.map((entry) => {
+							{analysis.byDate.map((entry: any) => {
 								const goalPct =
 									dayPnlGoal > 0
 										? (entry.main.totalPnl / dayPnlGoal) *
