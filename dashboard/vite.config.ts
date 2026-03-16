@@ -52,6 +52,7 @@ export default defineConfig({
 			},
 			workbox: {
 				globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+				maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4MiB
 				runtimeCaching: [
 					{
 						urlPattern: /^https:\/\/.*\/api\/.*/i,
@@ -68,6 +69,18 @@ export default defineConfig({
 			},
 		}),
 	],
+	build: {
+		chunkSizeWarningLimit: 1500,
+		rollupOptions: {
+			output: {
+				manualChunks: {
+					'ag-grid': ['ag-grid-community', 'ag-grid-enterprise', 'ag-grid-react'],
+					'vendors': ['lucide-react', '@tanstack/react-query', 'luxon', 'xlsx'],
+					'react-vendors': ['react', 'react-dom'],
+				},
+			},
+		},
+	},
 	resolve: {
 		alias: {
 			'@': path.resolve(__dirname, './src'),
