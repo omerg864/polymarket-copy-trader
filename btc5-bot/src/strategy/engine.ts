@@ -133,7 +133,7 @@ class StrategyEngine {
 
 		// Step 2: Check for daily TP/SL limits (Optimized via Redis)
 		const dailyStop = await redisService.getDailyStop();
-		const todayStr = DateTime.now().toISODate();
+		const todayStr = DateTime.now().setZone('Asia/Jerusalem').toISODate();
 
 		if (dailyStop && dailyStop.stopped && dailyStop.date === todayStr) {
 			// No new trades today

@@ -34,7 +34,9 @@ export function StatsSummary() {
 	let todayTotalTrades = 0;
 
 	const todayPnl = calculateTodayPnl(history ?? []);
-	const startOfToday = DateTime.now().startOf('day');
+	const startOfToday = DateTime.now()
+		.setZone('Asia/Jerusalem')
+		.startOf('day');
 
 	if (history) {
 		history.forEach((trade: Trade) => {

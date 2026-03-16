@@ -24,7 +24,9 @@ export function calculateTodayPnl(
 	history: Trade[],
 	currentTrade?: Trade,
 ): number {
-	const startOfToday = DateTime.now().startOf('day');
+	const startOfToday = DateTime.now()
+		.setZone('Asia/Jerusalem')
+		.startOf('day');
 	const todayTrades = history.filter((t) => {
 		if (!t.enteredAt) return false;
 		const enteredAt = DateTime.fromISO(t.enteredAt);

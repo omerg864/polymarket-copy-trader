@@ -293,7 +293,8 @@ class QueueService {
 		const todayPnL = calculateTodayPnl(
 			await redisService.getTradeHistory(500),
 		);
-		const todayStr = DateTime.now().toISODate() || '';
+		const todayStr =
+			DateTime.now().setZone('Asia/Jerusalem').toISODate() || '';
 
 		if (sc.dailyTakeProfit >= 0 && todayPnL >= sc.dailyTakeProfit) {
 			logger.info(
