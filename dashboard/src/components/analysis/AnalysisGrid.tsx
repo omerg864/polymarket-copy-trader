@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { AgGridReact, AgGridProvider } from 'ag-grid-react';
 import {
 	ClientSideRowModelModule,
@@ -57,32 +57,36 @@ interface AnalysisGridProps {
 }
 
 export function AnalysisGrid({ trades }: AnalysisGridProps) {
-	// Calculate totals for the pinned bottom row
-	const pinnedBottomRowData = useMemo(() => {
-		if (trades.length === 0) return [];
+	const [pinnedBottomRowData, setPinnedBottomRowData] = useState<any[]>([]);
 
-		const totals = trades.reduce(
-			(acc, trade) => {
-				acc.shares += trade.size || 0;
-				acc.cost += trade.cost || 0;
-				acc.pnl += trade.pnl || 0;
-				acc.fee += trade.fee || 0;
-				return acc;
-			},
-			{ shares: 0, cost: 0, pnl: 0, fee: 0 },
-		);
+	// Handle total recalculation when filters change
+	const onModelUpdated = useCallback((params: any) => {
+		const gridApi = params.api;
+		let totalShares = 0;
+		let totalCost = 0;
+		let totalPnl = 0;
+		let totalFee = 0;
 
-		return [
+		gridApi.forEachNodeAfterFilter((node: any) => {
+			if (node.data && !node.data.isTotalRow) {
+				totalShares += node.data.size || 0;
+				totalCost += node.data.cost || 0;
+				totalPnl += node.data.pnl || 0;
+				totalFee += node.data.fee || 0;
+			}
+		});
+
+		setPinnedBottomRowData([
 			{
 				title: 'TOTALS',
-				size: totals.shares,
-				cost: totals.cost,
-				pnl: totals.pnl,
-				fee: totals.fee,
+				size: totalShares,
+				cost: totalCost,
+				pnl: totalPnl,
+				fee: totalFee,
 				isTotalRow: true,
 			},
-		];
-	}, [trades]);
+		]);
+	}, []);
 
 	const columnDefs = useMemo<ColDef<Trade>[]>(
 		() => [
@@ -515,6 +519,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 					defaultColDef={defaultColDef}
 					autoGroupColumnDef={autoGroupColumnDef}
 					pinnedBottomRowData={pinnedBottomRowData}
+					onModelUpdated={onModelUpdated}
 					animateRows={true}
 					rowHeight={50}
 					headerHeight={48}
