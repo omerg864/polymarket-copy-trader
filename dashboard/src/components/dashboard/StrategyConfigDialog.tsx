@@ -212,6 +212,13 @@ export function StrategyConfigDialog({
 								editValues={editValues}
 								setEditValues={setEditValues}
 							/>
+							<ConfigRow
+								label="BTC Price Guard Offset"
+								field="btcPriceOffset"
+								editing={editing}
+								editValues={editValues}
+								setEditValues={setEditValues}
+							/>
 						</ConfigSection>
 						<ConfigSection title="Technical Analysis">
 							<ConfigRow

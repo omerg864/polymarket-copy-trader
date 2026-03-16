@@ -211,18 +211,22 @@ class StrategyEngine {
 			return;
 		}
 
-		// Guard: BTC Price must be on the "right side" of priceToBeat
+		// Guard: BTC Price must be on the "right side" of priceToBeat + offset
 		const btcPrice = signal.indicators?.currentPrice;
 		if (btcPrice != null) {
+			const offset = sc.btcPriceOffset || 0;
 			const isRightSide =
 				signal.direction === 'UP'
-					? btcPrice >= refPrice
-					: btcPrice <= refPrice;
+					? btcPrice >= refPrice + offset
+					: btcPrice <= refPrice - offset;
 
 			if (!isRightSide) {
-				const diff = btcPrice - refPrice;
+				const threshold =
+					signal.direction === 'UP'
+						? refPrice + offset
+						: refPrice - offset;
 				logger.info(
-					`⚠️  BTC price on wrong side for ${signal.direction} (BTC: ${btcPrice.toFixed(2)}, Ref: ${refPrice.toFixed(2)}, Diff: ${diff.toFixed(2)}). Skipping trade.`,
+					`⚠️  BTC price on wrong side for ${signal.direction} (BTC: ${btcPrice.toFixed(2)}, Ref: ${refPrice.toFixed(2)}, Offset: ${offset}, Threshold: ${threshold.toFixed(2)}). Skipping trade.`,
 				);
 				return;
 			}

@@ -103,6 +103,7 @@ export interface StrategyConfig {
 	cycleIntervalMs: number;
 	dayPnlGoal: number;
 	minSecondsRemaining: number;
+	btcPriceOffset: number;
 }
 
 export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
@@ -133,6 +134,7 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 	cycleIntervalMs: 5000,
 	dayPnlGoal: 2,
 	minSecondsRemaining: 30,
+	btcPriceOffset: 5,
 };
 
 export interface NotificationConfig {
