@@ -1,39 +1,56 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo } from 'react';
-import { AgGridReact } from 'ag-grid-react';
+import { AgGridReact, AgGridProvider } from 'ag-grid-react';
 import {
-	ModuleRegistry,
+	ClientSideRowModelModule,
+	TextFilterModule,
+	NumberFilterModule,
+	DateFilterModule,
+	PaginationModule,
+	ValidationModule,
 	type ColDef,
 	type ValueFormatterParams,
-	ClientSideRowModelModule,
-	TextFilterModule,
-	NumberFilterModule,
-	DateFilterModule,
-	PaginationModule,
-	themeAlpine,
+	themeQuartz,
 	colorSchemeDarkBlue,
 } from 'ag-grid-community';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
+import {
+	SetFilterModule,
+	ColumnsToolPanelModule,
+	FiltersToolPanelModule,
+	RowGroupingModule,
+	MenuModule,
+	SideBarModule,
+	PivotModule,
+	AllEnterpriseModule,
+} from 'ag-grid-enterprise';
 
-const myTheme = themeAlpine.withPart(colorSchemeDarkBlue);
 import type { Trade } from '@/types';
 import { formatDate } from '@/lib/utils';
-import { 
-	DirectionBadge, 
-	MarketOutcomeBadge, 
+import {
+	DirectionBadge,
+	MarketOutcomeBadge,
 	StatusBadge,
-	PnlBadge 
+	PnlBadge,
 } from '../dashboard/badges';
 
-// Register AG Grid modules
-ModuleRegistry.registerModules([
+const myTheme = themeQuartz.withPart(colorSchemeDarkBlue);
+
+const modules = [
 	ClientSideRowModelModule,
 	TextFilterModule,
 	NumberFilterModule,
 	DateFilterModule,
 	PaginationModule,
-]);
+	ValidationModule,
+	SetFilterModule,
+	ColumnsToolPanelModule,
+	FiltersToolPanelModule,
+	RowGroupingModule,
+	MenuModule,
+	SideBarModule,
+	PivotModule,
+	AllEnterpriseModule,
+];
 
 interface AnalysisGridProps {
 	trades: Trade[];
@@ -43,7 +60,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 	// Calculate totals for the pinned bottom row
 	const pinnedBottomRowData = useMemo(() => {
 		if (trades.length === 0) return [];
-		
+
 		const totals = trades.reduce(
 			(acc, trade) => {
 				acc.shares += trade.size || 0;
@@ -52,7 +69,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				acc.fee += trade.fee || 0;
 				return acc;
 			},
-			{ shares: 0, cost: 0, pnl: 0, fee: 0 }
+			{ shares: 0, cost: 0, pnl: 0, fee: 0 },
 		);
 
 		return [
@@ -62,8 +79,8 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				cost: totals.cost,
 				pnl: totals.pnl,
 				fee: totals.fee,
-				isTotalRow: true
-			}
+				isTotalRow: true,
+			},
 		];
 	}, [trades]);
 
@@ -83,13 +100,16 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 					params.data?.title?.replace('Bitcoin Up or Down - ', '') ||
 					'',
 				filter: 'agTextColumnFilter',
+				enableRowGroup: true,
 			},
 			{
 				field: 'direction',
 				headerName: 'Dir',
 				width: 100,
+				enableRowGroup: true,
+				filter: 'agSetColumnFilter',
 				cellRenderer: (params: any) => {
-					if (params.data.isTotalRow) return '';
+					if (params.data?.isTotalRow) return '';
 					return <DirectionBadge direction={params.value} />;
 				},
 			},
@@ -97,17 +117,21 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				field: 'status',
 				headerName: 'Status',
 				width: 160,
+				enableRowGroup: true,
+				filter: 'agSetColumnFilter',
 				cellRenderer: (params: any) => {
-					if (params.data.isTotalRow) return '';
-					return <StatusBadge status={params.value.toLowerCase()} />;
+					if (params.data?.isTotalRow) return '';
+					return <StatusBadge status={params.value?.toLowerCase()} />;
 				},
 			},
 			{
 				field: 'actualOutcome',
 				headerName: 'Outcome',
 				width: 120,
+				enableRowGroup: true,
+				filter: 'agSetColumnFilter',
 				cellRenderer: (params: any) => {
-					if (params.data.isTotalRow) return '';
+					if (params.data?.isTotalRow) return '';
 					return <MarketOutcomeBadge outcome={params.value} />;
 				},
 			},
@@ -131,7 +155,9 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				headerName: 'Shares',
 				width: 100,
 				type: 'numericColumn',
-				valueFormatter: (params) =>
+				aggFunc: 'sum',
+				filter: 'agNumberColumnFilter',
+				valueFormatter: (params: any) =>
 					params.value ? Number(params.value).toLocaleString() : '',
 			},
 			{
@@ -139,7 +165,9 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				headerName: 'Cost',
 				width: 100,
 				type: 'numericColumn',
-				valueFormatter: (params) =>
+				aggFunc: 'sum',
+				filter: 'agNumberColumnFilter',
+				valueFormatter: (params: any) =>
 					params.value ? `$${Number(params.value).toFixed(2)}` : '',
 			},
 			{
@@ -147,39 +175,62 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				headerName: 'Entry $',
 				width: 100,
 				type: 'numericColumn',
-				valueFormatter: (params) =>
-					params.value ? `$${params.value.toFixed(3)}` : '',
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueFormatter: (params: any) => {
+					if (params.value == null) return '';
+					const val = Number(params.value);
+					return isNaN(val) ? '' : `$${val.toFixed(3)}`;
+				},
 			},
 			{
 				field: 'exitPrice',
 				headerName: 'Exit $',
 				width: 100,
 				type: 'numericColumn',
-				valueFormatter: (params) =>
-					params.value ? `$${params.value.toFixed(3)}` : '',
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueFormatter: (params: any) => {
+					if (params.value == null) return '';
+					const val = Number(params.value);
+					return isNaN(val) ? '' : `$${val.toFixed(3)}`;
+				},
 			},
 			{
 				field: 'pnl',
 				headerName: 'PnL',
 				width: 140,
 				type: 'numericColumn',
+				aggFunc: 'sum',
+				filter: 'agNumberColumnFilter',
 				cellRenderer: (params: any) => {
 					const val = params.value;
 					if (val === undefined || val === null) return '';
-					return <PnlBadge pnl={val} cost={params.data.cost} />;
+					// Handle group row aggregation access
+					const cost =
+						params.data?.cost || params.node?.aggData?.cost || 0;
+					return <PnlBadge pnl={val} cost={cost} />;
 				},
 			},
 			{
 				headerName: 'PnL %',
 				width: 90,
 				type: 'numericColumn',
-				valueGetter: (params) => {
-					if (!params.data || !params.data.cost) return 0;
-					return (params.data.pnl / params.data.cost) * 100;
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) => {
+					const pnl = params.data
+						? params.data.pnl
+						: params.node.aggData?.pnl;
+					const cost = params.data
+						? params.data.cost
+						: params.node.aggData?.cost;
+					if (!cost) return 0;
+					return (pnl / cost) * 100;
 				},
-				valueFormatter: (params) => {
-					if (params.value === undefined) return '';
-					return `${params.value.toFixed(2)}%`;
+				valueFormatter: (params: any) => {
+					if (params.value == null) return '';
+					const val = Number(params.value);
+					return isNaN(val) ? '' : `${val.toFixed(2)}%`;
 				},
 				cellClassRules: {
 					'text-emerald-400': 'x >= 0',
@@ -191,47 +242,67 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				headerName: 'Fee',
 				width: 90,
 				type: 'numericColumn',
-				valueFormatter: (params) =>
-					params.value != null ? `$${params.value.toFixed(4)}` : '',
+				aggFunc: 'sum',
+				filter: 'agNumberColumnFilter',
+				valueFormatter: (params: any) => {
+					if (params.value == null) return '';
+					const val = Number(params.value);
+					return isNaN(val) ? '' : `$${val.toFixed(4)}`;
+				},
 			},
 			{
 				field: 'confidence',
 				headerName: 'Conf',
 				width: 90,
-				valueFormatter: (params) =>
-					params.value != null
-						? `${(params.value * 100).toFixed(1)}%`
-						: '',
+				filter: 'agNumberColumnFilter',
+				valueFormatter: (params: any) => {
+					if (params.value == null) return '';
+					const val = Number(params.value);
+					return isNaN(val) ? '' : `${(val * 100).toFixed(1)}%`;
+				},
 			},
 			// --- Technical Analysis (Indicators) ---
 			{
 				headerName: 'Entry BTC',
 				width: 110,
 				type: 'numericColumn',
-				valueGetter: (params) => params.data?.indicators?.currentPrice,
-				valueFormatter: (params) =>
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) =>
+					params.data
+						? params.data?.indicators?.currentPrice
+						: params.value,
+				valueFormatter: (params: any) =>
 					params.value
-						? `$${Number(params.value).toLocaleString()}`
+						? `$${Number(params.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 						: '',
 			},
 			{
 				headerName: 'Price Beat',
 				width: 110,
 				type: 'numericColumn',
-				valueGetter: (params) => {
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) => {
+					if (!params.data) return params.value;
 					const val = params.data?.indicators?.priceToBeat;
 					return val === 'N/A' || val === undefined
 						? null
 						: Number(val);
 				},
-				valueFormatter: (params) =>
-					params.value ? `$${params.value.toLocaleString()}` : '',
+				valueFormatter: (params: any) =>
+					params.value
+						? `$${params.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+						: '',
 			},
 			{
 				headerName: 'Entry Diff',
 				width: 100,
 				type: 'numericColumn',
-				valueGetter: (params) => {
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) => {
+					if (!params.data) return params.value;
 					const current = Number(
 						params.data?.indicators?.currentPrice,
 					);
@@ -242,7 +313,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				},
 				cellRenderer: (params: any) => {
 					const val = params.value;
-					if (val === null) return '';
+					if (val === null || val === undefined) return '';
 					return (
 						<div
 							className={
@@ -250,7 +321,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 							}
 						>
 							{val >= 0 ? '+' : ''}
-							{val.toFixed(2)}
+							{Number(val).toFixed(2)}
 						</div>
 					);
 				},
@@ -260,14 +331,21 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				headerName: 'Exit BTC',
 				width: 110,
 				type: 'numericColumn',
-				valueFormatter: (params) =>
-					params.value ? `$${params.value.toLocaleString()}` : '',
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueFormatter: (params: any) =>
+					params.value
+						? `$${params.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+						: '',
 			},
 			{
 				headerName: 'Exit Diff',
 				width: 100,
 				type: 'numericColumn',
-				valueGetter: (params) => {
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) => {
+					if (!params.data) return params.value;
 					const exit = params.data?.exitBtcPrice;
 					const beat = params.data?.priceToBeat;
 					if (exit === undefined || !beat) return null;
@@ -275,7 +353,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				},
 				cellRenderer: (params: any) => {
 					const val = params.value;
-					if (val === null) return '';
+					if (val === null || val === undefined) return '';
 					return (
 						<div
 							className={
@@ -283,7 +361,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 							}
 						>
 							{val >= 0 ? '+' : ''}
-							{val.toFixed(2)}
+							{Number(val).toFixed(2)}
 						</div>
 					);
 				},
@@ -291,64 +369,116 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 			{
 				headerName: 'Dist %',
 				width: 90,
-				valueGetter: (params) => params.data?.indicators?.distFromRef,
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) =>
+					params.data
+						? params.data?.indicators?.distFromRef
+						: params.value,
 			},
 			{
 				headerName: 'VWAP',
 				width: 100,
-				valueGetter: (params) => params.data?.indicators?.vwap,
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) =>
+					params.data ? params.data?.indicators?.vwap : params.value,
 			},
 			{
 				headerName: 'StochRSI',
 				width: 90,
-				valueGetter: (params) => params.data?.indicators?.stochRsi,
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) =>
+					params.data
+						? params.data?.indicators?.stochRsi
+						: params.value,
 			},
 			{
 				headerName: 'MicroRSI',
 				width: 90,
-				valueGetter: (params) => params.data?.indicators?.microRsi,
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) =>
+					params.data
+						? params.data?.indicators?.microRsi
+						: params.value,
 			},
 			{
 				headerName: 'RSI-14',
 				width: 90,
-				valueGetter: (params) => params.data?.indicators?.rsi14,
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) =>
+					params.data ? params.data?.indicators?.rsi14 : params.value,
 			},
 			{
 				headerName: 'EMA 3',
 				width: 100,
-				valueGetter: (params) => params.data?.indicators?.ema3,
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) =>
+					params.data ? params.data?.indicators?.ema3 : params.value,
 			},
 			{
 				headerName: 'EMA 8',
 				width: 100,
-				valueGetter: (params) => params.data?.indicators?.ema8,
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) =>
+					params.data ? params.data?.indicators?.ema8 : params.value,
 			},
 			{
 				headerName: 'BB Lower',
 				width: 100,
 				hide: true,
-				valueGetter: (params) => params.data?.indicators?.bbLower,
+				aggFunc: 'avg',
+				valueGetter: (params: any) =>
+					params.data
+						? params.data?.indicators?.bbLower
+						: params.value,
 			},
 			{
 				headerName: 'BB Upper',
 				width: 100,
 				hide: true,
-				valueGetter: (params) => params.data?.indicators?.bbUpper,
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) =>
+					params.data
+						? params.data?.indicators?.bbUpper
+						: params.value,
 			},
 			{
 				headerName: 'BB Pos',
 				width: 80,
-				valueGetter: (params) => params.data?.indicators?.bbPosition,
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) =>
+					params.data
+						? params.data?.indicators?.bbPosition
+						: params.value,
 			},
 			{
 				headerName: 'Mom 3m',
 				width: 90,
-				valueGetter: (params) => params.data?.indicators?.momentum3,
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) =>
+					params.data
+						? params.data?.indicators?.momentum3
+						: params.value,
 			},
 			{
-				headerName: 'Volatility',
 				width: 90,
-				valueGetter: (params) => params.data?.indicators?.volatility,
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) =>
+					params.data
+						? params.data?.indicators?.volatility
+						: params.value,
+				valueFormatter: (params: any) =>
+					params.value != null ? Number(params.value).toFixed(2) : '',
 			},
 		],
 		[],
@@ -356,29 +486,43 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 
 	const defaultColDef = useMemo<ColDef>(
 		() => ({
-			sortable: true,
+			flex: 1,
+			minWidth: 100,
+			enableValue: true,
+			enableRowGroup: true,
+			enablePivot: true,
 			filter: true,
+			sortable: true,
 			resizable: true,
 		}),
 		[],
 	);
 
+	const autoGroupColumnDef = useMemo<ColDef>(() => {
+		return {
+			minWidth: 200,
+		};
+	}, []);
+
 	return (
-		<div className="w-full h-[700px] border border-zinc-800 rounded-xl overflow-hidden shadow-2xl">
-			<AgGridReact
-				theme={myTheme}
-				rowData={trades}
-				columnDefs={columnDefs}
-				defaultColDef={defaultColDef}
-				pagination={true}
-				paginationPageSize={50}
-				paginationPageSizeSelector={[20, 50, 100]}
-				pinnedBottomRowData={pinnedBottomRowData}
-				animateRows={true}
-				rowHeight={42}
-				headerHeight={48}
-				overlayNoRowsTemplate="<span class='text-zinc-500'>No trades found</span>"
-			/>
-		</div>
+		<AgGridProvider modules={modules}>
+			<div className="w-full h-[750px] bg-[#0c0c0e] border border-zinc-800 rounded-xl overflow-hidden shadow-2xl">
+				<AgGridReact
+					theme={myTheme}
+					rowData={trades}
+					cellSelection
+					columnDefs={columnDefs}
+					defaultColDef={defaultColDef}
+					autoGroupColumnDef={autoGroupColumnDef}
+					pinnedBottomRowData={pinnedBottomRowData}
+					animateRows={true}
+					rowHeight={50}
+					headerHeight={48}
+					sideBar={true}
+					rowGroupPanelShow="always"
+					overlayNoRowsTemplate="<span class='text-zinc-500'>No trades found</span>"
+				/>
+			</div>
+		</AgGridProvider>
 	);
 }
