@@ -249,6 +249,12 @@ class StrategyEngine {
 
 		// Step 6: Get market prices
 		const prices = await polymarketService.getMarketPrices(market);
+		if (!prices) {
+			logger.warn(
+				`⚠️  Could not fetch prices for market ${market.slug} - skipping cycle`,
+			);
+			return;
+		}
 		logger.info(
 			`   Market prices — Up: ${prices.upPrice.toFixed(3)} | Down: ${prices.downPrice.toFixed(3)}`,
 		);

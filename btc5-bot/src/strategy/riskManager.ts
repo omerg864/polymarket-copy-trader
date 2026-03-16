@@ -112,7 +112,7 @@ class RiskManager {
 						trade.conditionId,
 						trade.direction,
 					);
-					if (!currentPrice || currentPrice <= 0) continue;
+					if (currentPrice === null || currentPrice <= 0) continue;
 
 					logger.info(
 						`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.direction} but BTC $${btcPrice.toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. Selling to avoid resolution loss.`,
@@ -163,7 +163,7 @@ class RiskManager {
 			trade.direction,
 		);
 
-		if (!currentPrice || currentPrice <= 0) return;
+		if (currentPrice === null || currentPrice <= 0) return;
 
 		const pctChange = (currentPrice - trade.entryPrice) / trade.entryPrice;
 

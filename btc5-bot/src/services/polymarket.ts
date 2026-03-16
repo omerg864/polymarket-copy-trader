@@ -289,7 +289,7 @@ class PolymarketService {
 		}
 	}
 
-	async getMarketPrices(market: Market): Promise<MarketPrices> {
+	async getMarketPrices(market: Market): Promise<MarketPrices | null> {
 		try {
 			if (!this.clobClient)
 				throw new Error('CLOB client not initialized');
@@ -301,7 +301,7 @@ class PolymarketService {
 				market.downTokenId,
 			);
 
-			const getMid = (book: OrderBook): number => {
+			const getMid = (book: OrderBook): number | null => {
 				if (book.midpoint) return parseFloat(book.midpoint);
 
 				const bestBidObj = book.bids?.length
@@ -319,8 +319,15 @@ class PolymarketService {
 				if (bid !== null && ask !== null) return (bid + ask) / 2;
 				if (bid !== null) return bid;
 				if (ask !== null) return ask;
-				return 0.5;
+				return null;
 			};
+
+			const upPrice = getMid(upBook);
+			const downPrice = getMid(downBook);
+
+			if (upPrice === null || downPrice === null) {
+				return null;
+			}
 
 			const upBidObj = upBook.bids?.length
 				? upBook.bids[upBook.bids.length - 1]
@@ -331,8 +338,8 @@ class PolymarketService {
 			const upAsk = upAskObj?.price ? parseFloat(upAskObj.price) : 0.51;
 
 			return {
-				upPrice: getMid(upBook),
-				downPrice: getMid(downBook),
+				upPrice,
+				downPrice,
 				bestBid: upBid,
 				bestAsk: upAsk,
 			};
@@ -345,12 +352,7 @@ class PolymarketService {
 				'Polymarket',
 				'getMarketPrices',
 			);
-			return {
-				upPrice: 0.5,
-				downPrice: 0.5,
-				bestBid: 0.49,
-				bestAsk: 0.51,
-			};
+			return null;
 		}
 	}
 
@@ -358,7 +360,7 @@ class PolymarketService {
 		tokenId: string,
 		_conditionId: string,
 		_direction: string,
-	): Promise<number> {
+	): Promise<number | null> {
 		try {
 			if (!this.clobClient)
 				throw new Error('CLOB client not initialized');
@@ -383,14 +385,14 @@ class PolymarketService {
 			logger.warn(
 				`No readable price found in token ${tokenId} orderbook: ${JSON.stringify(book).substring(0, 100)}`,
 			);
-			return 0.5;
+			return null;
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : String(error);
 			logger.error(
 				`Error in getTokenPrice for token ${tokenId}: ${message}`,
 			);
-			return 0.5;
+			return null;
 		}
 	}
 
