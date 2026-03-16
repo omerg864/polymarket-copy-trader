@@ -104,6 +104,8 @@ export interface StrategyConfig {
 	dayPnlGoal: number;
 	minSecondsRemaining: number;
 	btcPriceOffset: number;
+	dailyTakeProfit: number;
+	dailyStopLoss: number;
 }
 
 export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
@@ -135,6 +137,8 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 	dayPnlGoal: 2,
 	minSecondsRemaining: 30,
 	btcPriceOffset: 5,
+	dailyTakeProfit: -1,
+	dailyStopLoss: 1,
 };
 
 export interface NotificationConfig {

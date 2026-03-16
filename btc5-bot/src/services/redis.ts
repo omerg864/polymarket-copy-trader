@@ -185,6 +185,25 @@ class RedisService {
 		);
 	}
 
+	async getDailyStop(): Promise<{ stopped: boolean; date: string } | null> {
+		const client = this.getClient();
+		const raw = await client.get(REDIS_KEYS.DAILY_STOP(this.mode));
+		if (!raw) return null;
+		try {
+			return JSON.parse(raw);
+		} catch (err) {
+			return null;
+		}
+	}
+
+	async setDailyStop(stopped: boolean, date: string): Promise<void> {
+		const client = this.getClient();
+		await client.set(
+			REDIS_KEYS.DAILY_STOP(this.mode),
+			JSON.stringify({ stopped, date }),
+		);
+	}
+
 	async setBotStartTime(ms: number): Promise<void> {
 		const client = this.getClient();
 		await client.set(REDIS_KEYS.START_TIME(this.mode), ms.toString());

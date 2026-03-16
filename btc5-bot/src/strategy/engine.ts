@@ -1,5 +1,6 @@
 import { TradeStatus, TradeType, type Trade } from '@shared/types';
-import { calculateFee } from '@shared/utils';
+import { DateTime } from 'luxon';
+import { calculateFee, calculateTodayPnl } from '@shared/utils';
 import config from '../config';
 import demoTradingService from '../services/demoTrading';
 import notificationManager from '../services/notificationManager';
@@ -128,6 +129,20 @@ class StrategyEngine {
 				`📋 Max concurrent trades reached (${currentTrades.length}/${sc.maxConcurrentTrades}). Waiting...`,
 			);
 			return;
+		}
+
+		// Step 2: Check for daily TP/SL limits (Optimized via Redis)
+		const dailyStop = await redisService.getDailyStop();
+		const todayStr = DateTime.now().toISODate();
+
+		if (dailyStop && dailyStop.stopped && dailyStop.date === todayStr) {
+			// No new trades today
+			return;
+		}
+
+		// Reset daily stop if date changed
+		if (dailyStop && dailyStop.date !== todayStr) {
+			await redisService.setDailyStop(false, todayStr || '');
 		}
 
 		// Step 3: Discover next market

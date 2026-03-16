@@ -83,6 +83,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Max Order Size"
@@ -91,6 +92,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Max Open Trades"
@@ -98,10 +100,28 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={1}
 							/>
 							<ConfigRow
 								label="Bot Allowance"
 								field="botAllowance"
+								prefix="$"
+								editing={editing}
+								editValues={editValues}
+								setEditValues={setEditValues}
+								min={0}
+							/>
+							<ConfigRow
+								label="Daily Take Profit"
+								field="dailyTakeProfit"
+								prefix="$"
+								editing={editing}
+								editValues={editValues}
+								setEditValues={setEditValues}
+							/>
+							<ConfigRow
+								label="Daily Stop Loss"
+								field="dailyStopLoss"
 								prefix="$"
 								editing={editing}
 								editValues={editValues}
@@ -115,6 +135,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Min Entry Price"
@@ -123,6 +144,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Max Entry Price"
@@ -131,6 +153,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Min StochRSI"
@@ -138,6 +161,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Max StochRSI"
@@ -145,6 +169,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Min RSI-14"
@@ -152,6 +177,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Max RSI-14"
@@ -159,6 +185,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Min BB Position"
@@ -166,6 +193,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Max BB Position"
@@ -173,6 +201,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Min Market Age"
@@ -181,6 +210,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Take Profit"
@@ -188,6 +218,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Stop Loss"
@@ -195,6 +226,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Force Close Before End"
@@ -203,6 +235,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Min Seconds Remaining"
@@ -211,6 +244,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="BTC Price Guard Offset"
@@ -227,6 +261,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={1}
 							/>
 							<ConfigRow
 								label="RSI Period"
@@ -234,6 +269,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={1}
 							/>
 							<ConfigRow
 								label="EMA Fast"
@@ -241,6 +277,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={1}
 							/>
 							<ConfigRow
 								label="EMA Slow"
@@ -248,6 +285,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={1}
 							/>
 						</ConfigSection>
 						<ConfigSection title="Advanced">
@@ -258,6 +296,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={100}
 							/>
 							<ConfigRow
 								label="High Price Threshold"
@@ -266,6 +305,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="High Price Bonus"
@@ -273,6 +313,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={0}
 							/>
 							<ConfigRow
 								label="Cycle Interval"
@@ -281,6 +322,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={500}
 							/>
 							<ConfigRow
 								label="Day P&L Goal"
@@ -289,6 +331,7 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+								min={1}
 							/>
 						</ConfigSection>
 					</div>

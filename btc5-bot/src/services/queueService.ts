@@ -1,12 +1,14 @@
 import { Queue, Worker, type Job } from 'bullmq';
 import Redis from 'ioredis';
 import { type Trade, TradeStatus } from '@shared/types';
+import { calculateTodayPnl } from '@shared/utils';
 import config from '../config';
 import logger from '../utils/logger';
 import redisService from './redis';
 import polymarketService from './polymarket';
 import notificationManager from './notificationManager';
 import { getStrategyConfig } from './strategyConfig';
+import { DateTime } from 'luxon';
 
 // BullMQ connection must have maxRetriesPerRequest: null
 const connection = new Redis(config.redisUrl, {
@@ -147,8 +149,9 @@ class QueueService {
 		const isProcessed = await redisService.isTradeInHistory(trade.id);
 		if (isProcessed) {
 			logger.warn(
-				`⚠️ Trade ${trade.id} already processed. Skipping sell job.`,
+				`⚠️ Trade ${trade.id} already processed. Skipping sell job. Removing from active trades.`,
 			);
+			await redisService.removeTrade(trade.id);
 			return;
 		}
 
@@ -265,7 +268,12 @@ class QueueService {
 		trade.closedAt = new Date().toISOString();
 
 		// Update database/Redis
-		await redisService.removeTrade(trade.id);
+		try {
+			await redisService.removeTrade(trade.id);
+		} catch (error) {
+			logger.error(`Failed to remove trade ${trade.id}: ${error}`);
+		}
+
 		await redisService.saveTradeHistory(trade); // This adds to history_ids
 
 		const sc = await getStrategyConfig();
@@ -280,6 +288,24 @@ class QueueService {
 		stats.totalPnl += trade.pnl;
 		stats.totalFees += totalFee;
 		await redisService.updateBotStats(stats);
+
+		// Check for daily TP/SL limits
+		const todayPnL = calculateTodayPnl(
+			await redisService.getTradeHistory(500),
+		);
+		const todayStr = DateTime.now().toISODate() || '';
+
+		if (sc.dailyTakeProfit >= 0 && todayPnL >= sc.dailyTakeProfit) {
+			logger.info(
+				`⏹️ Daily Take Profit reached ($${todayPnL.toFixed(2)}). Stopping for the day.`,
+			);
+			await redisService.setDailyStop(true, todayStr);
+		} else if (sc.dailyStopLoss <= 0 && todayPnL <= sc.dailyStopLoss) {
+			logger.info(
+				`⏹️ Daily Stop Loss reached ($${todayPnL.toFixed(2)}). Stopping for the day.`,
+			);
+			await redisService.setDailyStop(true, todayStr);
+		}
 
 		// Trigger notification
 		await notificationManager.handleTradeClosed(trade, stats, newBalance);
