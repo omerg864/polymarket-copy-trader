@@ -30,6 +30,33 @@ interface AnalysisGridProps {
 }
 
 export function AnalysisGrid({ trades }: AnalysisGridProps) {
+	// Calculate totals for the pinned bottom row
+	const pinnedBottomRowData = useMemo(() => {
+		if (trades.length === 0) return [];
+		
+		const totals = trades.reduce(
+			(acc, trade) => {
+				acc.shares += trade.size || 0;
+				acc.cost += trade.cost || 0;
+				acc.pnl += trade.pnl || 0;
+				acc.fee += trade.fee || 0;
+				return acc;
+			},
+			{ shares: 0, cost: 0, pnl: 0, fee: 0 }
+		);
+
+		return [
+			{
+				title: 'TOTALS',
+				size: totals.shares,
+				cost: totals.cost,
+				pnl: totals.pnl,
+				fee: totals.fee,
+				isTotalRow: true
+			}
+		];
+	}, [trades]);
+
 	const columnDefs = useMemo<ColDef<Trade>[]>(
 		() => [
 			{
@@ -52,16 +79,21 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				headerName: 'Dir',
 				width: 80,
 				cellRenderer: (params: any) => {
+					if (params.data.isTotalRow) return '';
 					const isUp = params.value === 'UP';
 					return (
 						<div
-							className={
-								isUp
-									? 'text-emerald-400 font-bold'
-									: 'text-red-400 font-bold'
-							}
+							className={`flex items-center justify-center h-full`}
 						>
-							{params.value}
+							<span
+								className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+									isUp
+										? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+										: 'bg-red-500/10 text-red-400 border border-red-500/20'
+								}`}
+							>
+								{params.value}
+							</span>
 						</div>
 					);
 				},
@@ -69,7 +101,27 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 			{
 				field: 'status',
 				headerName: 'Status',
-				width: 120,
+				width: 130,
+				cellRenderer: (params: any) => {
+					if (params.data.isTotalRow) return '';
+					const status = params.value;
+					const colors: Record<string, string> = {
+						WON: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+						LOST: 'bg-red-500/10 text-red-400 border-red-500/20',
+						CLOSED_TP: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+						CLOSED_SL: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+						CLOSED_FCT: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+						OPEN: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+					};
+					const colorClass = colors[status] || colors.OPEN;
+					return (
+						<div className="flex items-center justify-center h-full">
+							<span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${colorClass}`}>
+								{status.replace('CLOSED_', '')}
+							</span>
+						</div>
+					);
+				}
 			},
 			{
 				field: 'actualOutcome',
@@ -133,9 +185,9 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 					if (val === undefined || val === null) return '';
 					return (
 						<div
-							className={
+							className={`font-mono font-bold ${
 								val >= 0 ? 'text-emerald-400' : 'text-red-400'
-							}
+							}`}
 						>
 							{val >= 0 ? '+' : ''}${val.toFixed(2)}
 						</div>
@@ -337,14 +389,19 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 	);
 
 	return (
-		<div className="ag-theme-quartz-dark w-full h-[600px]">
+		<div className="ag-theme-quartz-dark w-full h-[700px] border border-zinc-800 rounded-xl overflow-hidden shadow-2xl">
 			<AgGridReact
 				rowData={trades}
 				columnDefs={columnDefs}
 				defaultColDef={defaultColDef}
 				pagination={true}
-				paginationPageSize={20}
+				paginationPageSize={50}
 				paginationPageSizeSelector={[20, 50, 100]}
+				pinnedBottomRowData={pinnedBottomRowData}
+				animateRows={true}
+				rowHeight={42}
+				headerHeight={48}
+				overlayNoRowsTemplate="<span class='text-zinc-500'>No trades found</span>"
 			/>
 		</div>
 	);
