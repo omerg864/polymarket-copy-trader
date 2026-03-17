@@ -7,6 +7,7 @@ import config, { validateLiveConfig } from '../config';
 import logger from '../utils/logger';
 import NotificationManager from './notificationManager';
 import { getStrategyConfig } from './strategyConfig';
+import * as async from 'async';
 
 interface OrderBook {
 	midpoint?: string;
@@ -294,12 +295,16 @@ class PolymarketService {
 			if (!this.clobClient)
 				throw new Error('CLOB client not initialized');
 
-			const upBook: OrderBook = await this.clobClient.getOrderBook(
-				market.upTokenId,
-			);
-			const downBook: OrderBook = await this.clobClient.getOrderBook(
-				market.downTokenId,
-			);
+			// Typesafe parallel fetching of both orderbooks using async library
+			const { upBook, downBook } = await async.parallel<
+				void,
+				{ upBook: OrderBook; downBook: OrderBook }
+			>({
+				upBook: async () =>
+					this.clobClient!.getOrderBook(market.upTokenId),
+				downBook: async () =>
+					this.clobClient!.getOrderBook(market.downTokenId),
+			});
 
 			const getMid = (book: OrderBook): number | null => {
 				if (book.midpoint) return parseFloat(book.midpoint);
@@ -409,27 +414,36 @@ class PolymarketService {
 		}
 		if (!this.clobClient) throw new Error('CLOB client not initialized');
 
-		const order = await this.clobClient.createAndPostOrder(
-			{
-				tokenID: tokenId,
-				price,
-				side: Side.BUY,
-				size,
-			},
-			{
-				tickSize: market.tickSize as any,
-				negRisk: market.negRisk,
-			},
-			OrderType.GTC,
-		);
+		try {
+			const order = await this.clobClient.createAndPostOrder(
+				{
+					tokenID: tokenId,
+					price,
+					side: Side.BUY,
+					size,
+				},
+				{
+					tickSize: market.tickSize as any,
+					negRisk: market.negRisk,
+				},
+				OrderType.GTC,
+			);
 
-		logger.trade('BUY ORDER PLACED', {
-			tokenId: tokenId.substring(0, 12) + '...',
-			price,
-			size,
-			orderId: (order as Record<string, unknown>)?.orderID,
-		});
-		return order;
+			logger.trade('BUY ORDER PLACED', {
+				tokenId: tokenId.substring(0, 12) + '...',
+				price,
+				size,
+				orderId: (order as Record<string, unknown>)?.orderID,
+			});
+			return order;
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			logger.error(
+				`Failed to place BUY order for ${tokenId}: ${message}`,
+			);
+			throw error;
+		}
 	}
 
 	async placeSellOrder(
@@ -443,27 +457,36 @@ class PolymarketService {
 		}
 		if (!this.clobClient) throw new Error('CLOB client not initialized');
 
-		const order = await this.clobClient.createAndPostOrder(
-			{
-				tokenID: tokenId,
-				price,
-				side: Side.SELL,
-				size,
-			},
-			{
-				tickSize: market.tickSize as any,
-				negRisk: market.negRisk,
-			},
-			OrderType.GTC,
-		);
+		try {
+			const order = await this.clobClient.createAndPostOrder(
+				{
+					tokenID: tokenId,
+					price,
+					side: Side.SELL,
+					size,
+				},
+				{
+					tickSize: market.tickSize as any,
+					negRisk: market.negRisk,
+				},
+				OrderType.GTC,
+			);
 
-		logger.trade('SELL ORDER PLACED', {
-			tokenId: tokenId.substring(0, 12) + '...',
-			price,
-			size,
-			orderId: (order as Record<string, unknown>)?.orderID,
-		});
-		return order;
+			logger.trade('SELL ORDER PLACED', {
+				tokenId: tokenId.substring(0, 12) + '...',
+				price,
+				size,
+				orderId: (order as Record<string, unknown>)?.orderID,
+			});
+			return order;
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			logger.error(
+				`Failed to place SELL order for ${tokenId}: ${message}`,
+			);
+			throw error;
+		}
 	}
 
 	async cancelOrder(orderId: string): Promise<void> {

@@ -20,6 +20,7 @@ export const REDIS_KEYS = {
 	START_TIME: (mode: string) => `${REDIS_PREFIX}${mode}:start_time`,
 	STOP_REQUESTED: (mode: string) => `${REDIS_PREFIX}${mode}:stop_requested`,
 	DAILY_STOP: (mode: string) => `${REDIS_PREFIX}${mode}:daily_stop`, // persists { stopped: boolean, date: string }
+	DAILY_PNL: (mode: string, date: string) => `${REDIS_PREFIX}${mode}:daily_pnl:${date}`,
 	ACTIVE_TRADES: (mode: string) => `${REDIS_PREFIX}${mode}:active_trades`,
 	TRADE_PREFIX: (mode: string) => `${REDIS_PREFIX}${mode}:trade:`, // followed by trade ID
 };

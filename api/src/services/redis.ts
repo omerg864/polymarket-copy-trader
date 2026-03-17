@@ -153,4 +153,12 @@ export async function getRedisInfo(): Promise<{
 	return { memoryUsed, totalKeys };
 }
 
+export async function getDailyPnl(date: string): Promise<number> {
+	const isDemo = config.isDemo;
+	const key = REDIS_KEYS.DAILY_PNL(isDemo ? 'demo' : 'live', date);
+	const raw = await redis.get(key);
+	if (raw === null) return 0;
+	return parseFloat(raw) || 0;
+}
+
 export { redis };

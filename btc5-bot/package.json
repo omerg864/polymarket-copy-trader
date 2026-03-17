@@ -1,6 +1,6 @@
 {
 	"name": "polymarket-btc5-bot",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"description": "Trading engine for Polymarket BTC 5-minute up/down markets",
 	"main": "dist/index.js",
 	"scripts": {
@@ -11,6 +11,7 @@
 	},
 	"dependencies": {
 		"@polymarket/clob-client": "^5.1.0",
+		"async": "^3.2.6",
 		"axios": "^1.7.0",
 		"bullmq": "^5.71.0",
 		"dotenv": "^16.4.0",
@@ -22,6 +23,7 @@
 		"winston": "^3.14.0"
 	},
 	"devDependencies": {
+		"@types/async": "^3.2.25",
 		"@types/luxon": "^3.7.1",
 		"@types/node": "^20.12.12",
 		"nodemon": "^3.1.0",

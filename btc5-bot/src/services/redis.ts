@@ -37,7 +37,10 @@ class RedisService {
 	}
 
 	async connect(): Promise<void> {
-		if (this.client.status === 'ready' || this.client.status === 'connecting') {
+		if (
+			this.client.status === 'ready' ||
+			this.client.status === 'connecting'
+		) {
 			return;
 		}
 		await this.client.connect();
@@ -99,7 +102,7 @@ class RedisService {
 		const client = this.getClient();
 		const historyKey = REDIS_KEYS.HISTORY(this.mode);
 		const idsKey = REDIS_KEYS.HISTORY_IDS(this.mode);
-		
+
 		const record: Trade = {
 			...trade,
 			closedAt: new Date().toISOString(),
@@ -123,8 +126,8 @@ class RedisService {
 		const key = REDIS_KEYS.HISTORY(this.mode);
 		const records = await client.lrange(key, 0, -1);
 		const trades = records.map((r) => JSON.parse(r) as Trade);
-		
-		const index = trades.findIndex(t => t.id === trade.id);
+
+		const index = trades.findIndex((t) => t.id === trade.id);
 		if (index !== -1) {
 			await client.lset(key, index, JSON.stringify(trade));
 		}
@@ -213,6 +216,24 @@ class RedisService {
 		const client = this.getClient();
 		const raw = await client.get(REDIS_KEYS.START_TIME(this.mode));
 		return raw ? parseInt(raw, 10) : null;
+	}
+
+	// ---- Daily PnL ----
+
+	async getDailyPnl(date: string): Promise<number> {
+		const client = this.getClient();
+		const key = REDIS_KEYS.DAILY_PNL(this.mode, date);
+		const raw = await client.get(key);
+		if (raw === null) return 0;
+		return parseFloat(raw) || 0;
+	}
+
+	async incrementDailyPnl(date: string, pnl: number): Promise<void> {
+		const client = this.getClient();
+		const key = REDIS_KEYS.DAILY_PNL(this.mode, date);
+		await client.incrbyfloat(key, pnl);
+		// Expire after 3 days to keep Redis clean
+		await client.expire(key, 60 * 60 * 24 * 3);
 	}
 
 	// ---- Bot Balance (Live or Demo) ----

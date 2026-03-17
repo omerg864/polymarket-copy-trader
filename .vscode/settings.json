@@ -1,5 +1,42 @@
 {
 	"js/ts.tsserver.experimental.enableProjectDiagnostics": true,
 	"js/ts.tsserver.maxMemory": 8192,
-	"cSpell.words": ["CLOB"]
+	"cSpell.words": ["CLOB"],
+	"dbcode.connections": [
+		{
+			"connectionId": "SmJtiEC8-s4PHQJTQJPVt",
+			"name": "Local",
+			"driver": "mongodb",
+			"color": "#00E3A9",
+			"connectionType": "host",
+			"driverOptions": {
+				"protocol": "mongodb://"
+			},
+			"host": "localhost",
+			"port": 27017,
+			"ssl": false,
+			"authMethod": "password",
+			"savePassword": "secretStorage",
+			"database": "polymarket-bot",
+			"readOnly": false,
+			"connectionTimeout": 30
+		},
+		{
+			"connectionId": "QAhCviGeC4XIqH0YQhYhm",
+			"name": "Local",
+			"driver": "redis",
+			"color": "#00E3A9",
+			"connectionType": "host",
+			"host": "localhost",
+			"port": 6379,
+			"ssl": false,
+			"username": "default",
+			"savePassword": "secretStorage",
+			"readOnly": false,
+			"connectionTimeout": 30,
+			"driverOptions": {
+				"maxScanKeys": 50000
+			}
+		}
+	]
 }

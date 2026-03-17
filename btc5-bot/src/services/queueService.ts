@@ -1,7 +1,7 @@
 import { Queue, Worker, type Job } from 'bullmq';
 import Redis from 'ioredis';
 import { type Trade, TradeStatus } from '@shared/types';
-import { calculateTodayPnl } from '@shared/utils';
+import { calculateFee } from '@shared/utils';
 import config from '../config';
 import logger from '../utils/logger';
 import redisService from './redis';
@@ -194,7 +194,7 @@ class QueueService {
 					trade.size,
 					market,
 				);
-				sellFee = (trade.cost / trade.size) * trade.size * 0.0175;
+				sellFee = calculateFee(trade.size, finalPrice);
 			}
 			// In both demo and live, we let the completion worker handle the final state and stats
 			won = finalPrice > trade.entryPrice;
@@ -255,6 +255,9 @@ class QueueService {
 			return;
 		}
 
+		const todayStr =
+			DateTime.now().setZone('Asia/Jerusalem').toISODate() || '';
+
 		const totalFee = (trade.fee || 0) + sellFee;
 		trade.pnl = revenue - trade.cost - totalFee;
 		trade.fee = totalFee;
@@ -281,6 +284,11 @@ class QueueService {
 		const newBalance = bal + revenue - sellFee;
 		await redisService.setBotBalance(newBalance);
 
+		// Increment daily PnL counter (Optimized)
+		if (trade.pnl) {
+			await redisService.incrementDailyPnl(todayStr, trade.pnl);
+		}
+
 		const stats = await redisService.getBotStats();
 		stats.totalTrades += 1;
 		if (trade.pnl >= 0) stats.wins += 1;
@@ -289,12 +297,7 @@ class QueueService {
 		stats.totalFees += totalFee;
 		await redisService.updateBotStats(stats);
 
-		// Check for daily TP/SL limits
-		const todayPnL = calculateTodayPnl(
-			await redisService.getTradeHistory(500),
-		);
-		const todayStr =
-			DateTime.now().setZone('Asia/Jerusalem').toISODate() || '';
+		const todayPnL = await redisService.getDailyPnl(todayStr);
 
 		if (sc.dailyTakeProfit >= 0 && todayPnL >= sc.dailyTakeProfit) {
 			logger.info(

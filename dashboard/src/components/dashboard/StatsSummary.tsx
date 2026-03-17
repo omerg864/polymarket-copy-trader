@@ -6,7 +6,6 @@ import {
 } from '@/components/ui/card';
 import { useConfig, useSummary, useTradeHistory } from '@/hooks/use-api';
 import type { Trade } from '@/types';
-import { calculateTodayPnl } from '@shared/utils';
 import { DateTime } from 'luxon';
 
 export function StatsSummary() {
@@ -33,7 +32,7 @@ export function StatsSummary() {
 	let todayLossTrades = 0;
 	let todayTotalTrades = 0;
 
-	const todayPnl = calculateTodayPnl(history ?? []);
+	const todayPnl = summary.todayPnl;
 	const startOfToday = DateTime.now()
 		.setZone('Asia/Jerusalem')
 		.startOf('day');

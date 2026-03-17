@@ -1,3 +1,4 @@
+import packageJson from '../../../package.json';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -138,8 +139,9 @@ export function Header() {
 	return (
 		<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 			<div>
-				<h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+				<h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
 					📊 Polymarket Trading Dashboard
+					<span className="text-[10px] font-mono text-zinc-500 bg-zinc-800/50 px-1.5 py-0.5 rounded border border-zinc-700/50">v{packageJson.version}</span>
 				</h1>
 				<p className="text-xs sm:text-sm text-zinc-500 mt-1">
 					BTC 5-Minute Up/Down Markets • Auto-refreshes every 5s

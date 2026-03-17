@@ -2,12 +2,14 @@ import type { Request, Response } from 'express';
 import type { StrategyConfig, TradeSummary } from '../../../shared/src/types';
 import config from '../config';
 import { resolveRole } from '../middleware/auth';
+import { DateTime } from 'luxon';
 import {
 	flushRedis,
 	getActiveTrades,
 	getBotBalance,
 	getBotStartTime,
 	getBotStats,
+	getDailyPnl,
 	getMarketPrices,
 	getRedisInfo,
 	getStopRequested,
@@ -20,13 +22,16 @@ import {
 } from '../services/strategyConfig';
 
 export async function getSummary(_req: Request, res: Response): Promise<void> {
-	const [stats, activeTrades, botStartTime, isStopping, strategyConfig] =
+	const todayStr = DateTime.now().setZone('Asia/Jerusalem').toISODate() || '';
+
+	const [stats, activeTrades, botStartTime, isStopping, strategyConfig, todayPnl] =
 		await Promise.all([
 			getBotStats(),
 			getActiveTrades(),
 			getBotStartTime(),
 			getStopRequested(),
 			getStrategyConfig(),
+			getDailyPnl(todayStr),
 		]);
 
 	const balance = await getBotBalance(strategyConfig);
@@ -35,6 +40,7 @@ export async function getSummary(_req: Request, res: Response): Promise<void> {
 		balance,
 		initialBalance: strategyConfig.botAllowance,
 		totalPnl: stats.totalPnl,
+		todayPnl,
 		totalFees: stats.totalFees,
 		totalTrades: stats.totalTrades,
 		wins: stats.wins,
