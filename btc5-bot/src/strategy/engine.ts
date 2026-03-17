@@ -216,6 +216,18 @@ class StrategyEngine {
 		// Update ref price in Redis for dashboard (only when resolved)
 		await redisService.setPriceToBeat(refPrice, market.title);
 
+		// Step 6: Get market prices
+		const prices = await polymarketService.getMarketPrices(market);
+		if (!prices) {
+			logger.warn(
+				`⚠️  Could not fetch prices for market ${market.slug} - skipping cycle`,
+			);
+			return;
+		}
+		logger.info(
+			`   Market prices — Up: ${prices.upPrice.toFixed(3)} | Down: ${prices.downPrice.toFixed(3)}`,
+		);
+
 		// Step 5: Analyze BTC price for signal
 		logger.info(
 			`📊 Analyzing BTC price vs reference $${refPrice.toFixed(2)}...`,
@@ -249,18 +261,6 @@ class StrategyEngine {
 				return;
 			}
 		}
-
-		// Step 6: Get market prices
-		const prices = await polymarketService.getMarketPrices(market);
-		if (!prices) {
-			logger.warn(
-				`⚠️  Could not fetch prices for market ${market.slug} - skipping cycle`,
-			);
-			return;
-		}
-		logger.info(
-			`   Market prices — Up: ${prices.upPrice.toFixed(3)} | Down: ${prices.downPrice.toFixed(3)}`,
-		);
 
 		// Step 7: Determine trade parameters
 		const direction = signal.direction;

@@ -7,6 +7,7 @@ import config, { validateLiveConfig } from '../config';
 import logger from '../utils/logger';
 import NotificationManager from './notificationManager';
 import { getStrategyConfig } from './strategyConfig';
+import polymarketWsService from './polymarketWs';
 import * as async from 'async';
 
 interface OrderBook {
@@ -74,6 +75,7 @@ class PolymarketService {
 				'🎮 Polymarket service initialized in DEMO mode (read-only CLOB prices)',
 			);
 			this.clobClient = new ClobClient(config.clobHost, config.chainId);
+			await polymarketWsService.start();
 			return;
 		}
 
@@ -94,6 +96,8 @@ class PolymarketService {
 			config.signatureType,
 			config.funderAddress,
 		);
+
+		await polymarketWsService.start();
 
 		logger.info('✅ Polymarket CLOB client initialized for LIVE trading');
 	}
@@ -167,6 +171,11 @@ class PolymarketService {
 
 				// Return current market if it has enough time
 				if (msUntilEnd >= minMsRemaining) {
+					// Pre-subscribe to the WebSocket
+					polymarketWsService.subscribe([
+						market.upTokenId,
+						market.downTokenId,
+					]);
 					return market;
 				}
 			}
@@ -175,7 +184,14 @@ class PolymarketService {
 			market = await this._fetchMarketBySlug(
 				this._getMarketSlug(nextStart),
 			);
-			if (market) return market;
+			if (market) {
+				// Pre-subscribe to the WebSocket
+				polymarketWsService.subscribe([
+					market.upTokenId,
+					market.downTokenId,
+				]);
+				return market;
+			}
 
 			logger.warn(
 				'No active BTC 5-minute markets found for current or upcoming window',
@@ -292,62 +308,20 @@ class PolymarketService {
 
 	async getMarketPrices(market: Market): Promise<MarketPrices | null> {
 		try {
-			if (!this.clobClient)
-				throw new Error('CLOB client not initialized');
+			// WebSocket Only (Low Latency & Consistent)
+			const wsUp = polymarketWsService.getPrice(market.upTokenId);
+			const wsDown = polymarketWsService.getPrice(market.downTokenId);
 
-			// Typesafe parallel fetching of both orderbooks using async library
-			const { upBook, downBook } = await async.parallel<
-				void,
-				{ upBook: OrderBook; downBook: OrderBook }
-			>({
-				upBook: async () =>
-					this.clobClient!.getOrderBook(market.upTokenId),
-				downBook: async () =>
-					this.clobClient!.getOrderBook(market.downTokenId),
-			});
-
-			const getMid = (book: OrderBook): number | null => {
-				if (book.midpoint) return parseFloat(book.midpoint);
-
-				const bestBidObj = book.bids?.length
-					? book.bids[book.bids.length - 1]
-					: null;
-				const bestAskObj = book.asks?.length ? book.asks[0] : null;
-
-				const bid = bestBidObj?.price
-					? parseFloat(bestBidObj.price)
-					: null;
-				const ask = bestAskObj?.price
-					? parseFloat(bestAskObj.price)
-					: null;
-
-				if (bid !== null && ask !== null) return (bid + ask) / 2;
-				if (bid !== null) return bid;
-				if (ask !== null) return ask;
-				return null;
-			};
-
-			const upPrice = getMid(upBook);
-			const downPrice = getMid(downBook);
-
-			if (upPrice === null || downPrice === null) {
-				return null;
+			if (wsUp && wsDown) {
+				return {
+					upPrice: wsUp.midpoint,
+					downPrice: wsDown.midpoint,
+					bestBid: wsUp.bestBid,
+					bestAsk: wsUp.bestAsk,
+				};
 			}
 
-			const upBidObj = upBook.bids?.length
-				? upBook.bids[upBook.bids.length - 1]
-				: null;
-			const upAskObj = upBook.asks?.length ? upBook.asks[0] : null;
-
-			const upBid = upBidObj?.price ? parseFloat(upBidObj.price) : 0.49;
-			const upAsk = upAskObj?.price ? parseFloat(upAskObj.price) : 0.51;
-
-			return {
-				upPrice,
-				downPrice,
-				bestBid: upBid,
-				bestAsk: upAsk,
-			};
+			return null;
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : String(error);
@@ -367,29 +341,10 @@ class PolymarketService {
 		_direction: string,
 	): Promise<number | null> {
 		try {
-			if (!this.clobClient)
-				throw new Error('CLOB client not initialized');
+			// WebSocket Only
+			const wsP = polymarketWsService.getPrice(tokenId);
+			if (wsP) return wsP.midpoint;
 
-			const book: OrderBook = await this.clobClient.getOrderBook(tokenId);
-			if (book.midpoint) {
-				return parseFloat(book.midpoint);
-			}
-
-			const bestBidObj = book.bids?.length
-				? book.bids[book.bids.length - 1]
-				: null;
-			const bestAskObj = book.asks?.length ? book.asks[0] : null;
-
-			const bid = bestBidObj?.price ? parseFloat(bestBidObj.price) : null;
-			const ask = bestAskObj?.price ? parseFloat(bestAskObj.price) : null;
-
-			if (bid !== null && ask !== null) return (bid + ask) / 2;
-			if (bid !== null) return bid;
-			if (ask !== null) return ask;
-
-			logger.warn(
-				`No readable price found in token ${tokenId} orderbook: ${JSON.stringify(book).substring(0, 100)}`,
-			);
 			return null;
 		} catch (error) {
 			const message =
