@@ -11,6 +11,7 @@ import redisService from '../services/redis';
 import { getStrategyConfig } from '../services/strategyConfig';
 import logger from '../utils/logger';
 import riskManager from './riskManager';
+import binanceWsService from '../services/binanceWs';
 
 /**
  * Strategy Engine — Core trading loop:
@@ -41,6 +42,7 @@ class StrategyEngine {
 		logger.info('');
 
 		await riskManager.startMonitoring();
+		await binanceWsService.start();
 		await redisService.setBotStartTime(Date.now());
 
 		this.scheduleNextCycle(0);
@@ -49,6 +51,7 @@ class StrategyEngine {
 	async stop(): Promise<void> {
 		this.running = false;
 		riskManager.stopMonitoring();
+		binanceWsService.stop();
 		if (this.loopTimer) {
 			clearTimeout(this.loopTimer);
 			this.loopTimer = null;

@@ -10,6 +10,7 @@ import {
 import logger from '../utils/logger';
 import { getStrategyConfig } from './strategyConfig';
 import NotificationManager from './notificationManager';
+import binanceWsService from './binanceWs';
 
 class PriceAnalysisService {
 	private binanceApi: AxiosInstance;
@@ -25,8 +26,16 @@ class PriceAnalysisService {
 	 * Fetch 1-minute OHLCV candles from Binance
 	 */
 	async getCandles(limit?: number): Promise<Candle[]> {
+		const sc = await getStrategyConfig();
+		const count = limit ?? sc.candleCount;
+		
+		const wsCandles = binanceWsService.getCandles(count);
+		if (wsCandles.length >= count) {
+			return wsCandles;
+		}
+
 		try {
-			const count = limit ?? (await getStrategyConfig()).candleCount;
+			// Fallback to REST if WebSocket buffer is not ready
 			const response = await this.binanceApi.get<unknown[][]>('/klines', {
 				params: {
 					symbol: 'BTCUSDT',
@@ -35,6 +44,7 @@ class PriceAnalysisService {
 				},
 			});
 
+			logger.debug(`Candles fetched via REST fallback (WS buffer only has ${wsCandles.length}/${count})`);
 			return response.data.map((candle) => ({
 				openTime: candle[0] as number,
 				open: parseFloat(candle[1] as string),
@@ -61,14 +71,22 @@ class PriceAnalysisService {
 	 * Get current BTC price
 	 */
 	async getCurrentPrice(): Promise<number | null> {
+		const wsPrice = binanceWsService.getCurrentPrice();
+		if (wsPrice !== null) {
+			return wsPrice;
+		}
+
 		try {
+			// Fallback to REST if WebSocket price is unavailable
 			const response = await this.binanceApi.get<{ price: string }>(
 				'/ticker/price',
 				{
 					params: { symbol: 'BTCUSDT' },
 				},
 			);
-			return parseFloat(response.data.price);
+			const price = parseFloat(response.data.price);
+			logger.debug(`BTC price fetched via REST fallback: $${price.toFixed(2)}`);
+			return price;
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : String(error);
