@@ -24,6 +24,7 @@ import binanceWsService from '../services/binanceWs';
 class StrategyEngine {
 	private running = false;
 	private loopTimer: ReturnType<typeof setTimeout> | null = null;
+	private pricesMissingCycleCount = 0;
 
 	async start(): Promise<void> {
 		this.running = true;
@@ -219,11 +220,20 @@ class StrategyEngine {
 		// Step 6: Get market prices
 		const prices = await polymarketService.getMarketPrices(market);
 		if (!prices) {
+			this.pricesMissingCycleCount++;
+			if (this.pricesMissingCycleCount > 3) {
+				notificationManager.handleError(
+					`Could not fetch prices for market ${market.slug} for ${this.pricesMissingCycleCount} cycles`,
+					'StrategyEngine',
+					'executeCycle',
+				);
+			}
 			logger.warn(
-				`⚠️  Could not fetch prices for market ${market.slug} - skipping cycle`,
+				`⚠️  Could not fetch prices for market ${market.slug} for ${this.pricesMissingCycleCount} cycles - skipping cycle`,
 			);
 			return;
 		}
+		this.pricesMissingCycleCount = 0;
 		logger.info(
 			`   Market prices — Up: ${prices.upPrice.toFixed(3)} | Down: ${prices.downPrice.toFixed(3)}`,
 		);
