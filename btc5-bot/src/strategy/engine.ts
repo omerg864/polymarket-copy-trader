@@ -221,7 +221,7 @@ class StrategyEngine {
 		const prices = await polymarketService.getMarketPrices(market);
 		if (!prices) {
 			this.pricesMissingCycleCount++;
-			if (this.pricesMissingCycleCount > 3) {
+			if (this.pricesMissingCycleCount === 3) {
 				notificationManager.handleError(
 					`Could not fetch prices for market ${market.slug} for ${this.pricesMissingCycleCount} cycles`,
 					'StrategyEngine',
@@ -233,7 +233,12 @@ class StrategyEngine {
 			);
 			return;
 		}
-		this.pricesMissingCycleCount = 0;
+		if (this.pricesMissingCycleCount >= 3) {
+			notificationManager.trigger('manual', {
+				message: `Fetched prices for market <b>${market.title}</b> after ${this.pricesMissingCycleCount} cycles`,
+			});
+			this.pricesMissingCycleCount = 0;
+		}
 		logger.info(
 			`   Market prices — Up: ${prices.upPrice.toFixed(3)} | Down: ${prices.downPrice.toFixed(3)}`,
 		);

@@ -70,7 +70,9 @@ class PolymarketWsService {
 					}
 				}
 			} catch (err) {
-				logger.error(`Error parsing Polymarket WS message: ${err}`);
+				logger.error(
+					`Error parsing Polymarket WS message: ${err} , data: ${data}`,
+				);
 			}
 		});
 
