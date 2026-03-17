@@ -25,7 +25,8 @@
 		"verify-stats": "npx tsx scripts/verify-stats.ts",
 		"fix-duplicates": "npx tsx scripts/fix-duplicates.ts",
 		"sync-history": "npx tsx scripts/sync-history-ids.ts",
-		"fix-missing-exit-price": "npx tsx scripts/fix-missing-exit-price.ts"
+		"fix-missing-exit-price": "npx tsx scripts/fix-missing-exit-price.ts",
+		"delete-trade": "npx tsx scripts/delete-trade.ts"
 	},
 	"keywords": [
 		"polymarket",

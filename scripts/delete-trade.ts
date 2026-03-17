@@ -15,7 +15,7 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const PREFIX = 'pmbot:';
 const MODE = process.env.MODE || 'production';
 
-const TARGET_TRADE_ID = 'ba4388cc-300a-4647-a25e-cf1d046d2a47';
+const TARGET_TRADE_ID = '3b8165f2-329e-48cb-ae31-cb592c061bf0';
 
 async function main() {
 	const redis = new Redis(REDIS_URL);
@@ -23,13 +23,17 @@ async function main() {
 
 	const historyKey = `${PREFIX}${MODE}:history`;
 	const historyRaw = await redis.lrange(historyKey, 0, -1);
-	
-	const tradeIndex = historyRaw.findIndex(r => JSON.parse(r).id === TARGET_TRADE_ID);
-	
+
+	const tradeIndex = historyRaw.findIndex(
+		(r) => JSON.parse(r).id === TARGET_TRADE_ID,
+	);
+
 	if (tradeIndex !== -1) {
 		const trade = JSON.parse(historyRaw[tradeIndex]);
-		console.log(`Deleting trade ${TARGET_TRADE_ID}: ${trade.direction} on ${trade.slug}`);
-		
+		console.log(
+			`Deleting trade ${TARGET_TRADE_ID}: ${trade.direction} on ${trade.slug}`,
+		);
+
 		// Remove by value to be safe (LREM)
 		await redis.lrem(historyKey, 1, historyRaw[tradeIndex]);
 		console.log(`  🚀 Trade deleted from ${historyKey}`);
