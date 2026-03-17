@@ -106,6 +106,7 @@ export interface StrategyConfig {
 	btcPriceOffset: number;
 	dailyTakeProfit: number;
 	dailyStopLoss: number;
+	fctBtcOffset: number;
 }
 
 export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
@@ -139,6 +140,7 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 	btcPriceOffset: 5,
 	dailyTakeProfit: -1,
 	dailyStopLoss: 1,
+	fctBtcOffset: 4,
 };
 
 export interface NotificationConfig {

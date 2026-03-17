@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import { type Trade } from '@shared/types';
 import polymarketService from '../services/polymarket';
 import priceAnalysisService from '../services/priceAnalysis';
@@ -84,12 +85,10 @@ class RiskManager {
 				if (trade.status !== 'open') continue;
 				if (this.sellingTrades.has(trade.id)) continue;
 
-				const endTime = new Date(trade.endTime);
-				const now = new Date();
-				if (now >= endTime) continue;
-
-				const secUntilEnd = (endTime.getTime() - now.getTime()) / 1000;
-				if (secUntilEnd > sc.maxSecLoseFct + fctBufferSec) continue;
+				const endTime = DateTime.fromISO(trade.endTime);
+				const now = DateTime.now();
+				const secUntilEnd = endTime.diff(now).as('seconds');
+				if (secUntilEnd < 3) continue; // Skip if less than 3s left
 
 				const priceToBeat = parseFloat(String(trade.priceToBeat));
 				if (!priceToBeat || priceToBeat <= 0) continue;
@@ -100,7 +99,8 @@ class RiskManager {
 						await priceAnalysisService.getCurrentPrice();
 					if (!btcPrice) continue;
 
-					const resolvesUp = btcPrice >= priceToBeat;
+					const resolvesUp =
+						btcPrice >= priceToBeat - sc.fctBtcOffset;
 					const wouldLose =
 						(trade.direction === 'UP' && !resolvesUp) ||
 						(trade.direction === 'DOWN' && resolvesUp);
@@ -143,8 +143,8 @@ class RiskManager {
 	private async checkPosition(trade: Trade): Promise<void> {
 		if (trade.status !== 'open') return;
 
-		const endTime = new Date(trade.endTime);
-		const now = new Date();
+		const endTime = DateTime.fromISO(trade.endTime);
+		const now = DateTime.now();
 		if (now >= endTime) return;
 
 		if (this.sellingTrades.has(trade.id)) return;

@@ -253,6 +253,14 @@ export function StrategyConfigDialog({
 								editValues={editValues}
 								setEditValues={setEditValues}
 							/>
+							<ConfigRow
+								label="FCT BTC Offset"
+								field="fctBtcOffset"
+								editing={editing}
+								editValues={editValues}
+								setEditValues={setEditValues}
+								min={0}
+							/>
 						</ConfigSection>
 						<ConfigSection title="Technical Analysis">
 							<ConfigRow
