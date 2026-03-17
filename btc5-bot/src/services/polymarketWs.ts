@@ -149,6 +149,16 @@ class PolymarketWsService {
 		return data;
 	}
 
+	public reconnect(): void {
+		logger.warn('🔄 Manual Polymarket WebSocket reconnect requested');
+		if (this.ws) {
+			this.ws.close();
+			// The 'close' event handler will automatically call this.connect()
+		} else {
+			this.connect();
+		}
+	}
+
 	public stop(): void {
 		this.isStarted = false;
 		if (this.ws) {

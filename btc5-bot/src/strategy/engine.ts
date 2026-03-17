@@ -12,6 +12,7 @@ import { getStrategyConfig } from '../services/strategyConfig';
 import logger from '../utils/logger';
 import riskManager from './riskManager';
 import binanceWsService from '../services/binanceWs';
+import polymarketWsService from '../services/polymarketWs';
 
 /**
  * Strategy Engine — Core trading loop:
@@ -227,6 +228,7 @@ class StrategyEngine {
 					'StrategyEngine',
 					'executeCycle',
 				);
+				await polymarketWsService.reconnect();
 			}
 			logger.warn(
 				`⚠️  Could not fetch prices for market ${market.slug} for ${this.pricesMissingCycleCount} cycles - skipping cycle`,
