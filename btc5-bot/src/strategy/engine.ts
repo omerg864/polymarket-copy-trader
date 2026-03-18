@@ -118,7 +118,23 @@ class StrategyEngine {
 
 		// Step 2: Cleanup stale WebSocket subscriptions
 		// We'll discover the market first to know what to keep
+		// Step 3: Discover next upcoming 5-minute market
 		const market = await polymarketService.getNextMarket();
+		let refPrice: number | null = null;
+		let prices: any = null;
+
+		// Update dashboard prices as soon as a market is found
+		if (market) {
+			refPrice = market.priceToBeat;
+			prices = await polymarketService.getMarketPrices(market);
+			await redisService.setMarketRefData(
+				refPrice,
+				market.title,
+				prices?.upPrice,
+				prices?.downPrice,
+			);
+		}
+
 		await this.cleanupWebSocketSubscriptions(market, activeTrades);
 
 		// Re-fetch active trades after resolution
@@ -174,6 +190,13 @@ class StrategyEngine {
 			return;
 		}
 
+		if (!refPrice) {
+			logger.info(
+				'   ⏳ Reference price (priceToBeat) not available in market data yet. Waiting...',
+			);
+			return;
+		}
+
 		let now = new Date();
 		const startTime = new Date(market.startTime);
 		const endTime = new Date(market.endTime);
@@ -207,26 +230,6 @@ class StrategyEngine {
 			return;
 		}
 
-		// Step 4: Get priceToBeat
-		const refPrice = market.priceToBeat;
-
-		if (!refPrice) {
-			logger.info(
-				'   ⏳ Reference price (priceToBeat) not available in market data yet. Waiting...',
-			);
-			return;
-		}
-
-		// Step 6: Get market prices
-		const prices = await polymarketService.getMarketPrices(market);
-
-		// Update ref price in Redis for dashboard (with latest prices)
-		await redisService.setMarketRefData(
-			refPrice,
-			market.title,
-			prices?.upPrice,
-			prices?.downPrice,
-		);
 		if (!prices) {
 			this.pricesMissingCycleCount++;
 			if (this.pricesMissingCycleCount === 2) {
