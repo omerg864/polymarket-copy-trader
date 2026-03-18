@@ -43,7 +43,10 @@ function AuthenticatedApp() {
 								Polymarket 5M Bot
 							</span>
 							<span className="font-semibold text-zinc-100 xs:hidden">
-								PM 5M
+								Polymarket 5M Bot
+							</span>
+							<span className="text-[10px] text-zinc-500 font-mono self-end mb-0.5">
+								v1.4.1
 							</span>
 						</div>
 
