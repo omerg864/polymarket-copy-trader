@@ -228,7 +228,7 @@ class StrategyEngine {
 					'StrategyEngine',
 					'executeCycle',
 				);
-				await polymarketWsService.reconnect();
+				polymarketWsService.reconnect();
 			}
 			logger.warn(
 				`⚠️  Could not fetch prices for market ${market.slug} for ${this.pricesMissingCycleCount} cycles - skipping cycle`,

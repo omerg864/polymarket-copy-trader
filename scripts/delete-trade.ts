@@ -15,7 +15,7 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const PREFIX = 'pmbot:';
 const MODE = process.env.MODE || 'production';
 
-const TARGET_TRADE_ID = '3b8165f2-329e-48cb-ae31-cb592c061bf0';
+const TARGET_TRADE_ID = '5e54b234-6b3c-471e-8999-abeaeef5dfdc';
 
 async function main() {
 	const redis = new Redis(REDIS_URL);

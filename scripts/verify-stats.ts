@@ -196,40 +196,42 @@ async function main() {
 		!lossesMatch ||
 		!tradesMatch ||
 		!todayPnlMatch;
-	
-	const FIX = process.env.FIX === 'true';
+
+	const FIX = true;
 
 	if (needsFix) {
 		if (!FIX) {
-			console.log('\n⚠️ Discrepancies found. Run with FIX=true to repair.');
+			console.log(
+				'\n⚠️ Discrepancies found. Run with FIX=true to repair.',
+			);
 		} else {
 			console.log('\n🔧 Fixing...');
 
-		stats.totalFees = Math.round(sumFees * 10000) / 10000;
-		stats.totalPnl = Math.round(sumPnl * 10000) / 10000;
-		stats.wins = computedWins;
-		stats.losses = computedLosses;
-		stats.totalTrades = computedTotalTrades;
-		await redis.set(statsKey, JSON.stringify(stats));
-		console.log(
-			`  Stats → totalFees=${stats.totalFees}, totalPnl=${stats.totalPnl}, wins=${stats.wins}, losses=${stats.losses}, totalTrades=${stats.totalTrades}`,
-		);
+			stats.totalFees = Math.round(sumFees * 10000) / 10000;
+			stats.totalPnl = Math.round(sumPnl * 10000) / 10000;
+			stats.wins = computedWins;
+			stats.losses = computedLosses;
+			stats.totalTrades = computedTotalTrades;
+			await redis.set(statsKey, JSON.stringify(stats));
+			console.log(
+				`  Stats → totalFees=${stats.totalFees}, totalPnl=${stats.totalPnl}, wins=${stats.wins}, losses=${stats.losses}, totalTrades=${stats.totalTrades}`,
+			);
 
-		const fixedBalance = Math.round(expectedBalance * 10000) / 10000;
-		await redis.set(balanceKey, fixedBalance.toString());
-		console.log(`  Balance → $${fixedBalance}`);
+			const fixedBalance = Math.round(expectedBalance * 10000) / 10000;
+			await redis.set(balanceKey, fixedBalance.toString());
+			console.log(`  Balance → $${fixedBalance}`);
 
-		if (!todayPnlMatch) {
-			const fixedTodayPnl = Math.round(sumTodayPnl * 10000) / 10000;
-			await redis.set(dailyPnlKey, fixedTodayPnl.toString());
-			console.log(`  todayPnl → $${fixedTodayPnl}`);
+			if (!todayPnlMatch) {
+				const fixedTodayPnl = Math.round(sumTodayPnl * 10000) / 10000;
+				await redis.set(dailyPnlKey, fixedTodayPnl.toString());
+				console.log(`  todayPnl → $${fixedTodayPnl}`);
+			}
+
+			console.log('\n✅ All fixed.');
 		}
-
-		console.log('\n✅ All fixed.');
+	} else {
+		console.log('\n✅ Everything matches. No fix needed.');
 	}
-} else {
-	console.log('\n✅ Everything matches. No fix needed.');
-}
 
 	await redis.quit();
 }
