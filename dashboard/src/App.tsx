@@ -1,3 +1,4 @@
+import pkg from '../package.json';
 import { AnalysisDashboard } from '@/components/AnalysisDashboard';
 import { Dashboard } from '@/components/Dashboard';
 import { LoginPage } from '@/components/LoginPage';
@@ -46,7 +47,7 @@ function AuthenticatedApp() {
 								Polymarket 5M Bot
 							</span>
 							<span className="text-[10px] text-zinc-500 font-mono self-end mb-0.5">
-								v1.4.1
+								v{pkg.version}
 							</span>
 						</div>
 
