@@ -284,14 +284,16 @@ class RedisService {
 		);
 	}
 
-	async setPriceToBeat(
+	async setMarketRefData(
 		priceToBeat: number | null,
 		marketTitle: string,
+		upPrice: number | null = null,
+		downPrice: number | null = null,
 	): Promise<void> {
 		const client = this.getClient();
 		await client.set(
 			REDIS_KEYS.REF_PRICE,
-			JSON.stringify({ priceToBeat, marketTitle }),
+			JSON.stringify({ priceToBeat, marketTitle, upPrice, downPrice }),
 		);
 	}
 

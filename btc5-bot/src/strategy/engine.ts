@@ -217,11 +217,16 @@ class StrategyEngine {
 			return;
 		}
 
-		// Update ref price in Redis for dashboard (only when resolved)
-		await redisService.setPriceToBeat(refPrice, market.title);
-
 		// Step 6: Get market prices
 		const prices = await polymarketService.getMarketPrices(market);
+
+		// Update ref price in Redis for dashboard (with latest prices)
+		await redisService.setMarketRefData(
+			refPrice,
+			market.title,
+			prices?.upPrice,
+			prices?.downPrice,
+		);
 		if (!prices) {
 			this.pricesMissingCycleCount++;
 			if (this.pricesMissingCycleCount === 2) {

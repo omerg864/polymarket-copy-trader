@@ -1,5 +1,6 @@
 import {
 	REDIS_KEYS,
+	type MarketDashboardData,
 	type RedisInfo,
 	type StrategyConfig,
 	type Trade,
@@ -108,14 +109,7 @@ export async function flushRedis(): Promise<void> {
 	await redis.flushdb();
 }
 
-export interface MarketPricesData {
-	btcPrice: number;
-	priceToBeat: number | null;
-	updatedAt: number;
-	marketTitle: string | null;
-}
-
-export async function getMarketPrices(): Promise<MarketPricesData | null> {
+export async function getMarketPrices(): Promise<MarketDashboardData | null> {
 	const [btcRaw, refRaw] = await Promise.all([
 		redis.get(REDIS_KEYS.BTC_PRICE),
 		redis.get(REDIS_KEYS.REF_PRICE),
@@ -129,6 +123,8 @@ export async function getMarketPrices(): Promise<MarketPricesData | null> {
 		? (JSON.parse(refRaw) as {
 				priceToBeat: number | null;
 				marketTitle: string;
+				upPrice?: number;
+				downPrice?: number;
 			})
 		: null;
 	return {
@@ -136,6 +132,8 @@ export async function getMarketPrices(): Promise<MarketPricesData | null> {
 		updatedAt: btcData.updatedAt,
 		priceToBeat: refData?.priceToBeat ?? null,
 		marketTitle: refData?.marketTitle ?? null,
+		upPrice: refData?.upPrice ?? null,
+		downPrice: refData?.downPrice ?? null,
 	};
 }
 

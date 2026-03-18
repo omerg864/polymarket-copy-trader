@@ -232,3 +232,11 @@ export interface RedisInfo {
 	totalKeys: number;
 }
 
+export interface MarketDashboardData {
+	btcPrice: number;
+	priceToBeat: number | null;
+	upPrice: number | null;
+	downPrice: number | null;
+	updatedAt: number;
+	marketTitle: string | null;
+}

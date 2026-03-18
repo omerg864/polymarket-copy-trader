@@ -4,6 +4,7 @@ import type {
 	StrategyConfig,
 	Trade,
 	TradeSummary,
+	MarketDashboardData,
 } from '@/types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
@@ -159,15 +160,8 @@ export function useRedisStats() {
 	});
 }
 
-export interface MarketPricesData {
-	btcPrice: number;
-	priceToBeat: number | null;
-	updatedAt: number;
-	marketTitle: string | null;
-}
-
 export function useMarketPrices() {
-	return useQuery<MarketPricesData | null>({
+	return useQuery<MarketDashboardData | null>({
 		queryKey: ['market-prices'],
 		queryFn: () => fetchJson('/market-prices'),
 		refetchInterval: 2000,
