@@ -53,17 +53,24 @@ export function MarketPricesCards() {
 					>
 						${fmtPrice(btcPrice)}
 					</p>
-					<div
-						className={`flex flex-wrap gap-x-2 text-sm font-normal ${
-							isAbove ? 'text-emerald-400' : 'text-red-400'
-						}`}
-					>
-						<span>(${fmtPrice(diff!)})</span>
-						<span>
-							({isAbove ? '+' : ''}${diffPercent?.toFixed(3)}
-							%)
-						</span>
-					</div>
+					{priceToBeat && (
+						<div
+							className={`flex flex-wrap gap-x-2 text-sm font-normal ${
+								isAbove ? 'text-emerald-400' : 'text-red-400'
+							}`}
+						>
+							<span>(${fmtPrice(diff!)})</span>
+							<span>
+								({isAbove ? '+' : ''}${diffPercent?.toFixed(3)}
+								%)
+							</span>
+						</div>
+					)}
+					{updatedAt && (
+						<p className="text-xs text-zinc-500 mt-1">
+							Updated {fmtTime(updatedAt)}
+						</p>
+					)}
 				</CardContent>
 			</Card>
 
@@ -81,11 +88,6 @@ export function MarketPricesCards() {
 							${fmtPrice(priceToBeat)}
 						</span>
 						<br />
-						{updatedAt && (
-							<p className="text-xs text-zinc-500 mt-1">
-								Updated {fmtTime(updatedAt)}
-							</p>
-						)}
 						{marketTitle && (
 							<p className="text-xs text-zinc-500 mt-1 text-wrap">
 								{marketTitle}

@@ -110,30 +110,38 @@ export async function flushRedis(): Promise<void> {
 }
 
 export async function getMarketPrices(): Promise<MarketDashboardData | null> {
-	const [btcRaw, refRaw] = await Promise.all([
+	const [btcRaw, refRaw, marketPriceRaw] = await Promise.all([
 		redis.get(REDIS_KEYS.BTC_PRICE),
 		redis.get(REDIS_KEYS.REF_PRICE),
+		redis.get(REDIS_KEYS.MARKET_PRICES),
 	]);
 	if (!btcRaw) return null;
 	const btcData = JSON.parse(btcRaw) as {
 		btcPrice: number;
+		updatedAtCode?: number;
 		updatedAt: number;
 	};
 	const refData = refRaw
 		? (JSON.parse(refRaw) as {
 				priceToBeat: number | null;
 				marketTitle: string;
-				upPrice?: number;
-				downPrice?: number;
 			})
 		: null;
+	const marketPriceData = marketPriceRaw
+		? (JSON.parse(marketPriceRaw) as {
+				upPrice: number | null;
+				downPrice: number | null;
+				updatedAt?: number;
+			})
+		: null;
+
 	return {
 		btcPrice: btcData.btcPrice,
 		updatedAt: btcData.updatedAt,
 		priceToBeat: refData?.priceToBeat ?? null,
 		marketTitle: refData?.marketTitle ?? null,
-		upPrice: refData?.upPrice ?? null,
-		downPrice: refData?.downPrice ?? null,
+		upPrice: marketPriceData?.upPrice ?? null,
+		downPrice: marketPriceData?.downPrice ?? null,
 	};
 }
 

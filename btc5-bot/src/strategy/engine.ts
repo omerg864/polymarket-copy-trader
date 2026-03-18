@@ -127,12 +127,17 @@ class StrategyEngine {
 		if (market) {
 			refPrice = market.priceToBeat;
 			prices = await polymarketService.getMarketPrices(market);
-			await redisService.setMarketRefData(
-				refPrice,
-				market.title,
-				prices?.upPrice,
-				prices?.downPrice,
-			);
+
+			// Save prices separately in Redis as requested
+			if (refPrice) {
+				await redisService.setPriceToBeat(refPrice, market.title);
+			}
+			if (prices) {
+				await redisService.setMarketPrices(
+					prices.upPrice,
+					prices.downPrice,
+				);
+			}
 		}
 
 		await this.cleanupWebSocketSubscriptions(market, activeTrades);
