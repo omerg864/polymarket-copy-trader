@@ -41,10 +41,9 @@ async function main() {
 	let computedTotalTrades = 0;
 	let sumTodayPnl = 0;
 
-	const todayStr = DateTime.now().setZone('Asia/Jerusalem').toISODate() || '';
-	const startOfToday = DateTime.now()
-		.setZone('Asia/Jerusalem')
-		.startOf('day');
+	const timezone = sc.timezone || 'Asia/Jerusalem';
+	const todayStr = DateTime.now().setZone(timezone).toISODate() || '';
+	const startOfToday = DateTime.now().setZone(timezone).startOf('day');
 
 	// Active trades
 	const activeIds = await redis.smembers(`${PREFIX}${MODE}:active_trades`);

@@ -23,12 +23,12 @@ import {
 } from '@/hooks/use-api';
 import { useMemoizedFn } from 'ahooks';
 import { saveAs } from 'file-saver';
-import { Bell, Database } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { HeaderClocks } from './HeaderClocks';
 import { NotificationConfigDialog } from './NotificationConfigDialog';
 import { StrategyConfigDialog } from './StrategyConfigDialog';
+import RedisStats from './RedisStats';
 
 export function Header() {
 	const { data: summary, refetch: refetchSummary } = useSummary();
@@ -37,7 +37,7 @@ export function Header() {
 	const { data: notificationConfig, refetch: refetchNotificationConfig } =
 		useNotificationConfig();
 	const toggleStop = useToggleStop();
-	const { data: redisStats, refetch: refetchRedisStats } = useRedisStats();
+	const { refetch: refetchRedisStats } = useRedisStats();
 	const flushRedis = useFlushRedis();
 	const isReadonly = getAuthRole() === 'readonly';
 	const isAdmin = getAuthRole() === 'admin';
@@ -141,24 +141,14 @@ export function Header() {
 			<div>
 				<h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
 					📊 Polymarket Trading Dashboard
-					<span className="text-[10px] font-mono text-zinc-500 bg-zinc-800/50 px-1.5 py-0.5 rounded border border-zinc-700/50">v{packageJson.version}</span>
+					<span className="text-[10px] font-mono text-zinc-500 bg-zinc-800/50 px-1.5 py-0.5 rounded border border-zinc-700/50">
+						v{packageJson.version}
+					</span>
 				</h1>
 				<p className="text-xs sm:text-sm text-zinc-500 mt-1">
-					BTC 5-Minute Up/Down Markets • Auto-refreshes every 5s
+					BTC 5-Minute Up/Down Markets • Auto-refreshes every 5s •{' '}
+					<RedisStats />
 				</p>
-				<div className="flex flex-wrap items-baseline gap-3">
-					<HeaderClocks startTime={summary?.botStartTime} />
-					{redisStats && (
-						<Badge
-							variant="outline"
-							className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono text-zinc-400 border-zinc-700/50 bg-zinc-900/50"
-						>
-							<Database className="h-3 w-3 text-emerald-500/80" />
-							{redisStats.memoryUsed} ({redisStats.totalKeys}{' '}
-							keys)
-						</Badge>
-					)}
-				</div>
 			</div>
 			<div className="flex flex-wrap items-center gap-2 sm:gap-4">
 				{summary && (

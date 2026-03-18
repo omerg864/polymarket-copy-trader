@@ -1,5 +1,6 @@
 export type {
 	NotificationConfig,
+	RedisInfo,
 	StrategyConfig,
 	Trade,
 	TradeSummary,

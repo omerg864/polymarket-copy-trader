@@ -11,6 +11,7 @@ export function ConfigRow({
 	setEditValues,
 	min,
 	type = 'number',
+	options,
 }: {
 	label: string;
 	field: keyof StrategyConfig;
@@ -23,6 +24,7 @@ export function ConfigRow({
 	>;
 	min?: number;
 	type?: string;
+	options?: string[];
 }) {
 	const value = editValues[field];
 	const [inputValue, setInputValue] = useState<string>(
@@ -37,6 +39,32 @@ export function ConfigRow({
 	}
 
 	if (editing) {
+		if (type === 'select' && Array.isArray(options)) {
+			return (
+				<>
+					<span className="text-zinc-500 flex items-center">
+						{label}
+					</span>
+					<select
+						value={editValues[field] as string}
+						onChange={(e) => {
+							const val = e.target.value;
+							setEditValues((prev: Partial<StrategyConfig>) => ({
+								...prev,
+								[field]: val,
+							}));
+						}}
+						className="w-full px-2 py-0.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-100 text-right text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+					>
+						{options.map((opt) => (
+							<option key={opt} value={opt}>
+								{opt}
+							</option>
+						))}
+					</select>
+				</>
+			);
+		}
 		return (
 			<>
 				<span className="text-zinc-500 flex items-center">{label}</span>
@@ -48,15 +76,24 @@ export function ConfigRow({
 						const val = e.target.value;
 						setInputValue(val);
 
-						// Only update parent if it's a valid number
-						const parsed = parseFloat(val);
-						if (!isNaN(parsed)) {
-							// Apply min constraint if provided
-							const finalVal =
-								min !== undefined ? Math.max(min, parsed) : parsed;
+						if (type === 'number') {
+							const parsed = parseFloat(val);
+							if (!isNaN(parsed)) {
+								const finalVal =
+									min !== undefined
+										? Math.max(min, parsed)
+										: parsed;
+								setEditValues(
+									(prev: Partial<StrategyConfig>) => ({
+										...prev,
+										[field]: finalVal,
+									}),
+								);
+							}
+						} else {
 							setEditValues((prev: Partial<StrategyConfig>) => ({
 								...prev,
-								[field]: finalVal,
+								[field]: val,
 							}));
 						}
 					}}

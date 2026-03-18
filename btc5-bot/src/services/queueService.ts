@@ -255,8 +255,8 @@ class QueueService {
 			return;
 		}
 
-		const todayStr =
-			DateTime.now().setZone('Asia/Jerusalem').toISODate() || '';
+		const sc = await getStrategyConfig();
+		const todayStr = DateTime.now().setZone(sc.timezone).toISODate() || '';
 
 		const totalFee = (trade.fee || 0) + sellFee;
 		trade.pnl = revenue - trade.cost - totalFee;
@@ -279,7 +279,6 @@ class QueueService {
 
 		await redisService.saveTradeHistory(trade); // This adds to history_ids
 
-		const sc = await getStrategyConfig();
 		const bal = await redisService.getBotBalance(sc);
 		const newBalance = bal + revenue - sellFee;
 		await redisService.setBotBalance(newBalance);

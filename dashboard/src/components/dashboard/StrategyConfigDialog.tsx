@@ -6,7 +6,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import { useUpdateConfig } from '@/hooks/use-api';
+import { useTimezones, useUpdateConfig } from '@/hooks/use-api';
 import type { StrategyConfig } from '@/types';
 import { Pencil } from 'lucide-react';
 import { useCallback, useState } from 'react';
@@ -29,6 +29,7 @@ export function StrategyConfigDialog({
 	refetchConfig,
 }: StrategyConfigDialogProps) {
 	const updateConfig = useUpdateConfig();
+	const { data: timezones } = useTimezones();
 	const [editing, setEditing] = useState(false);
 	const [editValues, setEditValues] = useState<Partial<StrategyConfig>>({});
 	const [prevConfig, setPrevConfig] = useState(config);
@@ -126,6 +127,15 @@ export function StrategyConfigDialog({
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
+							/>
+							<ConfigRow
+								label="Server Timezone"
+								field="timezone"
+								editing={editing}
+								editValues={editValues}
+								setEditValues={setEditValues}
+								type="select"
+								options={timezones}
 							/>
 						</ConfigSection>
 						<ConfigSection title="Strategy Guards">

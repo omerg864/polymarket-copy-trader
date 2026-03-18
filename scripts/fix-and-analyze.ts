@@ -42,12 +42,16 @@ async function main() {
 		}
 	}
 
-	console.log('\n--- Analyzing PnL by Day (Asia/Jerusalem) ---');
+	const scRaw = await redis.get(`${PREFIX}strategy_config`);
+	const sc = scRaw ? JSON.parse(scRaw) : {};
+	const timezone = sc.timezone || 'Asia/Jerusalem';
+
+	console.log(`\n--- Analyzing PnL by Day (${timezone}) ---`);
 	const dayPnls: Record<string, number> = {};
 	
 	history.forEach(t => {
 		if (!t.enteredAt) return;
-		const day = DateTime.fromISO(t.enteredAt).setZone('Asia/Jerusalem').toISODate() || 'unknown';
+		const day = DateTime.fromISO(t.enteredAt).setZone(timezone).toISODate() || 'unknown';
 		dayPnls[day] = (dayPnls[day] || 0) + (t.pnl || 0);
 	});
 

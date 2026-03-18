@@ -34,7 +34,7 @@ export function StatsSummary() {
 
 	const todayPnl = summary.todayPnl;
 	const startOfToday = DateTime.now()
-		.setZone('Asia/Jerusalem')
+		.setZone(config?.timezone || 'Asia/Jerusalem')
 		.startOf('day');
 
 	if (history) {

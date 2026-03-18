@@ -1,5 +1,6 @@
 import {
 	REDIS_KEYS,
+	type RedisInfo,
 	type StrategyConfig,
 	type Trade,
 } from '../../../shared/src/index';
@@ -138,19 +139,19 @@ export async function getMarketPrices(): Promise<MarketPricesData | null> {
 	};
 }
 
-export async function getRedisInfo(): Promise<{
-	memoryUsed: string;
-	totalKeys: number;
-}> {
+export async function getRedisInfo(): Promise<RedisInfo> {
 	const info = await redis.info();
 
-	const memMatch = info.match(/used_memory_human:([^\r\n]+)/);
-	const memoryUsed = memMatch ? memMatch[1] : 'Unknown';
+	const memHumanMatch = info.match(/used_memory_human:([^\r\n]+)/);
+	const memoryUsed = memHumanMatch ? memHumanMatch[1] : 'Unknown';
+
+	const memBytesMatch = info.match(/used_memory:(\d+)/);
+	const memoryUsedBytes = memBytesMatch ? parseInt(memBytesMatch[1], 10) : 0;
 
 	const keysMatch = info.match(/db0:keys=(\d+)/);
 	const totalKeys = keysMatch ? parseInt(keysMatch[1], 10) : 0;
 
-	return { memoryUsed, totalKeys };
+	return { memoryUsed, memoryUsedBytes, totalKeys };
 }
 
 export async function getDailyPnl(date: string): Promise<number> {

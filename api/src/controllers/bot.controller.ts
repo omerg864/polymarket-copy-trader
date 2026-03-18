@@ -22,15 +22,16 @@ import {
 } from '../services/strategyConfig';
 
 export async function getSummary(_req: Request, res: Response): Promise<void> {
-	const todayStr = DateTime.now().setZone('Asia/Jerusalem').toISODate() || '';
+	const strategyConfig = await getStrategyConfig();
+	const timezone = strategyConfig.timezone || 'Asia/Jerusalem';
+	const todayStr = DateTime.now().setZone(timezone).toISODate() || '';
 
-	const [stats, activeTrades, botStartTime, isStopping, strategyConfig, todayPnl] =
+	const [stats, activeTrades, botStartTime, isStopping, todayPnl] =
 		await Promise.all([
 			getBotStats(),
 			getActiveTrades(),
 			getBotStartTime(),
 			getStopRequested(),
-			getStrategyConfig(),
 			getDailyPnl(todayStr),
 		]);
 
@@ -136,4 +137,15 @@ export function verifyAuth(req: Request, res: Response): void {
 		return;
 	}
 	res.status(401).json({ error: 'Invalid password' });
+}
+
+export function getTimezones(_req: Request, res: Response): void {
+	try {
+		// Use standard Intl API to get all supported IANA timezones
+		const timezones = (Intl as any).supportedValuesOf('timeZone');
+		res.json(timezones);
+	} catch (error) {
+		// Fallback for older Node versions if necessary, though 18+ should have it
+		res.json(['Asia/Jerusalem', 'America/New_York', 'UTC', 'Europe/London']);
+	}
 }

@@ -108,6 +108,7 @@ export interface StrategyConfig {
 	dailyTakeProfit: number;
 	dailyStopLoss: number;
 	fctBtcOffset: number;
+	timezone: string;
 }
 
 export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
@@ -142,6 +143,7 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 	dailyTakeProfit: -1,
 	dailyStopLoss: 1,
 	fctBtcOffset: 4,
+	timezone: 'Asia/Jerusalem',
 };
 
 export interface NotificationConfig {
@@ -223,4 +225,10 @@ export type NotificationType =
 	| 'max_pnl'
 	| 'error'
 	| 'manual';
+
+export interface RedisInfo {
+	memoryUsed: string;
+	memoryUsedBytes: number;
+	totalKeys: number;
+}
 

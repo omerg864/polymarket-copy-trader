@@ -1,5 +1,6 @@
 import type {
 	NotificationConfig,
+	RedisInfo,
 	StrategyConfig,
 	Trade,
 	TradeSummary,
@@ -150,7 +151,7 @@ export function useToggleStop() {
 }
 
 export function useRedisStats() {
-	return useQuery<{ memoryUsed: string; totalKeys: number }>({
+	return useQuery<RedisInfo>({
 		queryKey: ['redis-stats'],
 		queryFn: () => fetchJson('/redis-stats'),
 		refetchInterval: 10000,
@@ -226,5 +227,13 @@ export function useUpdateNotificationConfig() {
 			if (!res.ok) throw new Error(`API error: ${res.statusText}`);
 			return res.json() as Promise<NotificationConfig>;
 		},
+	});
+}
+
+export function useTimezones() {
+	return useQuery<string[]>({
+		queryKey: ['timezones'],
+		queryFn: () => fetchJson('/timezones'),
+		staleTime: Infinity, // Timezones don't change often
 	});
 }

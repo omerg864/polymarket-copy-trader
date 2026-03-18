@@ -1,12 +1,14 @@
-import { useSummary } from '@/hooks/use-api';
 import { ActiveTradesTable } from './dashboard/ActiveTradesTable';
 import { Header } from './dashboard/Header';
 import { MarketPricesCards } from './dashboard/MarketPricesCards';
 import { StatsSummary } from './dashboard/StatsSummary';
+import { TimeStatusCards } from './dashboard/TimeStatusCards';
 import { TradeHistoryTable } from './dashboard/TradeHistoryTable';
+import { useConfig, useSummary } from '@/hooks/use-api';
 
 export function Dashboard() {
-	const { isLoading: summaryLoading } = useSummary();
+	const { data: summary, isLoading: summaryLoading } = useSummary();
+	const { data: config } = useConfig();
 
 	if (summaryLoading) {
 		return (
@@ -22,6 +24,10 @@ export function Dashboard() {
 		<div className="min-h-screen bg-zinc-950 text-zinc-100 p-3 sm:p-6">
 			<div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
 				<Header />
+				<TimeStatusCards
+					startTime={summary?.botStartTime}
+					serverTimezone={config?.timezone}
+				/>
 				<StatsSummary />
 				<MarketPricesCards />
 				<ActiveTradesTable />

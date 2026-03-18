@@ -23,10 +23,9 @@ export function calculateFee(shares: number, price: number): number {
 export function calculateTodayPnl(
 	history: Trade[],
 	currentTrade?: Trade,
+	timezone: string = 'Asia/Jerusalem',
 ): number {
-	const startOfToday = DateTime.now()
-		.setZone('Asia/Jerusalem')
-		.startOf('day');
+	const startOfToday = DateTime.now().setZone(timezone).startOf('day');
 	const todayTrades = history.filter((t) => {
 		if (!t.enteredAt) return false;
 		const enteredAt = DateTime.fromISO(t.enteredAt);
