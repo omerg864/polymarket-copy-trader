@@ -222,13 +222,13 @@ class StrategyEngine {
 		const prices = await polymarketService.getMarketPrices(market);
 		if (!prices) {
 			this.pricesMissingCycleCount++;
+			polymarketWsService.reconnect();
 			if (this.pricesMissingCycleCount === 3) {
 				notificationManager.handleError(
 					`Could not fetch prices for market ${market.slug} for ${this.pricesMissingCycleCount} cycles`,
 					'StrategyEngine',
 					'executeCycle',
 				);
-				polymarketWsService.reconnect();
 			}
 			logger.warn(
 				`⚠️  Could not fetch prices for market ${market.slug} for ${this.pricesMissingCycleCount} cycles - skipping cycle`,
