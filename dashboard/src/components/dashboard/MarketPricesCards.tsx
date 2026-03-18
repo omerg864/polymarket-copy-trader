@@ -7,8 +7,8 @@ import {
 import { useMarketPrices } from '@/hooks/use-api';
 import { MarketOutcomeBadge } from './badges';
 
-const fmtPrice = (n: number) =>
-	n.toLocaleString(undefined, {
+const fmtPrice = (n: number | undefined) =>
+	n?.toLocaleString(undefined, {
 		minimumFractionDigits: 2,
 		maximumFractionDigits: 2,
 	});
