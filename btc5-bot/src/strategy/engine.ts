@@ -1,4 +1,4 @@
-import { TradeStatus, TradeType, type Trade } from '@shared/types';
+import { Market, TradeStatus, TradeType, type Trade } from '@shared/types';
 import { DateTime } from 'luxon';
 import { calculateFee, calculateTodayPnl } from '@shared/utils';
 import config from '../config';
@@ -116,6 +116,11 @@ class StrategyEngine {
 		const activeTrades = await redisService.getActiveTrades();
 		await this.resolveExpiredTrades(activeTrades);
 
+		// Step 2: Cleanup stale WebSocket subscriptions
+		// We'll discover the market first to know what to keep
+		const market = await polymarketService.getNextMarket();
+		await this.cleanupWebSocketSubscriptions(market, activeTrades);
+
 		// Re-fetch active trades after resolution
 		const currentTrades = await redisService.getActiveTrades();
 
@@ -150,10 +155,7 @@ class StrategyEngine {
 			await redisService.setDailyStop(false, todayStr || '');
 		}
 
-		// Step 3: Discover next market
-		logger.info('🔍 Searching for next BTC 5-minute market...');
-		const market = await polymarketService.getNextMarket();
-
+		// Step 3: Use discovered market (from Step 2)
 		if (!market) {
 			logger.info(
 				'📭 No upcoming markets found. Markets may be between sessions.',
@@ -505,6 +507,37 @@ class StrategyEngine {
 				type: 'RESOLVE',
 				btcPrice: btcPrice ?? undefined,
 			});
+		}
+	}
+	/**
+	 * Cleanup WebSocket subscriptions to prevent accumulation of stale tokens
+	 */
+	private async cleanupWebSocketSubscriptions(
+		currentMarket: Market | null,
+		activeTrades: Trade[],
+	): Promise<void> {
+		try {
+			const keepTokens = new Set<string>();
+
+			// 1. Keep tokens for active trades
+			for (const trade of activeTrades) {
+				if (trade.tokenId) {
+					keepTokens.add(trade.tokenId);
+				}
+			}
+
+			// 2. Keep tokens for current market being watched
+			if (currentMarket) {
+				if (currentMarket.upTokenId)
+					keepTokens.add(currentMarket.upTokenId);
+				if (currentMarket.downTokenId)
+					keepTokens.add(currentMarket.downTokenId);
+			}
+
+			// 3. Perform cleanup
+			polymarketWsService.keepOnly(Array.from(keepTokens));
+		} catch (error) {
+			logger.error(`Failed to cleanup WS subscriptions: ${error}`);
 		}
 	}
 }

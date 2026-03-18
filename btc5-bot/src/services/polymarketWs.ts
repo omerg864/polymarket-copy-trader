@@ -73,6 +73,7 @@ class PolymarketWsService {
 				logger.error(
 					`Error parsing Polymarket WS message: ${err} , data: ${data}`,
 				);
+				this.reconnect();
 			}
 		});
 
@@ -147,6 +148,48 @@ class PolymarketWsService {
 			return null;
 		}
 		return data;
+	}
+
+	public unsubscribe(tokenIds: string[]): void {
+		const toUnsub = tokenIds.filter((id) => this.subscribedTokens.has(id));
+		if (toUnsub.length === 0) return;
+
+		toUnsub.forEach((id) => {
+			this.subscribedTokens.delete(id);
+			this.prices.delete(id);
+		});
+
+		if (this.ws?.readyState === WebSocket.OPEN) {
+			logger.info(
+				`📡 Unsubscribing from Polymarket tokens: ${toUnsub.join(', ')}`,
+			);
+			this.ws.send(
+				JSON.stringify({
+					type: 'unsubscribe',
+					topic: 'book',
+					assets_ids: toUnsub,
+				}),
+			);
+		}
+	}
+
+	/**
+	 * Keep only the specified tokens and unsubscribe from everything else
+	 */
+	public keepOnly(tokenIds: string[]): void {
+		const keepSet = new Set(tokenIds);
+		const toRemove: string[] = [];
+
+		for (const id of this.subscribedTokens) {
+			if (!keepSet.has(id)) {
+				toRemove.push(id);
+			}
+		}
+
+		if (toRemove.length > 0) {
+			logger.info(`🧹 Cleanup: removing ${toRemove.length} stale tokens`);
+			this.unsubscribe(toRemove);
+		}
 	}
 
 	public reconnect(): void {
