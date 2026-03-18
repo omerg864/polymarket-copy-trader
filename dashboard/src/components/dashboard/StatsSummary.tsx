@@ -67,7 +67,7 @@ export function StatsSummary() {
 	return (
 		<div className="flex flex-col gap-4 mb-4">
 			{/* Row 1: General Stats */}
-			<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+			<div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
 				<Card className="bg-zinc-900 border-zinc-800">
 					<CardHeader className="pb-2">
 						<CardDescription className="text-xs text-zinc-500">
@@ -89,11 +89,11 @@ export function StatsSummary() {
 					</CardHeader>
 					<CardContent>
 						<span
-							className={`text-2xl font-bold font-mono ${
+							className={`text-xl sm:text-2xl font-bold font-mono ${
 								totalPnl >= 0
 									? 'text-emerald-400'
 									: 'text-red-400'
-							} text-nowrap`}
+							}`}
 						>
 							{totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
 							<br />
@@ -171,7 +171,7 @@ export function StatsSummary() {
 			</div>
 
 			{/* Row 2: Advanced Stats */}
-			<div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+			<div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-5 gap-4">
 				<Card className="bg-zinc-900 border-zinc-800">
 					<CardHeader className="pb-2">
 						<CardDescription className="text-xs text-zinc-500">
@@ -238,7 +238,7 @@ export function StatsSummary() {
 			</div>
 
 			{/* Row 3: Today's Performance */}
-			<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+			<div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4">
 				<Card className="bg-zinc-900 border-zinc-800">
 					<CardHeader className="pb-2">
 						<CardDescription className="text-xs text-zinc-500">
@@ -251,11 +251,11 @@ export function StatsSummary() {
 					<CardContent>
 						<div className="flex items-baseline gap-2">
 							<span
-								className={`text-2xl font-bold font-mono ${
+								className={`text-xl sm:text-2xl font-bold font-mono ${
 									todayPnl >= 0
 										? 'text-emerald-400'
 										: 'text-red-400'
-								} text-nowrap`}
+								}`}
 							>
 								{todayPnl >= 0 ? '+' : ''}${todayPnl.toFixed(2)}
 							</span>
@@ -319,7 +319,7 @@ export function StatsSummary() {
 					</CardHeader>
 					<CardContent>
 						<div className="flex items-baseline gap-2">
-							<span className="text-2xl font-bold font-mono text-emerald-400 text-nowrap">
+							<span className="text-xl sm:text-2xl font-bold font-mono text-emerald-400">
 								+${todayProfit.toFixed(2)}
 							</span>
 							<span className="text-xs text-zinc-500 font-mono">
@@ -337,7 +337,7 @@ export function StatsSummary() {
 					</CardHeader>
 					<CardContent>
 						<div className="flex items-baseline gap-2">
-							<span className="text-2xl font-bold font-mono text-red-400 text-nowrap">
+							<span className="text-xl sm:text-2xl font-bold font-mono text-red-400">
 								${todayLoss.toFixed(2)}
 							</span>
 							<span className="text-xs text-zinc-500 font-mono">

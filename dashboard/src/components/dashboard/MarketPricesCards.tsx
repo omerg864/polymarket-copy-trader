@@ -30,7 +30,7 @@ export function MarketPricesCards() {
 	const isAbove = diff !== null && diff >= 0;
 
 	return (
-		<div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+		<div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
 			<Card className="bg-zinc-900 border-zinc-800">
 				<CardHeader className="pb-2">
 					<CardDescription className="text-xs text-zinc-500">

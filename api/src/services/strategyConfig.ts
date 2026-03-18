@@ -28,7 +28,7 @@ export async function getStrategyConfig(): Promise<StrategyConfig> {
 
 	for (const doc of docs) {
 		if (STRATEGY_KEYS.includes(doc.key as keyof StrategyConfig)) {
-			(partial as Record<string, number>)[doc.key] = doc.value;
+			(partial as any)[doc.key] = doc.value;
 		}
 	}
 
@@ -52,7 +52,7 @@ export async function updateStrategyConfig(
 		.map(([key, value]) => ({
 			updateOne: {
 				filter: { key },
-				update: { $set: { value: value as number } },
+				update: { $set: { value } },
 				upsert: true,
 			},
 		}));

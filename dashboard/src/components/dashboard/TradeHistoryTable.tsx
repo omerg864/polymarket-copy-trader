@@ -207,7 +207,7 @@ export function TradeHistoryTable() {
 												? formatDate(trade.enteredAt)
 												: '—'}
 										</TableCell>
-										<TableCell className="font-mono text-xs text-zinc-400">
+										<TableCell className="font-mono text-xs text-zinc-400 max-w-[140px] truncate">
 											{trade.title.replace(
 												'Bitcoin Up or Down - ',
 												'',

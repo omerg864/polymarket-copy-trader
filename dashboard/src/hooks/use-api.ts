@@ -101,11 +101,12 @@ export function useCheckAuth() {
 	});
 }
 
-export function useConfig() {
+export function useConfig(options: { enabled?: boolean } = {}) {
 	return useQuery<StrategyConfig>({
 		queryKey: ['config'],
 		queryFn: () => fetchJson('/config'),
 		refetchInterval: 30000,
+		...options,
 	});
 }
 

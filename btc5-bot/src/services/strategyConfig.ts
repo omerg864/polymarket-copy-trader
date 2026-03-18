@@ -50,7 +50,7 @@ export async function getStrategyConfig(): Promise<StrategyConfig> {
 			const partial: Partial<StrategyConfig> = {};
 			for (const doc of docs) {
 				if (STRATEGY_KEYS.includes(doc.key as keyof StrategyConfig)) {
-					(partial as Record<string, number>)[doc.key] = doc.value;
+					(partial as any)[doc.key] = doc.value;
 				}
 			}
 			const result = resolveStrategyConfig(partial);

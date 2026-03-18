@@ -1,16 +1,3 @@
-import packageJson from '../../../package.json';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-	Dialog,
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from '@/components/ui/dialog';
 import {
 	getAuthRole,
 	useConfig,
@@ -23,9 +10,9 @@ import {
 } from '@/hooks/use-api';
 import { useMemoizedFn } from 'ahooks';
 import { saveAs } from 'file-saver';
-import { Bell } from 'lucide-react';
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
+import { ActionsDropdown } from './ActionsDropdown';
 import { NotificationConfigDialog } from './NotificationConfigDialog';
 import { StrategyConfigDialog } from './StrategyConfigDialog';
 import RedisStats from './RedisStats';
@@ -141,9 +128,6 @@ export function Header() {
 			<div>
 				<h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
 					📊 Polymarket Trading Dashboard
-					<span className="text-[10px] font-mono text-zinc-500 bg-zinc-800/50 px-1.5 py-0.5 rounded border border-zinc-700/50">
-						v{packageJson.version}
-					</span>
 				</h1>
 				<p className="text-xs sm:text-sm text-zinc-500 mt-1">
 					BTC 5-Minute Up/Down Markets • Auto-refreshes every 5s •{' '}
@@ -151,107 +135,30 @@ export function Header() {
 				</p>
 			</div>
 			<div className="flex flex-wrap items-center gap-2 sm:gap-4">
-				{summary && (
-					<Button
-						variant="outline"
-						className={`h-7 px-3 text-xs font-medium rounded border ${
-							summary.isStopping
-								? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 hover:text-emerald-300'
-								: 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20 hover:text-amber-300'
-						} transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
-						onClick={() =>
-							toggleStop.mutate(!summary.isStopping, {
-								onSuccess: () => refetchSummary(),
-							})
-						}
-						disabled={toggleStop.isPending || isReadonly}
-						title={isReadonly ? 'Admin access required' : undefined}
-					>
-						{toggleStop.isPending
-							? '⌛ Updating...'
-							: summary.isStopping
-								? '▶️ Resume Trading'
-								: '⏸️ Pause New Trades'}
-					</Button>
-				)}
-				<Button
-					variant="outline"
-					className="h-7 px-3 text-xs font-medium rounded border bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
-					onClick={() => {
-						setNotificationOpen(true);
-					}}
-				>
-					<Bell className="h-3.5 w-3.5 mr-1" />
-					Alerts
-				</Button>
-				<Button
-					variant="outline"
-					className="h-7 px-3 text-xs font-medium rounded border bg-blue-500/10 text-blue-400 border-blue-500/30 hover:bg-blue-500/20 hover:text-blue-300 transition-colors"
-					onClick={handleExport}
-					disabled={!history || !summary || !config}
-				>
-					📥 Export
-				</Button>
-				<Dialog>
-					<DialogTrigger asChild>
-						<Button
-							variant="outline"
-							className="h-7 px-3 text-xs font-medium rounded border bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20 hover:text-red-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-							disabled={flushRedis.isPending || isReadonly}
-							title={
-								isReadonly ? 'Admin access required' : undefined
-							}
-						>
-							{flushRedis.isPending
-								? '⌛ Flushing...'
-								: '🗑️ Flush Redis'}
-						</Button>
-					</DialogTrigger>
-					<DialogContent className="sm:max-w-[400px] bg-zinc-950 border border-zinc-800 text-zinc-100">
-						<DialogHeader>
-							<DialogTitle className="text-lg text-red-400">
-								🗑️ Flush Redis
-							</DialogTitle>
-							<DialogDescription className="text-zinc-400">
-								This will permanently delete all data in Redis
-								including trade history, stats, and active
-								trades. This action cannot be undone.
-							</DialogDescription>
-						</DialogHeader>
-						<DialogFooter className="gap-2 sm:gap-0">
-							<DialogClose asChild>
-								<Button
-									variant="outline"
-									className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-								>
-									Cancel
-								</Button>
-							</DialogClose>
-							<DialogClose asChild>
-								<Button
-									variant="destructive"
-									className="bg-red-600 hover:bg-red-700 text-white"
-									onClick={() =>
-										flushRedis.mutate(undefined, {
-											onSuccess: () =>
-												refetchRedisStats(),
-										})
-									}
-								>
-									Yes, Flush All Data
-								</Button>
-							</DialogClose>
-						</DialogFooter>
-					</DialogContent>
-				</Dialog>
-
-				<Badge
-					variant="outline"
-					className="text-xs border-zinc-700 text-zinc-400 cursor-pointer hover:bg-zinc-800 transition-colors"
-					onClick={() => setConfigOpen(true)}
-				>
-					{config?.mode?.toUpperCase() || 'LOADING'} MODE
-				</Badge>
+				<ActionsDropdown
+					summary={summary}
+					history={history}
+					config={config}
+					isReadonly={isReadonly}
+					isAdmin={isAdmin}
+					onToggleStop={(stopping) =>
+						toggleStop.mutate(stopping, {
+							onSuccess: () => refetchSummary(),
+						})
+					}
+					onOpenAlerts={() => setNotificationOpen(true)}
+					onOpenConfig={() => setConfigOpen(true)}
+					onOpenFlush={() =>
+						flushRedis.mutate(undefined, {
+							onSuccess: () => {
+								refetchRedisStats();
+							},
+						})
+					}
+					onExport={handleExport}
+					isTogglePending={toggleStop.isPending}
+					isFlushPending={flushRedis.isPending}
+				/>
 
 				<StrategyConfigDialog
 					open={configOpen}
