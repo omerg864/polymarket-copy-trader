@@ -88,7 +88,6 @@ class RiskManager {
 				const endTime = DateTime.fromISO(trade.endTime);
 				const now = DateTime.now();
 				const secUntilEnd = endTime.diff(now).as('seconds');
-				if (secUntilEnd < 3) continue; // Skip if less than 3s left
 				if (secUntilEnd > sc.maxSecLoseFct + fctBufferSec) continue; // skip if not in fct window
 
 				const priceToBeat = parseFloat(String(trade.priceToBeat));
@@ -115,6 +114,13 @@ class RiskManager {
 						(trade.direction === 'DOWN' && resolvesUp);
 
 					if (!wouldLose) continue;
+
+					if (secUntilEnd < 2) {
+						logger.info(
+							`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.id} ${trade.direction} but BTC $${btcPrice.toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. CANNOT SELL WHEN LESS THAN 2S LEFT`,
+						);
+						continue;
+					} // Skip if less than 2s left
 
 					const currentPrice = await polymarketService.getTokenPrice(
 						trade.tokenId,
