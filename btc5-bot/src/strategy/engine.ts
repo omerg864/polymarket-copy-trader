@@ -124,7 +124,7 @@ class StrategyEngine {
 		let prices: any = null;
 
 		// Update dashboard prices as soon as a market is found
-		if (market && new Date(market.startTime).getTime() >= Date.now()) {
+		if (market && new Date(market.startTime).getTime() <= Date.now()) {
 			refPrice = market.priceToBeat;
 			prices = await polymarketService.getMarketPrices(market);
 
