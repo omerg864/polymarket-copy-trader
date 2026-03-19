@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState, useCallback } from 'react';
 import { AgGridReact, AgGridProvider } from 'ag-grid-react';
+import { DateTime } from 'luxon';
 import {
 	ClientSideRowModelModule,
 	TextFilterModule,
@@ -142,14 +143,40 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 			{
 				field: 'enteredAt',
 				headerName: 'Opened At',
+				filter: 'agDateColumnFilter',
 				width: 160,
 				valueFormatter: (params: ValueFormatterParams) =>
 					params.value ? formatDate(params.value) : '',
 				sort: 'desc',
 			},
 			{
+				headerName: 'Day',
+				width: 100,
+				enableRowGroup: true,
+				filter: 'agSetColumnFilter',
+				valueGetter: (params: any) => {
+					if (!params.data?.enteredAt) return '';
+					return DateTime.fromISO(params.data.enteredAt).toFormat(
+						'cccc',
+					);
+				},
+			},
+			{
+				headerName: 'Hour',
+				width: 90,
+				enableRowGroup: true,
+				filter: 'agSetColumnFilter',
+				valueGetter: (params: any) => {
+					if (!params.data?.enteredAt) return '';
+					return DateTime.fromISO(params.data.enteredAt).toFormat(
+						'HH:00',
+					);
+				},
+			},
+			{
 				field: 'closedAt',
 				headerName: 'Closed At',
+				filter: 'agDateColumnFilter',
 				width: 160,
 				valueFormatter: (params: ValueFormatterParams) =>
 					params.value ? formatDate(params.value) : '',

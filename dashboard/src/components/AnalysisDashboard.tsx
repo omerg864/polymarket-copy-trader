@@ -24,6 +24,7 @@ import {
 	XCircle,
 } from 'lucide-react';
 import { useMemo } from 'react';
+import { DateTime } from 'luxon';
 import { AnalysisGrid } from './analysis/AnalysisGrid';
 
 function calculateStats(trades: Trade[]) {
@@ -577,32 +578,45 @@ export function AnalysisDashboard() {
 				(s, e) => `${s.toFixed(2)}% - ${e.toFixed(2)}%`,
 			),
 			byDate: (() => {
-				const dateMap: Record<string, Trade[]> = {};
+				const monthMap: Record<string, Record<string, Trade[]>> = {};
 				resolved.forEach((t) => {
 					if (!t.enteredAt) return;
-					const d = new Date(t.enteredAt);
-					const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-					if (!dateMap[dateKey]) dateMap[dateKey] = [];
-					dateMap[dateKey].push(t);
+					const dt = DateTime.fromISO(t.enteredAt);
+					const monthKey = dt.toFormat('yyyy-MM');
+					const dateKey = dt.toFormat('yyyy-MM-dd');
+
+					if (!monthMap[monthKey]) monthMap[monthKey] = {};
+					if (!monthMap[monthKey][dateKey]) monthMap[monthKey][dateKey] = [];
+					monthMap[monthKey][dateKey].push(t);
 				});
-				return Object.entries(dateMap)
+
+				return Object.entries(monthMap)
 					.sort(([a], [b]) => a.localeCompare(b))
-					.map(([date, trades]) => ({
-						label: date,
-						main: calculateStats(trades),
-						upStats: calculateStats(
-							trades.filter((t) => t.direction === 'UP'),
-						),
-						downStats: calculateStats(
-							trades.filter((t) => t.direction === 'DOWN'),
-						),
-						children: [] as {
-							label: string;
-							stats: ReturnType<typeof calculateStats>;
-							upStats: ReturnType<typeof calculateStats>;
-							downStats: ReturnType<typeof calculateStats>;
-						}[],
-					}));
+					.map(([month, dateMap]) => {
+						const allMonthTrades = Object.values(dateMap).flat();
+						const days = Object.entries(dateMap)
+							.sort(([a], [b]) => a.localeCompare(b))
+							.map(([date, trades]) => ({
+								label: date,
+								main: calculateStats(trades),
+								upStats: calculateStats(
+									trades.filter((t) => t.direction === 'UP'),
+								),
+								downStats: calculateStats(
+									trades.filter((t) => t.direction === 'DOWN'),
+								),
+							}));
+
+						return {
+							label: DateTime.fromFormat(
+								month,
+								'yyyy-MM',
+							).toFormat('MMMM yyyy'),
+							monthKey: month,
+							main: calculateStats(allMonthTrades),
+							days,
+						};
+					});
 			})(),
 			stopLoss: (() => {
 				const slTrades = resolved.filter(
@@ -1762,86 +1776,154 @@ export function AnalysisDashboard() {
 					</CardHeader>
 					<CardContent>
 						<Accordion type="multiple" className="w-full">
-							{analysis.byDate.map((entry: any) => {
-								const goalPct =
-									dayPnlGoal > 0
-										? (entry.main.totalPnl / dayPnlGoal) *
-											100
-										: 0;
+							{analysis.byDate.map((monthEntry: any) => {
 								return (
 									<AccordionItem
-										value={entry.label}
-										key={entry.label}
+										value={monthEntry.label}
+										key={monthEntry.label}
 										className="border-b-0"
 									>
 										<AccordionTrigger className="py-0 hover:no-underline [&[data-state=open]>div]:bg-zinc-800/30">
 											<div className="flex-1 text-left">
-												<div className="flex flex-wrap sm:flex-nowrap items-center justify-between py-2 border-b border-zinc-800/50 last:border-0 rounded -mx-2 px-2 gap-1 hover:bg-zinc-800/30">
-													<span className="text-zinc-300 font-medium w-full sm:w-[25%] pl-2 truncate">
-														{entry.label}
-													</span>
-													<span className="text-zinc-500 text-xs font-mono w-auto sm:w-[15%] text-center">
-														{entry.main.total}{' '}
-														trades
-													</span>
-													<span
-														className={`font-mono font-medium text-xs w-auto sm:w-[15%] text-center ${entry.main.totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
-													>
-														{entry.main.totalPnl >=
-														0
-															? '+'
-															: ''}
-														$
-														{entry.main.totalPnl.toFixed(
-															2,
-														)}
-													</span>
-													<div className="w-auto sm:w-[20%] flex items-center gap-1.5">
-														<div className="flex-1 bg-zinc-800 rounded-full h-1.5">
-															<div
-																className={`h-1.5 rounded-full ${
-																	entry.main
-																		.totalPnl >=
-																	dayPnlGoal
-																		? 'bg-emerald-400'
-																		: entry
-																					.main
-																					.totalPnl >=
-																			  0
-																			? 'bg-amber-400'
-																			: 'bg-red-400'
-																}`}
-																style={{
-																	width: `${Math.max(0, Math.min(100, goalPct))}%`,
-																}}
-															/>
-														</div>
-														<span className="text-zinc-600 text-[10px] font-mono whitespace-nowrap">
-															{goalPct.toFixed(0)}
-															%
-														</span>
-													</div>
-													<div className="w-auto sm:w-[25%] text-right whitespace-nowrap">
-														<span
-															className={`font-mono font-bold ${entry.main.winRate >= 50 ? 'text-emerald-400' : 'text-red-400'}`}
-														>
-															{entry.main.winRate.toFixed(
-																1,
-															)}
-															%
-														</span>
-														<span className="text-zinc-600 text-xs ml-1">
-															({entry.main.wins}W/
-															{entry.main.losses}
-															L)
-														</span>
-													</div>
-												</div>
+												{renderStatRow(
+													monthEntry.label,
+													monthEntry.main,
+													false,
+												)}
 											</div>
 										</AccordionTrigger>
 										<AccordionContent className="pt-1 pb-3 px-4 bg-zinc-950/30 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/50">
 											<div className="space-y-1">
-												{renderDirectionRows(entry)}
+												<Accordion
+													type="multiple"
+													className="w-full"
+												>
+													{monthEntry.days.map(
+														(dayEntry: any) => {
+															const goalPct =
+																dayPnlGoal > 0
+																	? (dayEntry
+																			.main
+																			.totalPnl /
+																			dayPnlGoal) *
+																	  100
+																	: 0;
+															return (
+																<AccordionItem
+																	value={
+																		dayEntry.label
+																	}
+																	key={
+																		dayEntry.label
+																	}
+																	className="border-b-0"
+																>
+																	<AccordionTrigger className="py-0 hover:no-underline [&[data-state=open]>div]:bg-zinc-800/30">
+																		<div className="flex-1 text-left">
+																			<div className="flex flex-wrap sm:flex-nowrap items-center justify-between py-2 border-b border-zinc-800/50 last:border-0 rounded -mx-2 px-2 gap-1 hover:bg-zinc-800/30">
+																				<span className="text-zinc-400 font-medium w-full sm:w-[25%] pl-2 truncate">
+																					↳{' '}
+																					{
+																						dayEntry.label
+																					}
+																				</span>
+																				<span className="text-zinc-500 text-xs font-mono w-auto sm:w-[15%] text-center">
+																					{
+																						dayEntry
+																							.main
+																							.total
+																					}{' '}
+																					trades
+																				</span>
+																				<span
+																					className={`font-mono font-medium text-xs w-auto sm:w-[15%] text-center ${dayEntry.main.totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}
+																				>
+																					{dayEntry
+																						.main
+																						.totalPnl >=
+																					0
+																						? '+'
+																						: ''}
+																					$
+																					{dayEntry.main.totalPnl.toFixed(
+																						2,
+																					)}
+																				</span>
+																				<div className="w-auto sm:w-[20%] flex items-center gap-1.5">
+																					<div className="flex-1 bg-zinc-800 rounded-full h-1.5">
+																						<div
+																							className={`h-1.5 rounded-full ${
+																								dayEntry
+																									.main
+																									.totalPnl >=
+																								dayPnlGoal
+																									? 'bg-emerald-400'
+																									: dayEntry
+																												.main
+																												.totalPnl >=
+																										  0
+																										? 'bg-amber-400'
+																										: 'bg-red-400'
+																							}`}
+																							style={{
+																								width: `${Math.max(0, Math.min(100, goalPct))}%`,
+																							}}
+																						/>
+																					</div>
+																					<span className="text-zinc-600 text-[10px] font-mono whitespace-nowrap">
+																						{goalPct.toFixed(
+																							0,
+																						)}
+																						%
+																					</span>
+																				</div>
+																				<div className="w-auto sm:w-[25%] text-right whitespace-nowrap">
+																					<span
+																						className={`font-mono font-bold ${
+																							dayEntry
+																								.main
+																								.winRate >=
+																							50
+																								? 'text-emerald-400'
+																								: 'text-red-400'
+																						}`}
+																					>
+																						{dayEntry.main.winRate.toFixed(
+																							1,
+																						)}
+																						%
+																					</span>
+																					<span className="text-zinc-600 text-xs ml-1">
+																						(
+																						{
+																							dayEntry
+																								.main
+																								.wins
+																						}
+																						W/
+																						{
+																							dayEntry
+																								.main
+																								.losses
+																						}
+																						L)
+																					</span>
+																				</div>
+																			</div>
+																		</div>
+																	</AccordionTrigger>
+																	<AccordionContent className="pt-1 pb-3 px-6 bg-zinc-950/40 rounded-b-md mt-1 mb-2 border border-t-0 border-zinc-800/30">
+																		<div className="space-y-1">
+																			{renderDirectionRows(
+																				dayEntry,
+																			)}
+																		</div>
+																	</AccordionContent>
+																</AccordionItem>
+															);
+														},
+													)}
+												</Accordion>
 											</div>
 										</AccordionContent>
 									</AccordionItem>
