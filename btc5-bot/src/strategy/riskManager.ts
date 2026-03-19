@@ -89,15 +89,24 @@ class RiskManager {
 				const now = DateTime.now();
 				const secUntilEnd = endTime.diff(now).as('seconds');
 				if (secUntilEnd < 3) continue; // Skip if less than 3s left
+				if (secUntilEnd > sc.maxSecLoseFct + fctBufferSec) continue; // skip if not in fct window
 
 				const priceToBeat = parseFloat(String(trade.priceToBeat));
-				if (!priceToBeat || priceToBeat <= 0) continue;
-
-				if (secUntilEnd > sc.maxSecLoseFct + fctBufferSec) continue;
+				if (!priceToBeat || priceToBeat <= 0) {
+					logger.error(
+						`Price to beat not available for trade ${trade.id} ${trade.direction}, skipping FCT check`,
+					);
+					continue;
+				}
 				try {
 					const btcPrice =
 						await priceAnalysisService.getCurrentPrice();
-					if (!btcPrice) continue;
+					if (!btcPrice) {
+						logger.error(
+							`BTC price not available, skipping FCT check for trade ${trade.id} ${trade.direction}`,
+						);
+						continue;
+					}
 
 					const resolvesUp =
 						btcPrice >= priceToBeat - sc.fctBtcOffset;
@@ -115,7 +124,7 @@ class RiskManager {
 					if (currentPrice === null || currentPrice <= 0) continue;
 
 					logger.info(
-						`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.direction} but BTC $${btcPrice.toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. Selling to avoid resolution loss.`,
+						`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.id} ${trade.direction} but BTC $${btcPrice.toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. Selling to avoid resolution loss.`,
 					);
 					await this.executeSell(
 						trade,
@@ -152,10 +161,12 @@ class RiskManager {
 		const sc = await getStrategyConfig();
 
 		const priceToBeat = parseFloat(String(trade.priceToBeat));
-		if (!priceToBeat || priceToBeat <= 0) return;
-
-		const btcPrice = await priceAnalysisService.getCurrentPrice();
-		if (!btcPrice) return;
+		if (!priceToBeat || priceToBeat <= 0) {
+			logger.error(
+				`Price to beat not available for trade ${trade.id} ${trade.direction}, skipping position check`,
+			);
+			return;
+		}
 
 		const currentPrice = await polymarketService.getTokenPrice(
 			trade.tokenId,
@@ -163,7 +174,12 @@ class RiskManager {
 			trade.direction,
 		);
 
-		if (currentPrice === null || currentPrice <= 0) return;
+		if (currentPrice === null || currentPrice <= 0) {
+			logger.error(
+				`Current price not available for trade ${trade.id} ${trade.direction}, skipping position check`,
+			);
+			return;
+		}
 
 		const pctChange = (currentPrice - trade.entryPrice) / trade.entryPrice;
 
@@ -173,11 +189,22 @@ class RiskManager {
 
 		// Take profit check
 		if (pctChange >= sc.takeProfitPct) {
+			const btcPrice = await priceAnalysisService.getCurrentPrice();
+			if (!btcPrice) {
+				logger.error(
+					`BTC price not available for trade ${trade.id}, using 0`,
+				);
+			}
 			logger.info(
-				`🟢 TAKE PROFIT triggered for ${trade.direction} | Position: ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (+${(pctChange * 100).toFixed(1)}%) | BTC: $${btcPrice.toFixed(2)}`,
+				`🟢 TAKE PROFIT triggered for ${trade.id} ${trade.direction} | Position: ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (+${(pctChange * 100).toFixed(1)}%) | BTC: $${(btcPrice ?? 0).toFixed(2)}`,
 			);
 			try {
-				await this.executeSell(trade, currentPrice, 'tp', btcPrice);
+				await this.executeSell(
+					trade,
+					currentPrice,
+					'tp',
+					btcPrice ?? 0,
+				);
 			} catch (err) {
 				logger.error(`Error executing sell: ${err}`);
 			}
@@ -186,20 +213,32 @@ class RiskManager {
 
 		// Stop loss check
 		if (pctChange <= -sc.stopLossPct) {
+			const btcPrice = await priceAnalysisService.getCurrentPrice();
+			if (!btcPrice) {
+				logger.error(
+					`BTC price not available for trade ${trade.id}, using 0`,
+				);
+			}
 			logger.info(
-				`🔴 STOP LOSS triggered for ${trade.direction} | Position: ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (${(pctChange * 100).toFixed(1)}%) | BTC: $${btcPrice.toFixed(2)}`,
+				`🔴 STOP LOSS triggered for ${trade.id} ${trade.direction} | Position: ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (${(pctChange * 100).toFixed(1)}%) | BTC: $${(btcPrice ?? 0).toFixed(2)}`,
 			);
 			try {
-				await this.executeSell(trade, currentPrice, 'sl', btcPrice);
+				await this.executeSell(
+					trade,
+					currentPrice,
+					'sl',
+					btcPrice ?? 0,
+				);
 			} catch (err) {
 				logger.error(`Error executing sell: ${err}`);
 			}
 			return;
 		}
 
+		const btcPrice = await priceAnalysisService.getCurrentPrice();
 		const emoji = pctChange >= 0 ? '📈' : '📉';
-		logger.debug(
-			`${emoji} ${trade.direction} | ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (${(pctChange * 100).toFixed(1)}%) | BTC: $${btcPrice.toFixed(2)} vs ref $${priceToBeat.toFixed(2)}`,
+		logger.info(
+			`${emoji} ${trade.id} ${trade.direction} | ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (${(pctChange * 100).toFixed(1)}%) | BTC: $${(btcPrice ?? 0).toFixed(2)} vs ref $${priceToBeat.toFixed(2)}`,
 		);
 	}
 
