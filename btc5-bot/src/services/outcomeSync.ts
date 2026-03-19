@@ -2,7 +2,7 @@ import axios from 'axios';
 import redisService from './redis';
 import polymarketService from './polymarket';
 import logger from '../utils/logger';
-import { type Trade } from '@shared/types';
+import { TradeStatus, type Trade } from '@shared/types';
 import notificationManager from './notificationManager';
 
 class OutcomeSyncService {
@@ -69,7 +69,10 @@ class OutcomeSyncService {
 						logger.info(
 							`✅ Updated outcome for trade ${trade.id}: ${actualOutcome}`,
 						);
-						if (actualOutcome !== trade.direction) {
+						if (
+							actualOutcome !== trade.direction &&
+							trade.status === TradeStatus.WON
+						) {
 							logger.error(
 								`❌ Trade ${trade.id} has wrong outcome: ${actualOutcome}`,
 							);
