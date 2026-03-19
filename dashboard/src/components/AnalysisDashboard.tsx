@@ -607,6 +607,20 @@ export function AnalysisDashboard() {
 								),
 							}));
 
+						const totalMonthlyPnl = allMonthTrades.reduce(
+							(sum, t) => sum + t.pnl,
+							0,
+						);
+						const numTradingDays = Object.keys(dateMap).length;
+						const avgDailyPnl =
+							numTradingDays > 0
+								? totalMonthlyPnl / numTradingDays
+								: 0;
+
+						const dayPnlGoal = config?.dayPnlGoal || 0;
+						const avgGoalPct =
+							dayPnlGoal > 0 ? (avgDailyPnl / dayPnlGoal) * 100 : 0;
+
 						return {
 							label: DateTime.fromFormat(
 								month,
@@ -614,6 +628,8 @@ export function AnalysisDashboard() {
 							).toFormat('MMMM yyyy'),
 							monthKey: month,
 							main: calculateStats(allMonthTrades),
+							avgDailyPnl,
+							avgGoalPct,
 							days,
 						};
 					});
@@ -683,7 +699,7 @@ export function AnalysisDashboard() {
 				),
 			},
 		};
-	}, [history]);
+	}, [history, config?.dayPnlGoal]);
 
 	if (isLoading) {
 		return (
@@ -793,6 +809,7 @@ export function AnalysisDashboard() {
 			totalPnl: number;
 		},
 		isChild: boolean = false,
+		monthlyStats?: { avgDailyPnl: number; avgGoalPct: number },
 	) => (
 		<div
 			key={label}
@@ -800,13 +817,47 @@ export function AnalysisDashboard() {
 				isChild ? 'bg-zinc-900/40 text-sm' : 'hover:bg-zinc-800/30'
 			}`}
 		>
-			<span
-				className={`${isChild ? 'text-zinc-400' : 'text-zinc-300 font-medium'} w-full sm:w-[30%] pl-2 truncate`}
-				title={label}
-			>
-				{isChild && '↳ '}
-				{label}
-			</span>
+			<div className="flex flex-col w-full sm:w-[30%] pl-2 truncate">
+				<span
+					className={`${isChild ? 'text-zinc-400' : 'text-zinc-300 font-medium'}`}
+					title={label}
+				>
+					{isChild && '↳ '}
+					{label}
+				</span>
+				{monthlyStats && (
+					<div className="flex items-center gap-1.5 text-[10px] text-zinc-500 mt-0.5 font-medium uppercase tracking-wider">
+						<span>
+							Avg:{' '}
+							<span
+								className={
+									monthlyStats.avgDailyPnl >= 0
+										? 'text-emerald-500/80'
+										: 'text-red-500/80'
+								}
+							>
+								{monthlyStats.avgDailyPnl >= 0 ? '+' : ''}$
+								{monthlyStats.avgDailyPnl.toFixed(1)}/d
+							</span>
+						</span>
+						<span className="text-zinc-800">•</span>
+						<span>
+							Goal:{' '}
+							<span
+								className={
+									monthlyStats.avgGoalPct >= 100
+										? 'text-emerald-500/80'
+										: monthlyStats.avgGoalPct >= 50
+											? 'text-amber-500/80'
+											: 'text-red-500/80'
+								}
+							>
+								{monthlyStats.avgGoalPct.toFixed(0)}%
+							</span>
+						</span>
+					</div>
+				)}
+			</div>
 			<span className="text-zinc-500 text-xs font-mono w-auto sm:w-[20%] text-center">
 				{stats.total} trades
 			</span>
@@ -1789,6 +1840,12 @@ export function AnalysisDashboard() {
 													monthEntry.label,
 													monthEntry.main,
 													false,
+													{
+														avgDailyPnl:
+															monthEntry.avgDailyPnl,
+														avgGoalPct:
+															monthEntry.avgGoalPct,
+													},
 												)}
 											</div>
 										</AccordionTrigger>
