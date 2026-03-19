@@ -5,6 +5,7 @@ import {
 	type Trade,
 } from '@shared/types';
 import { calculateTodayPnl } from '@shared/utils';
+import { DateTime } from 'luxon';
 import config from '../config';
 import logger from '../utils/logger';
 import redisService from './redis';
@@ -75,8 +76,8 @@ export class NotificationManager {
 	): Promise<void> {
 		const sc = await getStrategyConfig();
 		const nc = await this.getNotificationConfig();
-		const history = await redisService.getTradeHistory(500);
-		const todayPnl = calculateTodayPnl(history, trade);
+		const todayStr = DateTime.now().setZone(sc.timezone).toISODate() || '';
+		const todayPnl = await redisService.getDailyPnl(todayStr);
 
 		// Trigger win/loss notification in background
 		this.trigger(trade.pnl >= 0 ? 'win' : 'loss', {

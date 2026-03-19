@@ -15,8 +15,10 @@ import {
 	getBotBalance,
 	getBotStartTime,
 	getBotStats,
+	getDailyPnl,
 	getStopRequested,
 } from '../services/redis';
+import { DateTime } from 'luxon';
 import { getStrategyConfig } from '../services/strategyConfig';
 import { TelegramService } from '../services/telegram';
 
@@ -68,6 +70,10 @@ export async function handleWebhook(
 			]);
 
 		const balance = await getBotBalance(strategyConfig);
+		const todayStr = DateTime.now()
+			.setZone(strategyConfig.timezone)
+			.toFormat('yyyy-MM-dd');
+		const dailyPnl = await getDailyPnl(todayStr);
 
 		const winRate =
 			stats.totalTrades > 0
@@ -82,6 +88,7 @@ export async function handleWebhook(
 			`<b>📊 Bot Statistics</b>\n\n` +
 			`<b>Balance:</b> <code class="text-emerald-400">$${balance.toFixed(2)}</code>\n` +
 			`<b>Initial:</b> $${strategyConfig.botAllowance.toFixed(2)}\n` +
+			`<b>Today's P&L:</b> <code class="${dailyPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${dailyPnl.toFixed(2)}</code>\n` +
 			`<b>Total P&L:</b> <code class="${stats.totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${stats.totalPnl.toFixed(2)}</code>\n` +
 			`<b>Win Rate:</b> ${winRate}%\n` +
 			`<b>Trades:</b> ${stats.totalTrades} (${stats.wins}W / ${stats.losses}L)\n` +
@@ -107,6 +114,7 @@ export async function triggerNotification(
 
 	if (type === 'win' && config.notificationOnWin) {
 		const statusText = data.status === 'closed_tp' ? 'Take Profit' : 'Win';
+		const todayPnl = data.todayPnl ?? 0;
 		shouldNotify = true;
 		message =
 			`<b>🚀 NEW WIN!</b>\n\n` +
@@ -114,6 +122,7 @@ export async function triggerNotification(
 			`<b>Result:</b> ${statusText}\n` +
 			`<b>Profit:</b> <code class="text-emerald-400">$${data.pnl?.toFixed(2)}</code>\n` +
 			`<b>Return:</b> ${(data.pctChange * 100)?.toFixed(2)}%\n` +
+			`<b>Today's P&L:</b> <code class="${todayPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${todayPnl.toFixed(2)}</code>\n` +
 			`<b>Exit Price:</b> $${data.exitPrice}\n` +
 			`<b>Balance:</b> $${data.balance?.toFixed(2)}`;
 	} else if (type === 'loss' && config.notificationOnLoss) {
@@ -122,6 +131,7 @@ export async function triggerNotification(
 			: data.status === 'closed_fct' 
 				? 'Forced Closure' 
 				: 'Loss';
+		const todayPnl = data.todayPnl ?? 0;
 		shouldNotify = true;
 		message =
 			`<b>📉 Trade Loss</b>\n\n` +
@@ -129,6 +139,7 @@ export async function triggerNotification(
 			`<b>Result:</b> ${statusText}\n` +
 			`<b>Loss:</b> <code class="text-red-400">$${Math.abs(data.pnl)?.toFixed(2)}</code>\n` +
 			`<b>Return:</b> ${(data.pctChange * 100)?.toFixed(2)}%\n` +
+			`<b>Today's P&L:</b> <code class="${todayPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${todayPnl.toFixed(2)}</code>\n` +
 			`<b>Exit Price:</b> $${data.exitPrice}\n` +
 			`<b>Balance:</b> $${data.balance?.toFixed(2)}`;
 	} else if (type === 'goal' && config.notificationOnPnlGoal) {
