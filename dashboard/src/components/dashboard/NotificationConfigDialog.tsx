@@ -30,7 +30,9 @@ export function NotificationConfigDialog({
 }: NotificationConfigDialogProps) {
 	const updateNotificationConfig = useUpdateNotificationConfig();
 	const [editing, setEditing] = useState(false);
-	const [editValues, setEditValues] = useState<Partial<NotificationConfig>>({});
+	const [editValues, setEditValues] = useState<Partial<NotificationConfig>>(
+		{},
+	);
 	const [prevConfig, setPrevConfig] = useState(notificationConfig);
 	const [prevOpen, setPrevOpen] = useState(open);
 
@@ -97,7 +99,8 @@ export function NotificationConfigDialog({
 								rel="noopener noreferrer"
 								className="text-sm text-blue-400 hover:text-blue-300 transition-colors break-all flex items-center gap-1.5"
 							>
-								{import.meta.env.VITE_BOT_URL || 'Not Configured'}
+								{import.meta.env.VITE_BOT_URL ||
+									'Not Configured'}
 								<ExternalLink className="h-3 w-3 shrink-0" />
 							</a>
 						</div>
@@ -124,18 +127,10 @@ export function NotificationConfigDialog({
 							/>
 						</ConfigSection>
 
-						<ConfigSection title="Events">
+						<ConfigSection title="General Events">
 							<ConfigRowNotification
-								label="Notify on Win"
-								field="notificationOnWin"
-								type="switch"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-							/>
-							<ConfigRowNotification
-								label="Notify on Loss"
-								field="notificationOnLoss"
+								label="Notify on Trade Opened"
+								field="notificationOnTrade"
 								type="switch"
 								editing={editing}
 								editValues={editValues}
@@ -152,6 +147,52 @@ export function NotificationConfigDialog({
 							<ConfigRowNotification
 								label="Notify on Error"
 								field="notificationOnError"
+								type="switch"
+								editing={editing}
+								editValues={editValues}
+								setEditValues={setEditValues}
+							/>
+						</ConfigSection>
+
+						<ConfigSection title="Wins">
+							<ConfigRowNotification
+								label="Notify on Take Profit (TP)"
+								field="notificationOnTp"
+								type="switch"
+								editing={editing}
+								editValues={editValues}
+								setEditValues={setEditValues}
+							/>
+							<ConfigRowNotification
+								label="Notify on Won Market"
+								field="notificationOnWon"
+								type="switch"
+								editing={editing}
+								editValues={editValues}
+								setEditValues={setEditValues}
+							/>
+						</ConfigSection>
+
+						<ConfigSection title="Losses">
+							<ConfigRowNotification
+								label="Notify on Stop Loss (SL)"
+								field="notificationOnSl"
+								type="switch"
+								editing={editing}
+								editValues={editValues}
+								setEditValues={setEditValues}
+							/>
+							<ConfigRowNotification
+								label="Notify on Forced Closure (FCT)"
+								field="notificationOnFct"
+								type="switch"
+								editing={editing}
+								editValues={editValues}
+								setEditValues={setEditValues}
+							/>
+							<ConfigRowNotification
+								label="Notify on Lost Market"
+								field="notificationOnLost"
 								type="switch"
 								editing={editing}
 								editValues={editValues}
@@ -187,7 +228,9 @@ export function NotificationConfigDialog({
 								});
 							}}
 						>
-							{updateNotificationConfig.isPending ? '⌛ Saving...' : 'Save Changes'}
+							{updateNotificationConfig.isPending
+								? '⌛ Saving...'
+								: 'Save Changes'}
 						</Button>
 					</DialogFooter>
 				)}

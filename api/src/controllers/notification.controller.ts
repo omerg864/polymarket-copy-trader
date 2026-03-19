@@ -109,26 +109,27 @@ export async function handleWebhook(
 			return;
 		}
 
-		let activeMessage = `<b>🕒 Active Trades (${activeTrades.length})</b>\n\n`;
-
-		for (const trade of activeTrades) {
-			const dirEmoji = trade.direction === 'UP' ? '↑' : '↓';
-			const entryPrice = trade.entryPrice
-				? `$${trade.entryPrice.toFixed(3)}`
+		let activeMessage = `<b>🕒 Active Trades (${activeTrades.length})</b>\n`;
+		for (const t of activeTrades) {
+			const dirEmoji = t.direction === 'UP' ? '↑' : '↓';
+			const entryTime = t.enteredAt
+				? DateTime.fromISO(t.enteredAt).toFormat('HH:mm')
 				: 'N/A';
+			const pctChange =
+				t.entryPrice > 0
+					? ((t.currentPrice - t.entryPrice) / t.entryPrice) * 100
+					: 0;
 			const marketName =
-				trade.title?.replace('Bitcoin Up or Down - ', '') || 'Trade';
-			const entryTime = trade.enteredAt
-				? DateTime.fromISO(trade.enteredAt).toFormat('HH:mm:ss')
-				: 'N/A';
+				t.title?.replace('Bitcoin Up or Down - ', '') || 'Trade';
 
 			activeMessage +=
-				`<b>${dirEmoji} ${marketName}</b>\n` +
-				`<b>Entry Time:</b> ${entryTime}\n` +
-				`<b>Size:</b> ${trade.size.toLocaleString()} shares\n` +
-				`<b>Entry:</b> ${entryPrice}\n` +
-				`<b>Target:</b> $${trade.indicators?.priceToBeat?.toLocaleString() || 'N/A'}\n` +
-				`<b>Live BTC:</b> $${trade.indicators?.currentPrice?.toLocaleString() || 'N/A'}\n\n`;
+				`\n<b>${dirEmoji} ${marketName}</b>` +
+				`\n• <b>Entered:</b> ${entryTime}` +
+				`\n• <b>Size:</b> ${t.size.toLocaleString()} shares` +
+				`\n• <b>Entry:</b> $${t.entryPrice.toFixed(3)}` +
+				`\n• <b>Cost:</b> $${t.cost.toFixed(2)}` +
+				`\n• <b>Change:</b> <code class="${pctChange >= 0 ? 'text-emerald-400' : 'text-red-400'}">${pctChange >= 0 ? '+' : ''}${pctChange.toFixed(2)}%</code>` +
+				`\n• <b>Conf:</b> ${(t.confidence ? t.confidence * 100 : 0).toFixed(1)}%\n`;
 		}
 
 		await TelegramService.sendMessage(chatId, activeMessage);
@@ -147,36 +148,63 @@ export async function triggerNotification(
 	let shouldNotify = false;
 	let message = '';
 
-	if (type === 'win' && config.notificationOnWin) {
-		const statusText = data.status === 'closed_tp' ? 'Take Profit' : 'Win';
-		const todayPnl = data.todayPnl ?? 0;
+	if (type === 'trade' && config.notificationOnTrade) {
 		shouldNotify = true;
 		message =
-			`<b>🚀 NEW WIN!</b>\n\n` +
+			`<b>🆕 TRADE OPENED</b>\n\n` +
 			`<b>Market:</b> ${data.title || 'Unknown'}\n` +
-			`<b>Result:</b> ${statusText}\n` +
-			`<b>Profit:</b> <code class="text-emerald-400">$${data.pnl?.toFixed(2)}</code>\n` +
-			`<b>Return:</b> ${(data.pctChange * 100)?.toFixed(2)}%\n` +
-			`<b>Today's P&L:</b> <code class="${todayPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${todayPnl.toFixed(2)}</code>\n` +
-			`<b>Exit Price:</b> $${data.exitPrice}\n` +
-			`<b>Balance:</b> $${data.balance?.toFixed(2)}`;
-	} else if (type === 'loss' && config.notificationOnLoss) {
-		const statusText = data.status === 'closed_sl' 
-			? 'Stop Loss' 
-			: data.status === 'closed_fct' 
-				? 'Forced Closure' 
-				: 'Loss';
-		const todayPnl = data.todayPnl ?? 0;
-		shouldNotify = true;
-		message =
-			`<b>📉 Trade Loss</b>\n\n` +
-			`<b>Market:</b> ${data.title || 'Unknown'}\n` +
-			`<b>Result:</b> ${statusText}\n` +
-			`<b>Loss:</b> <code class="text-red-400">$${Math.abs(data.pnl)?.toFixed(2)}</code>\n` +
-			`<b>Return:</b> ${(data.pctChange * 100)?.toFixed(2)}%\n` +
-			`<b>Today's P&L:</b> <code class="${todayPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${todayPnl.toFixed(2)}</code>\n` +
-			`<b>Exit Price:</b> $${data.exitPrice}\n` +
-			`<b>Balance:</b> $${data.balance?.toFixed(2)}`;
+			`<b>Direction:</b> ${data.direction === 'UP' ? '↑ UP' : '↓ DOWN'}\n` +
+			`<b>Size:</b> ${data.size.toLocaleString()} shares\n` +
+			`<b>Entry Price:</b> $${data.entryPrice}\n` +
+			`<b>Confidence:</b> ${(data.confidence * 100).toFixed(1)}%`;
+	} else if (type === 'win') {
+		const isTp = data.status === 'closed_tp';
+		const isWon = data.status === 'won' || !data.status;
+		const canNotify =
+			(isTp && config.notificationOnTp) ||
+			(isWon && config.notificationOnWon);
+
+		if (canNotify) {
+			const statusText = isTp ? 'Take Profit' : 'Win';
+			const todayPnl = data.todayPnl ?? 0;
+			shouldNotify = true;
+			message =
+				`<b>🚀 NEW WIN!</b>\n\n` +
+				`<b>Market:</b> ${data.title || 'Unknown'}\n` +
+				`<b>Result:</b> ${statusText}\n` +
+				`<b>Profit:</b> <code class="text-emerald-400">$${data.pnl?.toFixed(2)}</code>\n` +
+				`<b>Return:</b> ${(data.pctChange * 100)?.toFixed(2)}%\n` +
+				`<b>Today's P&L:</b> <code class="${todayPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${todayPnl.toFixed(2)}</code>\n` +
+				`<b>Exit Price:</b> $${data.exitPrice}\n` +
+				`<b>Balance:</b> $${data.balance?.toFixed(2)}`;
+		}
+	} else if (type === 'loss') {
+		const isSl = data.status === 'closed_sl';
+		const isFct = data.status === 'closed_fct';
+		const isLost = data.status === 'lost' || !data.status;
+		const canNotify =
+			(isSl && config.notificationOnSl) ||
+			(isFct && config.notificationOnFct) ||
+			(isLost && config.notificationOnLost);
+
+		if (canNotify) {
+			const statusText = isSl
+				? 'Stop Loss'
+				: isFct
+					? 'Forced Closure'
+					: 'Loss';
+			const todayPnl = data.todayPnl ?? 0;
+			shouldNotify = true;
+			message =
+				`<b>📉 Trade Loss</b>\n\n` +
+				`<b>Market:</b> ${data.title || 'Unknown'}\n` +
+				`<b>Result:</b> ${statusText}\n` +
+				`<b>Loss:</b> <code class="text-red-400">$${Math.abs(data.pnl)?.toFixed(2)}</code>\n` +
+				`<b>Return:</b> ${(data.pctChange * 100)?.toFixed(2)}%\n` +
+				`<b>Today's P&L:</b> <code class="${todayPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${todayPnl.toFixed(2)}</code>\n` +
+				`<b>Exit Price:</b> $${data.exitPrice}\n` +
+				`<b>Balance:</b> $${data.balance?.toFixed(2)}`;
+		}
 	} else if (type === 'goal' && config.notificationOnPnlGoal) {
 		shouldNotify = true;
 		message =

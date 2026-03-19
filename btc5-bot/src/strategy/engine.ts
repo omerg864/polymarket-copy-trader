@@ -424,7 +424,9 @@ class StrategyEngine {
 				signal.confidence,
 				signal.indicators,
 			);
-			if (!trade) {
+			if (trade) {
+				notificationManager.handleTradeOpened(trade);
+			} else {
 				logger.warn('Demo trade failed (likely insufficient balance)');
 			}
 		} else {
@@ -472,6 +474,7 @@ class StrategyEngine {
 						indicators: signal.indicators,
 					};
 					await redisService.saveTrade(trade);
+					notificationManager.handleTradeOpened(trade);
 					await redisService.setBotBalance(
 						botBalance - trade.cost - fee,
 					);

@@ -149,8 +149,12 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 export interface NotificationConfig {
 	minTodayPnLNotification: number;
 	maxTodayPnLNotification: number;
-	notificationOnWin: boolean;
-	notificationOnLoss: boolean;
+	notificationOnTrade: boolean;
+	notificationOnTp: boolean;
+	notificationOnSl: boolean;
+	notificationOnFct: boolean;
+	notificationOnWon: boolean;
+	notificationOnLost: boolean;
 	notificationOnPnlGoal: boolean;
 	notificationOnError: boolean;
 }
@@ -158,8 +162,12 @@ export interface NotificationConfig {
 export const DEFAULT_NOTIFICATION_CONFIG: NotificationConfig = {
 	minTodayPnLNotification: -10,
 	maxTodayPnLNotification: 0,
-	notificationOnWin: true,
-	notificationOnLoss: true,
+	notificationOnTrade: true,
+	notificationOnTp: true,
+	notificationOnSl: true,
+	notificationOnFct: true,
+	notificationOnWon: true,
+	notificationOnLost: true,
 	notificationOnPnlGoal: true,
 	notificationOnError: true,
 };
@@ -218,6 +226,7 @@ export interface BotStats {
 }
 
 export type NotificationType =
+	| 'trade'
 	| 'win'
 	| 'loss'
 	| 'goal'

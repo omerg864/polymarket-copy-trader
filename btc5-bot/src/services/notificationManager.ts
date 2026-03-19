@@ -66,6 +66,19 @@ export class NotificationManager {
 	}
 
 	/**
+	 * Centralized handler for new trade entry notifications.
+	 */
+	static async handleTradeOpened(trade: Trade): Promise<void> {
+		this.trigger('trade', {
+			title: trade.title,
+			direction: trade.direction,
+			size: trade.size,
+			entryPrice: trade.entryPrice,
+			confidence: trade.confidence,
+		});
+	}
+
+	/**
 	 * Centralized handler for trade closure notifications.
 	 * Decides whether to send win/loss alert and checks for daily goal achievement.
 	 */
