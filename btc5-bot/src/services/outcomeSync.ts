@@ -3,6 +3,7 @@ import redisService from './redis';
 import polymarketService from './polymarket';
 import logger from '../utils/logger';
 import { type Trade } from '@shared/types';
+import notificationManager from './notificationManager';
 
 class OutcomeSyncService {
 	private interval: NodeJS.Timeout | null = null;
@@ -53,22 +54,13 @@ class OutcomeSyncService {
 				try {
 					// Use the logic from sync script to get outcome
 					let actualOutcome: Trade['actualOutcome'] = 'UNKNOWN';
-
-					if (trade.status === 'won') {
-						actualOutcome = trade.direction;
-					} else if (trade.status === 'lost') {
-						actualOutcome =
-							trade.direction === 'UP' ? 'DOWN' : 'UP';
-					} else {
-						// Fetch from Gamma API
-						const marketOutcome =
-							await polymarketService.getMarketOutcome(
-								trade.eventTicker,
-							);
-						if (marketOutcome) {
-							actualOutcome =
-								marketOutcome as Trade['actualOutcome'];
-						}
+					// Fetch from Gamma API
+					const marketOutcome =
+						await polymarketService.getMarketOutcome(
+							trade.eventTicker,
+						);
+					if (marketOutcome) {
+						actualOutcome = marketOutcome as Trade['actualOutcome'];
 					}
 
 					if (actualOutcome !== 'UNKNOWN') {
@@ -77,6 +69,18 @@ class OutcomeSyncService {
 						logger.info(
 							`✅ Updated outcome for trade ${trade.id}: ${actualOutcome}`,
 						);
+						if (actualOutcome !== trade.direction) {
+							logger.error(
+								`❌ Trade ${trade.id} has wrong outcome: ${actualOutcome}`,
+							);
+							notificationManager.handleError(
+								new Error(
+									`Trade ${trade.id} has wrong outcome: ${actualOutcome}`,
+								),
+								'OutcomeSyncService',
+								'syncOutcomes',
+							);
+						}
 					}
 				} catch (err) {
 					logger.error(
