@@ -97,6 +97,41 @@ export async function handleWebhook(
 			`<b>Status:</b> ${isStopping ? '🛑 Stopping' : '🏃 Running'}`;
 
 		await TelegramService.sendMessage(chatId, statsMessage);
+	} else if (text === '/active') {
+		const activeTrades = await getActiveTrades();
+
+		if (activeTrades.length === 0) {
+			await TelegramService.sendMessage(
+				chatId,
+				'<b>ℹ️ No active trades at the moment.</b>',
+			);
+			res.sendStatus(200);
+			return;
+		}
+
+		let activeMessage = `<b>🕒 Active Trades (${activeTrades.length})</b>\n\n`;
+
+		for (const trade of activeTrades) {
+			const dirEmoji = trade.direction === 'UP' ? '↑' : '↓';
+			const entryPrice = trade.entryPrice
+				? `$${trade.entryPrice.toFixed(3)}`
+				: 'N/A';
+			const marketName =
+				trade.title?.replace('Bitcoin Up or Down - ', '') || 'Trade';
+			const entryTime = trade.enteredAt
+				? DateTime.fromISO(trade.enteredAt).toFormat('HH:mm:ss')
+				: 'N/A';
+
+			activeMessage +=
+				`<b>${dirEmoji} ${marketName}</b>\n` +
+				`<b>Entry Time:</b> ${entryTime}\n` +
+				`<b>Size:</b> ${trade.size.toLocaleString()} shares\n` +
+				`<b>Entry:</b> ${entryPrice}\n` +
+				`<b>Target:</b> $${trade.indicators?.priceToBeat?.toLocaleString() || 'N/A'}\n` +
+				`<b>Live BTC:</b> $${trade.indicators?.currentPrice?.toLocaleString() || 'N/A'}\n\n`;
+		}
+
+		await TelegramService.sendMessage(chatId, activeMessage);
 	}
 
 	res.sendStatus(200);
