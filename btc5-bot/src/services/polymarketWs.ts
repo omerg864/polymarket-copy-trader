@@ -16,6 +16,7 @@ class PolymarketWsService {
 	private readonly baseUrl =
 		'wss://ws-subscriptions-clob.polymarket.com/ws/market';
 	private reconnectTimeoutMs = 1000;
+	private skipReconnectTimeout = false;
 	private readonly maxReconnectTimeoutMs = 30000;
 	private isStarted = false;
 	private readonly dataFreshnessMs = 5000; // 5 seconds
@@ -82,14 +83,18 @@ class PolymarketWsService {
 				logger.warn(
 					`⚠️ Polymarket WebSocket closed. Reconnecting in ${this.reconnectTimeoutMs}ms...`,
 				);
-				setTimeout(() => {
-					if (!this.isStarted) return;
-					this.reconnectTimeoutMs = Math.min(
-						this.reconnectTimeoutMs * 2,
-						this.maxReconnectTimeoutMs,
-					);
-					this.connect();
-				}, this.reconnectTimeoutMs);
+				setTimeout(
+					() => {
+						if (!this.isStarted) return;
+						this.reconnectTimeoutMs = Math.min(
+							this.reconnectTimeoutMs * 2,
+							this.maxReconnectTimeoutMs,
+						);
+						this.connect();
+					},
+					this.skipReconnectTimeout ? 0 : this.reconnectTimeoutMs,
+				);
+				this.skipReconnectTimeout = false;
 			}
 		});
 
@@ -195,6 +200,7 @@ class PolymarketWsService {
 	public reconnect(): void {
 		logger.warn('🔄 Manual Polymarket WebSocket reconnect requested');
 		if (this.ws) {
+			this.skipReconnectTimeout = true;
 			this.ws.close();
 			// The 'close' event handler will automatically call this.connect()
 		} else {
