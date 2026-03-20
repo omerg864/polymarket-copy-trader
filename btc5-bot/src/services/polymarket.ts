@@ -386,9 +386,11 @@ class PolymarketService {
 				);
 			}
 
-			const mid = await this.clobClient.getMidpoint(tokenId);
-			if (mid) {
-				return parseFloat(mid);
+			const resp: { mid: string } | null =
+				await this.clobClient.getMidpoint(tokenId);
+			if (resp && resp.mid) {
+				logger.info(`Token price for ${tokenId}: ${resp.mid}`);
+				return parseFloat(resp.mid);
 			}
 
 			return null;
