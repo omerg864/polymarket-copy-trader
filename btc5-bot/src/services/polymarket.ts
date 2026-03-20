@@ -171,11 +171,6 @@ class PolymarketService {
 
 				// Return current market if it has enough time
 				if (msUntilEnd >= minMsRemaining) {
-					// Pre-subscribe to the WebSocket
-					polymarketWsService.subscribe([
-						market.upTokenId,
-						market.downTokenId,
-					]);
 					return market;
 				}
 			}
@@ -185,11 +180,6 @@ class PolymarketService {
 				this._getMarketSlug(nextStart),
 			);
 			if (market) {
-				// Pre-subscribe to the WebSocket
-				polymarketWsService.subscribe([
-					market.upTokenId,
-					market.downTokenId,
-				]);
 				return market;
 			}
 

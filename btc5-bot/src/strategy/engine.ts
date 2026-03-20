@@ -116,12 +116,24 @@ class StrategyEngine {
 		const activeTrades = await redisService.getActiveTrades();
 		await this.resolveExpiredTrades(activeTrades);
 
-		// Step 2: Cleanup stale WebSocket subscriptions
-		// We'll discover the market first to know what to keep
-		// Step 3: Discover next upcoming 5-minute market
+		// Step 2: Discover next upcoming 5-minute market
 		const market = await polymarketService.getNextMarket();
+
+		// Step 3: Cleanup stale WebSocket subscriptions
+		// This must happen every cycle to prevent token accumulation.
+		// We only keep tokens for markets that are currently ACTIVE (now < endTime).
+		await this.cleanupWebSocketSubscriptions(market, activeTrades);
+
 		let refPrice: number | null = null;
 		let prices: any = null;
+
+		// Explicitly subscribe to the market we're watching
+		if (market) {
+			polymarketWsService.subscribe([
+				market.upTokenId,
+				market.downTokenId,
+			]);
+		}
 
 		// Update dashboard prices as soon as a market is found
 		if (market && new Date(market.startTime).getTime() <= Date.now()) {
@@ -138,7 +150,6 @@ class StrategyEngine {
 					prices.downPrice,
 				);
 			}
-			await this.cleanupWebSocketSubscriptions(market, activeTrades);
 		}
 
 		// Re-fetch active trades after resolution
@@ -536,15 +547,21 @@ class StrategyEngine {
 		try {
 			const keepTokens = new Set<string>();
 
-			// 1. Keep tokens for active trades
+			const now = new Date();
+
+			// 1. Keep tokens for active trades ONLY if the market has not ended yet.
+			// The user wants us to ALWAYS unsubscribe once end time has passed.
 			for (const trade of activeTrades) {
-				if (trade.tokenId) {
-					keepTokens.add(trade.tokenId);
+				if (trade.tokenId && trade.endTime) {
+					const endTime = new Date(trade.endTime);
+					if (now < endTime) {
+						keepTokens.add(trade.tokenId);
+					}
 				}
 			}
 
-			// 2. Keep tokens for current market being watched
-			if (currentMarket) {
+			// 2. Keep tokens for current market being watched ONLY if it hasn't ended.
+			if (currentMarket && now < currentMarket.endTime) {
 				if (currentMarket.upTokenId)
 					keepTokens.add(currentMarket.upTokenId);
 				if (currentMarket.downTokenId)
