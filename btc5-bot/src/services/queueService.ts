@@ -270,6 +270,12 @@ class QueueService {
 				: 0;
 		trade.closedAt = new Date().toISOString();
 
+		if (status === TradeStatus.WON) {
+			trade.actualOutcome = trade.direction;
+		} else if (status === TradeStatus.LOST) {
+			trade.actualOutcome = trade.direction === 'UP' ? 'DOWN' : 'UP';
+		}
+
 		// Update database/Redis
 		try {
 			await redisService.removeTrade(trade.id);
