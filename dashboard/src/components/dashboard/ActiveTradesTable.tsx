@@ -108,7 +108,9 @@ export function ActiveTradesTable() {
 											${trade.entryPrice.toFixed(3)}
 										</TableCell>
 										<TableCell className="font-mono text-sm">
-											${trade.currentPrice.toFixed(3)}
+											$
+											{trade.currentPrice?.toFixed(3) ??
+												'—'}
 										</TableCell>
 										<TableCell>
 											<span
