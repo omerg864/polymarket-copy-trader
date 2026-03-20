@@ -19,6 +19,7 @@ class PolymarketWsService {
 	private skipReconnectTimeout = false;
 	private readonly maxReconnectTimeoutMs = 30000;
 	private isStarted = false;
+	private isConnecting = false;
 	private readonly dataFreshnessMs = 5000; // 5 seconds
 
 	public async start(): Promise<void> {
@@ -28,13 +29,15 @@ class PolymarketWsService {
 	}
 
 	private connect(): void {
-		if (!this.isStarted) return;
+		if (!this.isStarted || this.isConnecting) return;
+		this.isConnecting = true;
 
 		logger.info('🔌 Connecting to Polymarket CLOB WebSocket');
 		this.ws = new WebSocket(this.baseUrl);
 
 		this.ws.on('open', () => {
 			logger.info('✅ Polymarket WebSocket connected');
+			this.isConnecting = false;
 			this.reconnectTimeoutMs = 1000;
 			this.resubscribe();
 		});
@@ -74,6 +77,7 @@ class PolymarketWsService {
 				logger.error(
 					`Error parsing Polymarket WS message: ${err} , data: ${data}`,
 				);
+				this.skipReconnectTimeout = true;
 				this.reconnect();
 			}
 		});
