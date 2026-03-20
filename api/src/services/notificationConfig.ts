@@ -99,3 +99,34 @@ export async function getTelegramChatIds(): Promise<string[]> {
 	});
 	return Array.isArray(doc?.value) ? doc.value : [];
 }
+
+/**
+ * Add a Telegram chat ID to the authenticated list.
+ */
+export async function addAuthenticatedChatId(chatId: string): Promise<void> {
+	await NotificationConfigModel.findOneAndUpdate(
+		{ key: 'authenticated_chats' },
+		{ $addToSet: { value: chatId } },
+		{ upsert: true },
+	);
+	await redis.del(CACHE_KEY);
+}
+
+/**
+ * Remove a Telegram chat ID from the authenticated list.
+ */
+export async function removeAuthenticatedChatId(chatId: string): Promise<void> {
+	await NotificationConfigModel.findOneAndUpdate(
+		{ key: 'authenticated_chats' },
+		{ $pull: { value: chatId } },
+	);
+	await redis.del(CACHE_KEY);
+}
+
+/**
+ * Check if a chat ID is authenticated.
+ */
+export async function isAuthenticatedChatId(chatId: string): Promise<boolean> {
+	const config = await getNotificationConfig();
+	return config.authenticated_chats?.includes(chatId) || false;
+}

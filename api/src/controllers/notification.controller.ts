@@ -21,6 +21,11 @@ import {
 import { DateTime } from 'luxon';
 import { getStrategyConfig } from '../services/strategyConfig';
 import { TelegramService } from '../services/telegram';
+import config from '../config';
+import {
+	addAuthenticatedChatId,
+	isAuthenticatedChatId,
+} from '../services/notificationConfig';
 
 export async function getConfig(_req: Request, res: Response): Promise<void> {
 	const config = await getNotificationConfig();
@@ -47,7 +52,52 @@ export async function handleWebhook(
 	const chatId = message.chat.id.toString();
 	const text = message.text.trim();
 
-	if (text === '/subscribe') {
+	const isAuth = await isAuthenticatedChatId(chatId);
+	const isAuthCmd = text.startsWith('/authenticate') || text === '/start';
+
+	if (!isAuth && !isAuthCmd) {
+		await TelegramService.sendMessage(
+			chatId,
+			'🔒 <b>Access Denied</b>\nThis bot is private. Please use <code>/authenticate &lt;password&gt;</code> to gain access.',
+		);
+		res.sendStatus(200);
+		return;
+	}
+
+	if (text === '/start') {
+		const welcomeMessage =
+			`👋 <b>Welcome to Polymarket Trading Bot!</b>\n\n` +
+			`This bot provides real-time notifications and statistics for BTC 5-minute markets.\n\n` +
+			`<b>Commands:</b>\n` +
+			`/start - Show this summary\n` +
+			`/authenticate &lt;password&gt; - Gain access to the bot\n` +
+			`/subscribe - Enable trade notifications\n` +
+			`/unsubscribe - Disable notifications\n` +
+			`/stats - Current performance summary\n` +
+			`/active - View details of open trades\n\n` +
+			`⚠️ <b>Note:</b> You must authenticate first before using most commands.`;
+
+		await TelegramService.sendMessage(chatId, welcomeMessage);
+	} else if (text.startsWith('/authenticate')) {
+		const parts = text.split(' ');
+		const password = parts[1];
+
+		if (
+			password === config.adminPassword ||
+			password === config.readonlyPassword
+		) {
+			await addAuthenticatedChatId(chatId);
+			await TelegramService.sendMessage(
+				chatId,
+				'✅ <b>Authentication Successful!</b>\nYou now have access to all bot commands.',
+			);
+		} else {
+			await TelegramService.sendMessage(
+				chatId,
+				'❌ <b>Invalid Password</b>\nPlease try again with <code>/authenticate &lt;password&gt;</code>.',
+			);
+		}
+	} else if (text === '/subscribe') {
 		await addTelegramChatId(chatId);
 		await TelegramService.sendMessage(
 			chatId,

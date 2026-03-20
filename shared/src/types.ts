@@ -157,6 +157,7 @@ export interface NotificationConfig {
 	notificationOnLost: boolean;
 	notificationOnPnlGoal: boolean;
 	notificationOnError: boolean;
+	authenticated_chats: string[];
 }
 
 export const DEFAULT_NOTIFICATION_CONFIG: NotificationConfig = {
@@ -170,6 +171,7 @@ export const DEFAULT_NOTIFICATION_CONFIG: NotificationConfig = {
 	notificationOnLost: true,
 	notificationOnPnlGoal: true,
 	notificationOnError: true,
+	authenticated_chats: [],
 };
 
 export function resolveStrategyConfig(
