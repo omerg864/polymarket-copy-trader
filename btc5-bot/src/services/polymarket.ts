@@ -298,7 +298,7 @@ class PolymarketService {
 
 	async getMarketPrices(market: Market): Promise<MarketPrices | null> {
 		try {
-			// WebSocket Only (Low Latency & Consistent)
+			// 1. Try WebSocket First (Low Latency & Consistent)
 			const wsUp = polymarketWsService.getPrice(market.upTokenId);
 			const wsDown = polymarketWsService.getPrice(market.downTokenId);
 
@@ -308,6 +308,45 @@ class PolymarketService {
 					downPrice: wsDown.midpoint,
 					bestBid: wsUp.bestBid,
 					bestAsk: wsUp.bestAsk,
+				};
+			}
+
+			// 2. Fallback to Midpoint REST API if WS prices aren't available
+			logger.warn(
+				`⚠️ WebSocket prices missing for ${market.slug}. Falling back to midpoint REST API.`,
+			);
+
+			// Trigger a reconnect in the background if we're falling back
+			polymarketWsService.reconnect();
+
+			if (!this.clobClient) {
+				this.clobClient = new ClobClient(
+					config.clobHost,
+					config.chainId,
+				);
+			}
+
+			const { up, down } = await async.parallel<
+				void,
+				{
+					up: { mid: string };
+					down: { mid: string };
+				}
+			>({
+				up: async () => this.clobClient!.getMidpoint(market.upTokenId),
+				down: async () =>
+					this.clobClient!.getMidpoint(market.downTokenId),
+			});
+
+			if (up && down) {
+				const upMid = parseFloat(up.mid);
+				const downMid = parseFloat(down.mid);
+
+				return {
+					upPrice: upMid,
+					downPrice: downMid,
+					bestBid: upMid, // Use mid as proxy for bid/ask in fallback
+					bestAsk: upMid,
 				};
 			}
 
@@ -331,9 +370,26 @@ class PolymarketService {
 		_direction: string,
 	): Promise<number | null> {
 		try {
-			// WebSocket Only
+			// 1. WebSocket Only
 			const wsP = polymarketWsService.getPrice(tokenId);
 			if (wsP) return wsP.midpoint;
+
+			// 2. Fallback to REST API
+			logger.warn(
+				`⚠️ WebSocket price missing for token ${tokenId}. Falling back to midpoint REST API.`,
+			);
+
+			if (!this.clobClient) {
+				this.clobClient = new ClobClient(
+					config.clobHost,
+					config.chainId,
+				);
+			}
+
+			const mid = await this.clobClient.getMidpoint(tokenId);
+			if (mid) {
+				return parseFloat(mid);
+			}
 
 			return null;
 		} catch (error) {

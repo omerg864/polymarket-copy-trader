@@ -25,7 +25,6 @@ import polymarketWsService from '../services/polymarketWs';
 class StrategyEngine {
 	private running = false;
 	private loopTimer: ReturnType<typeof setTimeout> | null = null;
-	private pricesMissingCycleCount = 0;
 
 	async start(): Promise<void> {
 		this.running = true;
@@ -177,6 +176,7 @@ class StrategyEngine {
 		const todayStr = DateTime.now().setZone(sc.timezone).toISODate();
 
 		if (dailyStop && dailyStop.stopped && dailyStop.date === todayStr) {
+			logger.info('Daily stop reached. No new trades today.');
 			// No new trades today
 			return;
 		}
@@ -208,6 +208,13 @@ class StrategyEngine {
 		if (!refPrice) {
 			logger.info(
 				'   ⏳ Reference price (priceToBeat) not available in market data yet. Waiting...',
+			);
+			return;
+		}
+
+		if (!prices) {
+			logger.warn(
+				`⚠️  Could not fetch prices for market ${market.slug} - skipping cycle`,
 			);
 			return;
 		}
@@ -245,29 +252,6 @@ class StrategyEngine {
 			return;
 		}
 
-		if (!prices) {
-			this.pricesMissingCycleCount++;
-			if (this.pricesMissingCycleCount === 2) {
-				polymarketWsService.reconnect();
-			}
-			if (this.pricesMissingCycleCount === 3) {
-				notificationManager.handleError(
-					`Could not fetch prices for market ${market.slug} for ${this.pricesMissingCycleCount} cycles`,
-					'StrategyEngine',
-					'executeCycle',
-				);
-			}
-			logger.warn(
-				`⚠️  Could not fetch prices for market ${market.slug} for ${this.pricesMissingCycleCount} cycles - skipping cycle`,
-			);
-			return;
-		}
-		if (this.pricesMissingCycleCount >= 3) {
-			notificationManager.trigger('manual', {
-				message: `Fetched prices for market <b>${market.title}</b> after ${this.pricesMissingCycleCount} cycles`,
-			});
-			this.pricesMissingCycleCount = 0;
-		}
 		logger.info(
 			`   Market prices — Up: ${prices.upPrice.toFixed(3)} | Down: ${prices.downPrice.toFixed(3)}`,
 		);
