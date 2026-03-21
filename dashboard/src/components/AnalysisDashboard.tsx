@@ -23,9 +23,10 @@ import {
 	Sparkles,
 	XCircle,
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { DateTime } from 'luxon';
 import { AnalysisGrid } from './analysis/AnalysisGrid';
+import { Filters, DEFAULT_FILTERS, type FilterValues } from './shared/Filters';
 
 function calculateStats(trades: Trade[]) {
 	const total = trades.length;
@@ -128,13 +129,37 @@ function groupNestedInterval(
 export function AnalysisDashboard() {
 	const { data: history, isLoading } = useTradeHistory();
 	const { data: config } = useConfig();
+	const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
 	const dayPnlGoal = config?.dayPnlGoal ?? 2;
 
 	const analysis = useMemo(() => {
 		if (!history || history.length === 0) return null;
 
+		// 1. Apply unified filters
+		let filtered = [...history];
+		if (filters.startDate) {
+			const start = DateTime.fromISO(filters.startDate).startOf('day');
+			filtered = filtered.filter(
+				(t) => DateTime.fromISO(t.enteredAt) >= start,
+			);
+		}
+		if (filters.endDate) {
+			const end = DateTime.fromISO(filters.endDate).endOf('day');
+			filtered = filtered.filter(
+				(t) => DateTime.fromISO(t.enteredAt) <= end,
+			);
+		}
+		if (filters.status !== 'all') {
+			filtered = filtered.filter((t) => t.status === filters.status);
+		}
+		if (filters.direction !== 'all') {
+			filtered = filtered.filter(
+				(t) => t.direction === filters.direction,
+			);
+		}
+
 		// Only analyze resolved trades
-		const resolved = history.filter(
+		const resolved = filtered.filter(
 			(t: Trade) =>
 				t.status === TradeStatus.WON ||
 				t.status === TradeStatus.LOST ||
@@ -586,7 +611,8 @@ export function AnalysisDashboard() {
 					const dateKey = dt.toFormat('yyyy-MM-dd');
 
 					if (!monthMap[monthKey]) monthMap[monthKey] = {};
-					if (!monthMap[monthKey][dateKey]) monthMap[monthKey][dateKey] = [];
+					if (!monthMap[monthKey][dateKey])
+						monthMap[monthKey][dateKey] = [];
 					monthMap[monthKey][dateKey].push(t);
 				});
 
@@ -603,7 +629,9 @@ export function AnalysisDashboard() {
 									trades.filter((t) => t.direction === 'UP'),
 								),
 								downStats: calculateStats(
-									trades.filter((t) => t.direction === 'DOWN'),
+									trades.filter(
+										(t) => t.direction === 'DOWN',
+									),
 								),
 							}));
 
@@ -619,7 +647,9 @@ export function AnalysisDashboard() {
 
 						const dayPnlGoal = config?.dayPnlGoal || 0;
 						const avgGoalPct =
-							dayPnlGoal > 0 ? (avgDailyPnl / dayPnlGoal) * 100 : 0;
+							dayPnlGoal > 0
+								? (avgDailyPnl / dayPnlGoal) * 100
+								: 0;
 
 						return {
 							label: DateTime.fromFormat(
@@ -698,8 +728,9 @@ export function AnalysisDashboard() {
 					resolved.filter((t) => t.actualOutcome === 'DOWN'),
 				),
 			},
+			filteredHistory: filtered,
 		};
-	}, [history, config?.dayPnlGoal]);
+	}, [history, config?.dayPnlGoal, filters]);
 
 	if (isLoading) {
 		return (
@@ -718,7 +749,7 @@ export function AnalysisDashboard() {
 	}
 
 	const suggestions: string[] = [];
-	const resolvedBase = history.filter(
+	const resolvedBase = analysis.filteredHistory.filter(
 		(t: Trade) =>
 			t.status === TradeStatus.WON ||
 			t.status === TradeStatus.LOST ||
@@ -995,12 +1026,12 @@ export function AnalysisDashboard() {
 	};
 
 	return (
-		<div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6 pb-24">
-			<div>
-				<h2 className="text-xl sm:text-2xl font-bold tracking-tight">
+		<div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-8 animate-in fade-in duration-700">
+			<div className="space-y-2">
+				<h2 className="text-3xl font-black text-zinc-100 tracking-tight">
 					Trade Analysis
 				</h2>
-				<p className="text-sm sm:text-base text-zinc-400">
+				<p className="text-zinc-500 max-w-2xl">
 					Historical performance breakdown across{' '}
 					<span className="text-zinc-100 font-bold">
 						{analysis.total.total}
@@ -1008,6 +1039,12 @@ export function AnalysisDashboard() {
 					resolved trades.
 				</p>
 			</div>
+
+			<Filters
+				values={filters}
+				onChange={setFilters}
+				className="z-40 bg-zinc-900/80 backdrop-blur-md"
+			/>
 
 			<div className="bg-linear-to-br from-indigo-500/10 via-purple-500/5 to-transparent border border-indigo-500/20 rounded-lg p-5 mt-4">
 				<div className="flex items-center gap-2 mb-3">
@@ -1863,7 +1900,7 @@ export function AnalysisDashboard() {
 																			.main
 																			.totalPnl /
 																			dayPnlGoal) *
-																	  100
+																		100
 																	: 0;
 															return (
 																<AccordionItem
@@ -1901,6 +1938,7 @@ export function AnalysisDashboard() {
 																					0
 																						? '+'
 																						: ''}
+
 																					$
 																					{dayEntry.main.totalPnl.toFixed(
 																						2,
@@ -1931,6 +1969,7 @@ export function AnalysisDashboard() {
 																						{goalPct.toFixed(
 																							0,
 																						)}
+
 																						%
 																					</span>
 																				</div>
@@ -1948,6 +1987,7 @@ export function AnalysisDashboard() {
 																						{dayEntry.main.winRate.toFixed(
 																							1,
 																						)}
+
 																						%
 																					</span>
 																					<span className="text-zinc-600 text-xs ml-1">
@@ -1997,7 +2037,8 @@ export function AnalysisDashboard() {
 						<div>
 							<CardTitle className="text-lg flex items-center gap-2">
 								<Clock className="w-5 h-5 text-indigo-400" />
-								Raw Trade Data
+								Raw Trade Data (
+								{analysis.filteredHistory.length})
 							</CardTitle>
 							<CardDescription>
 								Detailed table of all trade executions and
@@ -2007,7 +2048,7 @@ export function AnalysisDashboard() {
 					</div>
 				</CardHeader>
 				<CardContent>
-					<AnalysisGrid trades={history} />
+					<AnalysisGrid trades={analysis.filteredHistory} />
 				</CardContent>
 			</Card>
 		</div>

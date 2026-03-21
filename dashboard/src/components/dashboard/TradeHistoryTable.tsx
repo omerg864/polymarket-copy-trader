@@ -20,17 +20,11 @@ import { useMemoizedFn } from 'ahooks';
 import { useMemo, useState } from 'react';
 import { DirectionBadge, PnlBadge, StatusBadge } from './badges';
 import { TradeDetailsDialog } from './TradeDetailsDialog';
+import { Filters, DEFAULT_FILTERS, type FilterValues } from '../shared/Filters';
+import { DateTime } from 'luxon';
 
 type SortField = 'time' | 'pnl' | 'confidence' | 'cost';
 type SortDir = 'asc' | 'desc';
-type FilterStatus =
-	| 'all'
-	| 'won'
-	| 'lost'
-	| 'closed_tp'
-	| 'closed_sl'
-	| 'closed_fct'
-	| 'closed_sell';
 
 export function TradeHistoryTable() {
 	const { data: history } = useTradeHistory();
@@ -38,8 +32,7 @@ export function TradeHistoryTable() {
 	const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
 	const [sortField, setSortField] = useState<SortField>('time');
 	const [sortDir, setSortDir] = useState<SortDir>('desc');
-	const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
-	const [filterDir, setFilterDir] = useState<'all' | 'UP' | 'DOWN'>('all');
+	const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
 
 	const toggleSort = useMemoizedFn((field: SortField) => {
 		if (sortField === field) {
@@ -58,11 +51,21 @@ export function TradeHistoryTable() {
 		if (!history) return [];
 		let result = [...history];
 
-		if (filterStatus !== 'all') {
-			result = result.filter((t) => t.status === filterStatus);
+		if (filters.startDate) {
+			const start = DateTime.fromISO(filters.startDate).startOf('day');
+			result = result.filter(
+				(t) => DateTime.fromISO(t.enteredAt) >= start,
+			);
 		}
-		if (filterDir !== 'all') {
-			result = result.filter((t) => t.direction === filterDir);
+		if (filters.endDate) {
+			const end = DateTime.fromISO(filters.endDate).endOf('day');
+			result = result.filter((t) => DateTime.fromISO(t.enteredAt) <= end);
+		}
+		if (filters.status !== 'all') {
+			result = result.filter((t) => t.status === filters.status);
+		}
+		if (filters.direction !== 'all') {
+			result = result.filter((t) => t.direction === filters.direction);
 		}
 
 		result.sort((a, b) => {
@@ -87,7 +90,7 @@ export function TradeHistoryTable() {
 		});
 
 		return result;
-	}, [history, sortField, sortDir, filterStatus, filterDir]);
+	}, [history, sortField, sortDir, filters]);
 
 	return (
 		<Card className="bg-zinc-900 border-zinc-800">
@@ -101,36 +104,11 @@ export function TradeHistoryTable() {
 							Completed trades with outcomes
 						</CardDescription>
 					</div>
-					<div className="flex flex-wrap gap-2">
-						<select
-							value={filterStatus}
-							onChange={(e) =>
-								setFilterStatus(e.target.value as FilterStatus)
-							}
-							className="bg-zinc-800 text-zinc-300 text-xs rounded px-2 py-1.5 border border-zinc-700 outline-none"
-						>
-							<option value="all">All Statuses</option>
-							<option value="won">🏆 Won</option>
-							<option value="lost">❌ Lost</option>
-							<option value="closed_tp">🟢 Take Profit</option>
-							<option value="closed_sl">🔴 Stop Loss</option>
-							<option value="closed_fct">⏱️ Force Close</option>
-							<option value="closed_sell">💰 Sold</option>
-						</select>
-						<select
-							value={filterDir}
-							onChange={(e) =>
-								setFilterDir(
-									e.target.value as 'all' | 'UP' | 'DOWN',
-								)
-							}
-							className="bg-zinc-800 text-zinc-300 text-xs rounded px-2 py-1.5 border border-zinc-700 outline-none"
-						>
-							<option value="all">All Directions</option>
-							<option value="UP">▲ UP</option>
-							<option value="DOWN">▼ DOWN</option>
-						</select>
-					</div>
+					<Filters
+						values={filters}
+						onChange={setFilters}
+						className="!p-0 !bg-transparent !border-0 shadow-none gap-2"
+					/>
 				</div>
 			</CardHeader>
 			<CardContent>
