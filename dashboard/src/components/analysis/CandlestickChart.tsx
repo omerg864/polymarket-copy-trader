@@ -8,6 +8,7 @@ import {
 	type Time,
 	createSeriesMarkers,
 	type MouseEventParams,
+	type CandlestickData,
 } from 'lightweight-charts';
 import React, { useEffect, useRef, useState } from 'react';
 import type { PriceCandle, Trade } from '@/types';
@@ -21,6 +22,11 @@ interface CandlestickChartProps {
 	className?: string;
 }
 
+interface SeriesMarkersPlugin {
+	setMarkers(markers: SeriesMarker<Time>[]): void;
+	detach(): void;
+}
+
 export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 	data,
 	trades,
@@ -31,8 +37,10 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 	const chartContainerRef = useRef<HTMLDivElement>(null);
 	const chartRef = useRef<IChartApi | null>(null);
 	const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
-	const markersPluginRef = useRef<any>(null);
-	const [hoveredCandle, setHoveredCandle] = useState<any>(null);
+	const markersPluginRef = useRef<SeriesMarkersPlugin | null>(null);
+	const [hoveredCandle, setHoveredCandle] = useState<PriceCandle | null>(
+		null,
+	);
 
 	useEffect(() => {
 		if (!chartContainerRef.current) return;
@@ -102,8 +110,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
 	useEffect(() => {
 		if (seriesRef.current && data) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			seriesRef.current.setData(data as any);
+			seriesRef.current.setData(data as CandlestickData<Time>[]);
 
 			if (trades && trades.length > 0 && data.length > 0) {
 				const markers: SeriesMarker<Time>[] = trades
@@ -113,10 +120,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 							zone: 'utc',
 						}).toSeconds();
 						const barTime = data.reduce((prev, curr) => {
-							return Math.abs(curr.time - tradeTime) <
-								Math.abs(prev - tradeTime)
-								? curr.time
-								: prev;
+							return curr.time <= tradeTime ? curr.time : prev;
 						}, data[0].time);
 
 						return {
@@ -148,8 +152,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
 			// Subscribe to click events
 			const handleClick = (param: MouseEventParams) => {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const markerId = (param as any).hoveredObjectId;
+				const markerId = param.hoveredObjectId;
 				if (markerId && onTradeClick && trades) {
 					const clickedTrade = trades.find((t) => t.id === markerId);
 					if (clickedTrade) {
@@ -173,10 +176,10 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 						(chartContainerRef.current?.clientHeight || 0)
 				) {
 					setHoveredCandle(null);
-				} else {
+				} else if (seriesRef.current) {
 					const candle = param.seriesData.get(
-						seriesRef.current as any,
-					) as any;
+						seriesRef.current,
+					) as CandlestickData<Time>;
 					if (candle) {
 						// Enrich with volume from the data array
 						const originalData = data.find(
@@ -184,7 +187,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 						);
 						setHoveredCandle({
 							...candle,
-							time: param.time,
+							time: param.time as number,
 							volume: originalData?.volume,
 						});
 					}
