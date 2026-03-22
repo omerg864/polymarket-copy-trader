@@ -12,7 +12,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card';
-import { useConfig, useTradeHistory } from '@/hooks/use-api';
+import { useConfig, useTradeHistory, useCandles } from '@/hooks/use-api';
 import type { Trade } from '@/types';
 import { TradeStatus } from '@shared/types';
 import {
@@ -26,7 +26,9 @@ import {
 import { useMemo, useState } from 'react';
 import { DateTime } from 'luxon';
 import { AnalysisGrid } from './analysis/AnalysisGrid';
+import { CandlestickChart } from './analysis/CandlestickChart';
 import { Filters, DEFAULT_FILTERS, type FilterValues } from './shared/Filters';
+import { TradeDetailsDialog } from './dashboard/TradeDetailsDialog';
 
 function calculateStats(trades: Trade[]) {
 	const total = trades.length;
@@ -130,7 +132,26 @@ export function AnalysisDashboard() {
 	const { data: history, isLoading } = useTradeHistory();
 	const { data: config } = useConfig();
 	const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
+	const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
+	const timezone = config?.timezone || 'Asia/Jerusalem';
 	const dayPnlGoal = config?.dayPnlGoal ?? 2;
+
+	const fullRange = useMemo(() => {
+		if (!history || history.length === 0) return null;
+		const times = history.map((t) =>
+			DateTime.fromISO(t.enteredAt).toMillis(),
+		);
+		return {
+			start: Math.min(...times) - 3600000, // 1 hour buffer
+			end: Math.max(...times) + 3600000,
+		};
+	}, [history]);
+
+	const { data: candles, isLoading: isCandlesLoading } = useCandles({
+		startTime: fullRange?.start.toString(),
+		endTime: fullRange?.end.toString(),
+		enabled: !!fullRange,
+	});
 
 	const analysis = useMemo(() => {
 		if (!history || history.length === 0) return null;
@@ -138,15 +159,19 @@ export function AnalysisDashboard() {
 		// 1. Apply unified filters
 		let filtered = [...history];
 		if (filters.startDate) {
-			const start = DateTime.fromISO(filters.startDate).startOf('day');
+			const start = DateTime.fromISO(filters.startDate)
+				.setZone(timezone)
+				.startOf('day');
 			filtered = filtered.filter(
-				(t) => DateTime.fromISO(t.enteredAt) >= start,
+				(t) => DateTime.fromISO(t.enteredAt).setZone(timezone) >= start,
 			);
 		}
 		if (filters.endDate) {
-			const end = DateTime.fromISO(filters.endDate).endOf('day');
+			const end = DateTime.fromISO(filters.endDate)
+				.setZone(timezone)
+				.endOf('day');
 			filtered = filtered.filter(
-				(t) => DateTime.fromISO(t.enteredAt) <= end,
+				(t) => DateTime.fromISO(t.enteredAt).setZone(timezone) <= end,
 			);
 		}
 		if (filters.status !== 'all') {
@@ -253,13 +278,16 @@ export function AnalysisDashboard() {
 		// Helper to extract Hour of Day
 		const getHourOfDay = (t: Trade) => {
 			if (!t.enteredAt) return undefined;
-			return new Date(t.enteredAt).getHours();
+			return DateTime.fromISO(t.enteredAt).setZone(timezone).hour;
 		};
-
+		// ...
 		// Helper to extract Day of Week (0=Sunday..6=Saturday)
 		const getDayOfWeek = (t: Trade) => {
 			if (!t.enteredAt) return undefined;
-			return new Date(t.enteredAt).getDay();
+			// Luxon weekday is 1-7 (Mon-Sun), we want 0-6 (Sun-Sat) to match React expectations if any, or just keep it consistent.
+			// Existing code used new Date().getDay() which is 0-6 (Sun-Sat).
+			const dt = DateTime.fromISO(t.enteredAt).setZone(timezone);
+			return dt.weekday === 7 ? 0 : dt.weekday;
 		};
 		const dayNames = [
 			'Sunday',
@@ -606,7 +634,7 @@ export function AnalysisDashboard() {
 				const monthMap: Record<string, Record<string, Trade[]>> = {};
 				resolved.forEach((t) => {
 					if (!t.enteredAt) return;
-					const dt = DateTime.fromISO(t.enteredAt);
+					const dt = DateTime.fromISO(t.enteredAt).setZone(timezone);
 					const monthKey = dt.toFormat('yyyy-MM');
 					const dateKey = dt.toFormat('yyyy-MM-dd');
 
@@ -730,7 +758,7 @@ export function AnalysisDashboard() {
 			},
 			filteredHistory: filtered,
 		};
-	}, [history, config?.dayPnlGoal, filters]);
+	}, [history, config?.dayPnlGoal, filters, timezone]);
 
 	if (isLoading) {
 		return (
@@ -2051,6 +2079,39 @@ export function AnalysisDashboard() {
 					<AnalysisGrid trades={analysis.filteredHistory} />
 				</CardContent>
 			</Card>
+
+			{fullRange && (
+				<div className="space-y-4">
+					<div className="flex items-center justify-between">
+						<h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider mb-2">
+							BTCUSDT 5M Market Context (
+							{DateTime.fromMillis(fullRange.start)
+								.setZone(timezone)
+								.toLocaleString(DateTime.DATE_SHORT)}{' '}
+							-{' '}
+							{DateTime.fromMillis(fullRange.end)
+								.setZone(timezone)
+								.toLocaleString(DateTime.DATE_SHORT)}
+							)
+						</h2>
+						{isCandlesLoading && (
+							<span className="text-[10px] text-zinc-500 animate-pulse">
+								Loading market data...
+							</span>
+						)}
+					</div>
+					<CandlestickChart
+						data={candles || []}
+						trades={history || []}
+						onTradeClick={setSelectedTrade}
+					/>
+				</div>
+			)}
+
+			<TradeDetailsDialog
+				trade={selectedTrade}
+				onClose={() => setSelectedTrade(null)}
+			/>
 		</div>
 	);
 }

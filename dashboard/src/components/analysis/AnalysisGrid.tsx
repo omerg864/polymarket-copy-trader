@@ -26,13 +26,13 @@ import {
 } from 'ag-grid-enterprise';
 
 import type { Trade } from '@/types';
-import { formatDate } from '@/lib/utils';
 import {
 	DirectionBadge,
 	MarketOutcomeBadge,
 	StatusBadge,
 	PnlBadge,
 } from '../dashboard/badges';
+import { useConfig } from '@/hooks/use-api';
 
 const myTheme = themeQuartz.withPart(colorSchemeDarkBlue);
 
@@ -58,7 +58,14 @@ interface AnalysisGridProps {
 }
 
 export function AnalysisGrid({ trades }: AnalysisGridProps) {
+	const { data: config } = useConfig();
+	const timezone = config?.timezone || 'Asia/Jerusalem';
 	const [pinnedBottomRowData, setPinnedBottomRowData] = useState<any[]>([]);
+
+	const formatWithTimezone = useCallback((iso: string | undefined) => {
+		if (!iso) return '—';
+		return DateTime.fromISO(iso).setZone(timezone).toFormat('MMM d, HH:mm:ss');
+	}, [timezone]);
 
 	// Handle total recalculation when filters change
 	const onModelUpdated = useCallback((params: any) => {
@@ -146,7 +153,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				filter: 'agDateColumnFilter',
 				width: 160,
 				valueFormatter: (params: ValueFormatterParams) =>
-					params.value ? formatDate(params.value) : '',
+					formatWithTimezone(params.value),
 				sort: 'desc',
 			},
 			{
@@ -156,9 +163,9 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				filter: 'agSetColumnFilter',
 				valueGetter: (params: any) => {
 					if (!params.data?.enteredAt) return '';
-					return DateTime.fromISO(params.data.enteredAt).toFormat(
-						'cccc',
-					);
+					return DateTime.fromISO(params.data.enteredAt)
+						.setZone(timezone)
+						.toFormat('cccc');
 				},
 			},
 			{
@@ -168,9 +175,9 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				filter: 'agSetColumnFilter',
 				valueGetter: (params: any) => {
 					if (!params.data?.enteredAt) return '';
-					return DateTime.fromISO(params.data.enteredAt).toFormat(
-						'HH:00',
-					);
+					return DateTime.fromISO(params.data.enteredAt)
+						.setZone(timezone)
+						.toFormat('HH:00');
 				},
 			},
 			{
@@ -179,7 +186,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				filter: 'agDateColumnFilter',
 				width: 160,
 				valueFormatter: (params: ValueFormatterParams) =>
-					params.value ? formatDate(params.value) : '',
+					formatWithTimezone(params.value),
 			},
 			{
 				field: 'size',
@@ -512,7 +519,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 					params.value != null ? Number(params.value).toFixed(2) : '',
 			},
 		],
-		[],
+		[timezone, formatWithTimezone],
 	);
 
 	const defaultColDef = useMemo<ColDef>(

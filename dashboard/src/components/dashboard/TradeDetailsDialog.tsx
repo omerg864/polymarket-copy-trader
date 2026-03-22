@@ -4,7 +4,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import { formatDate } from '@/lib/utils';
 import type { Trade } from '@/types';
 import {
 	DirectionBadge,
@@ -12,6 +11,10 @@ import {
 	PnlBadge,
 	StatusBadge,
 } from './badges';
+import { useState } from 'react';
+import { Copy, Check } from 'lucide-react';
+import { useConfig } from '@/hooks/use-api';
+import { DateTime } from 'luxon';
 
 interface TradeDetailsDialogProps {
 	trade: Trade | null;
@@ -22,7 +25,22 @@ export function TradeDetailsDialog({
 	trade,
 	onClose,
 }: TradeDetailsDialogProps) {
+	const { data: config } = useConfig();
+	const timezone = config?.timezone || 'Asia/Jerusalem';
+	const [copied, setCopied] = useState(false);
+
 	if (!trade) return null;
+
+	const copyToClipboard = () => {
+		navigator.clipboard.writeText(trade.id);
+		setCopied(true);
+		setTimeout(() => setCopied(false), 2000);
+	};
+
+	const formatWithTimezone = (iso: string | undefined) => {
+		if (!iso) return '—';
+		return DateTime.fromISO(iso).setZone(timezone).toFormat('MMM d, HH:mm:ss');
+	};
 
 	return (
 		<Dialog open={!!trade} onOpenChange={(open) => !open && onClose()}>
@@ -47,6 +65,23 @@ export function TradeDetailsDialog({
 									'',
 								)}
 							</span>
+							<span className="text-zinc-500">Trade ID</span>
+							<div className="flex items-center justify-end gap-2">
+								<span className="font-mono text-[10px] text-zinc-500 truncate max-w-[120px]">
+									{trade.id}
+								</span>
+								<button
+									onClick={copyToClipboard}
+									className="p-1 hover:bg-zinc-800 rounded transition-colors text-zinc-400 hover:text-zinc-100"
+									title="Copy Trade ID"
+								>
+									{copied ? (
+										<Check className="w-3 h-3 text-emerald-500" />
+									) : (
+										<Copy className="w-3 h-3" />
+									)}
+								</button>
+							</div>
 							<span className="text-zinc-500">Direction</span>
 							<span className="text-right">
 								<DirectionBadge direction={trade.direction} />
@@ -67,15 +102,11 @@ export function TradeDetailsDialog({
 							</span>
 							<span className="text-zinc-500">Opened At</span>
 							<span className="text-right text-xs text-zinc-400">
-								{trade.enteredAt
-									? formatDate(trade.enteredAt)
-									: '—'}
+								{formatWithTimezone(trade.enteredAt)}
 							</span>
 							<span className="text-zinc-500">Closed At</span>
 							<span className="text-right text-xs text-zinc-400">
-								{trade.closedAt
-									? formatDate(trade.closedAt)
-									: '—'}
+								{formatWithTimezone(trade.closedAt)}
 							</span>
 						</div>
 					</div>

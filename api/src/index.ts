@@ -6,6 +6,7 @@ import config from './config';
 import { errorHandler } from './middleware/errorHandler';
 import botRoutes from './routes/bot.routes';
 import notificationRoutes from './routes/notification.routes';
+import priceRoutes from './routes/price.routes';
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use(limiter);
 
 app.use('/api', botRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/prices', priceRoutes);
 
 app.use(errorHandler);
 

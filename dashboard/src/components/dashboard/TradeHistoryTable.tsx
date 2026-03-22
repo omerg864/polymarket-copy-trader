@@ -13,8 +13,7 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components/ui/table';
-import { useTradeHistory } from '@/hooks/use-api';
-import { formatDate } from '@/lib/utils';
+import { useTradeHistory, useConfig } from '@/hooks/use-api';
 import type { Trade } from '@/types';
 import { useMemoizedFn } from 'ahooks';
 import { useMemo, useState } from 'react';
@@ -28,11 +27,18 @@ type SortDir = 'asc' | 'desc';
 
 export function TradeHistoryTable() {
 	const { data: history } = useTradeHistory();
+	const { data: config } = useConfig();
+	const timezone = config?.timezone || 'Asia/Jerusalem';
 
 	const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
 	const [sortField, setSortField] = useState<SortField>('time');
 	const [sortDir, setSortDir] = useState<SortDir>('desc');
 	const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
+
+	const formatWithTimezone = (iso: string | undefined) => {
+		if (!iso) return '—';
+		return DateTime.fromISO(iso).setZone(timezone).toFormat('MMM d, HH:mm:ss');
+	};
 
 	const toggleSort = useMemoizedFn((field: SortField) => {
 		if (sortField === field) {
@@ -52,13 +58,17 @@ export function TradeHistoryTable() {
 		let result = [...history];
 
 		if (filters.startDate) {
-			const start = DateTime.fromISO(filters.startDate).startOf('day');
+			const start = DateTime.fromISO(filters.startDate)
+				.setZone(timezone)
+				.startOf('day');
 			result = result.filter(
 				(t) => DateTime.fromISO(t.enteredAt) >= start,
 			);
 		}
 		if (filters.endDate) {
-			const end = DateTime.fromISO(filters.endDate).endOf('day');
+			const end = DateTime.fromISO(filters.endDate)
+				.setZone(timezone)
+				.endOf('day');
 			result = result.filter((t) => DateTime.fromISO(t.enteredAt) <= end);
 		}
 		if (filters.status !== 'all') {
@@ -90,7 +100,7 @@ export function TradeHistoryTable() {
 		});
 
 		return result;
-	}, [history, sortField, sortDir, filters]);
+	}, [history, sortField, sortDir, filters, timezone]);
 
 	return (
 		<Card className="bg-zinc-900 border-zinc-800">
@@ -176,14 +186,10 @@ export function TradeHistoryTable() {
 										onClick={() => setSelectedTrade(trade)}
 									>
 										<TableCell className="text-xs text-zinc-500">
-											{trade.closedAt
-												? formatDate(trade.closedAt)
-												: '—'}
+											{formatWithTimezone(trade.closedAt)}
 										</TableCell>
 										<TableCell className="text-xs text-zinc-500">
-											{trade.enteredAt
-												? formatDate(trade.enteredAt)
-												: '—'}
+											{formatWithTimezone(trade.enteredAt)}
 										</TableCell>
 										<TableCell className="font-mono text-xs text-zinc-400 max-w-[140px] truncate">
 											{trade.title.replace(

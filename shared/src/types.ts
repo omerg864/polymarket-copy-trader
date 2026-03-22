@@ -213,6 +213,15 @@ export interface Candle {
 	closeTime: number;
 }
 
+export interface PriceCandle {
+	time: number;
+	open: number;
+	high: number;
+	low: number;
+	close: number;
+	volume?: number;
+}
+
 export interface Signal {
 	direction: 'UP' | 'DOWN';
 	confidence: number;

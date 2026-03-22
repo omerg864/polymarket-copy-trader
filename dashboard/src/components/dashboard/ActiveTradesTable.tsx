@@ -13,16 +13,23 @@ import {
 	TableHeader,
 	TableRow,
 } from '@/components/ui/table';
-import { useActiveTrades } from '@/hooks/use-api';
-import { formatDate } from '@/lib/utils';
+import { useActiveTrades, useConfig } from '@/hooks/use-api';
 import type { Trade } from '@/types';
 import { useState } from 'react';
 import { DirectionBadge } from './badges';
 import { TradeDetailsDialog } from './TradeDetailsDialog';
+import { DateTime } from 'luxon';
 
 export function ActiveTradesTable() {
 	const { data: activeTrades } = useActiveTrades();
+	const { data: config } = useConfig();
+	const timezone = config?.timezone || 'Asia/Jerusalem';
 	const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
+
+	const formatWithTimezone = (iso: string | undefined) => {
+		if (!iso) return '—';
+		return DateTime.fromISO(iso).setZone(timezone).toFormat('MMM d, HH:mm:ss');
+	};
 
 	if (!activeTrades || activeTrades.length === 0) return null;
 
@@ -92,9 +99,7 @@ export function ActiveTradesTable() {
 											)}
 										</TableCell>
 										<TableCell className="text-xs text-zinc-500">
-											{trade.enteredAt
-												? formatDate(trade.enteredAt)
-												: '—'}
+											{formatWithTimezone(trade.enteredAt)}
 										</TableCell>
 										<TableCell>
 											<DirectionBadge

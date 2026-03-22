@@ -5,7 +5,8 @@ import type {
 	Trade,
 	TradeSummary,
 	MarketDashboardData,
-} from '@/types';
+	PriceCandle,
+} from '@shared/types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
@@ -230,5 +231,25 @@ export function useTimezones() {
 		queryKey: ['timezones'],
 		queryFn: () => fetchJson('/timezones'),
 		staleTime: Infinity, // Timezones don't change often
+	});
+}
+
+export function useCandles(params: {
+	startTime?: string;
+	endTime?: string;
+	interval?: string;
+	enabled?: boolean;
+}) {
+	return useQuery<PriceCandle[]>({
+		queryKey: ['candles', params],
+		queryFn: () => {
+			const query = new URLSearchParams();
+			if (params.startTime) query.append('startTime', params.startTime);
+			if (params.endTime) query.append('endTime', params.endTime);
+			if (params.interval) query.append('interval', params.interval);
+			return fetchJson(`/prices/candles?${query.toString()}`);
+		},
+		enabled: params.enabled !== false,
+		staleTime: 60000, // 1 minute cache
 	});
 }
