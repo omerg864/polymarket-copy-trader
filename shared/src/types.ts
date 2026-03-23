@@ -77,11 +77,10 @@ export interface Trade {
 
 export interface StrategyConfig {
 	mode?: string;
-	minOrderSizeUsd: number;
-	maxOrderSizeUsd: number;
+	fixedOrderSizeUsd: number;
 	confidenceThreshold: number;
 	takeProfitPct: number;
-	stopLossPct: number;
+	marketPriceStopLoss: number;
 	maxConcurrentTrades: number;
 	minEntryPrice: number;
 	maxEntryPrice: number;
@@ -112,11 +111,10 @@ export interface StrategyConfig {
 }
 
 export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
-	minOrderSizeUsd: 5,
-	maxOrderSizeUsd: 20,
+	fixedOrderSizeUsd: 100,
 	confidenceThreshold: 0.7,
 	takeProfitPct: 0.3,
-	stopLossPct: 0.2,
+	marketPriceStopLoss: 0.4,
 	maxConcurrentTrades: 3,
 	minEntryPrice: 0.8,
 	maxEntryPrice: 0.95,

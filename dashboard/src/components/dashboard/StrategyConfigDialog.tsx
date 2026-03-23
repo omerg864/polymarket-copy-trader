@@ -78,17 +78,8 @@ export function StrategyConfigDialog({
 					<div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
 						<ConfigSection title="Trading Limits">
 							<ConfigRow
-								label="Min Order Size"
-								field="minOrderSizeUsd"
-								prefix="$"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
-							<ConfigRow
-								label="Max Order Size"
-								field="maxOrderSizeUsd"
+								label="Fixed Order Size"
+								field="fixedOrderSizeUsd"
 								prefix="$"
 								editing={editing}
 								editValues={editValues}
@@ -231,8 +222,8 @@ export function StrategyConfigDialog({
 								min={0}
 							/>
 							<ConfigRow
-								label="Stop Loss"
-								field="stopLossPct"
+								label="Market Price Stop Loss"
+								field="marketPriceStopLoss"
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}

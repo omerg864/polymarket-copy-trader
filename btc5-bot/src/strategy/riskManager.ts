@@ -218,7 +218,7 @@ class RiskManager {
 		}
 
 		// Stop loss check
-		if (pctChange <= -sc.stopLossPct) {
+		if (currentPrice <= sc.marketPriceStopLoss) {
 			const btcPrice = await priceAnalysisService.getCurrentPrice();
 			if (!btcPrice) {
 				logger.error(
@@ -226,7 +226,7 @@ class RiskManager {
 				);
 			}
 			logger.info(
-				`🔴 STOP LOSS triggered for ${trade.id} ${trade.direction} | Position: ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (${(pctChange * 100).toFixed(1)}%) | BTC: $${(btcPrice ?? 0).toFixed(2)}`,
+				`🔴 STOP LOSS triggered for ${trade.id} ${trade.direction} | Price: ${currentPrice.toFixed(3)} <= ${sc.marketPriceStopLoss.toFixed(2)} | Entry: ${trade.entryPrice.toFixed(3)} | BTC: $${(btcPrice ?? 0).toFixed(2)}`,
 			);
 			try {
 				await this.executeSell(

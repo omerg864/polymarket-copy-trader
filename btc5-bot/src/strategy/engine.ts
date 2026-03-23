@@ -37,7 +37,7 @@ class StrategyEngine {
 		);
 		logger.info('  Strategy: RSI + EMA + MACD momentum');
 		logger.info(
-			`  Order Size: $${sc.minOrderSizeUsd}-$${sc.maxOrderSizeUsd} (dynamic) | TP: ${sc.takeProfitPct * 100}% | SL: ${sc.stopLossPct * 100}%`,
+			`  Order Size: $${sc.fixedOrderSizeUsd} (fixed) | TP: ${sc.takeProfitPct * 100}% | SL: $${sc.marketPriceStopLoss}`,
 		);
 		logger.info('═══════════════════════════════════════════════');
 		logger.info('');
@@ -373,36 +373,12 @@ class StrategyEngine {
 			return;
 		}
 
-		// Calculate dynamic order size
-		const confidenceRange = 1.0 - sc.confidenceThreshold;
-		const confidenceRatio =
-			confidenceRange > 0
-				? (signal.confidence - sc.confidenceThreshold) / confidenceRange
-				: 0;
-		const orderBudgetBase =
-			sc.minOrderSizeUsd +
-			confidenceRatio * (sc.maxOrderSizeUsd - sc.minOrderSizeUsd);
-		// High price sizing bonus
-		let orderBudget = orderBudgetBase;
-		let multiplier = 1.0;
-
-		if (price >= sc.highPriceThreshold) {
-			const range = 1.0 - sc.highPriceThreshold;
-			const progress = (price - sc.highPriceThreshold) / range;
-			multiplier = 1.0 + progress * sc.highPriceMaxBonusPct;
-			orderBudget = orderBudgetBase * multiplier;
-		}
-
+		// Fixed order size from config
+		const orderBudget = sc.fixedOrderSizeUsd;
 		const size = Math.max(
 			config.minOrderSize,
 			Math.floor(orderBudget / price),
 		);
-
-		if (multiplier > 1.0) {
-			logger.info(
-				`🔥 High price bonus: x${multiplier.toFixed(2)} multiplier applied (Price: ${price.toFixed(3)})`,
-			);
-		}
 
 		logger.info(
 			`🎯 Decision: BUY ${direction} @ ${price.toFixed(3)} | Confidence: ${(signal.confidence * 100).toFixed(1)}% → $${orderBudget.toFixed(2)} | Size: ${size} shares`,
