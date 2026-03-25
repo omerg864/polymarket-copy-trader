@@ -126,6 +126,8 @@ export async function getMarketPrices(): Promise<MarketDashboardData | null> {
 		? (JSON.parse(refRaw) as {
 				priceToBeat: number | null;
 				marketTitle: string;
+				marketStartTime?: number;
+				marketEndTime?: number;
 			})
 		: null;
 	const marketPriceData = marketPriceRaw
@@ -144,6 +146,8 @@ export async function getMarketPrices(): Promise<MarketDashboardData | null> {
 		marketTitle: refData?.marketTitle ?? null,
 		upPrice: marketPriceData?.upPrice ?? null,
 		downPrice: marketPriceData?.downPrice ?? null,
+		marketStartTime: refData?.marketStartTime ?? null,
+		marketEndTime: refData?.marketEndTime ?? null,
 		indicators: signalData?.indicators,
 		confidence: signalData?.confidence,
 		direction: signalData?.direction,

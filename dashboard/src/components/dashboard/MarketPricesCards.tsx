@@ -1,10 +1,11 @@
+import { useEffect, useState } from 'react';
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 } from '@/components/ui/card';
-import { useActiveTrades, useMarketPrices } from '@/hooks/use-api';
+import { useActiveTrades, useMarketPrices, useConfig } from '@/hooks/use-api';
 import { MarketOutcomeBadge } from './badges';
 
 const fmtPrice = (n: number | undefined) =>
@@ -20,9 +21,32 @@ const fmtTime = (ts: number) =>
 		second: '2-digit',
 	});
 
+const formatElapsed = (seconds: number) => {
+	const mins = Math.floor(seconds / 60);
+	const secs = seconds % 60;
+	return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
 export function MarketPricesCards() {
 	const { data: marketPrices } = useMarketPrices();
 	const { data: activeTrades } = useActiveTrades();
+	const { data: sc } = useConfig();
+	const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+
+	useEffect(() => {
+		const timer = setInterval(() => {
+			if (marketPrices?.marketStartTime) {
+				const elapsed = Math.max(
+					0,
+					Math.floor(
+						(Date.now() - marketPrices.marketStartTime) / 1000,
+					),
+				);
+				setElapsedSeconds(elapsed);
+			}
+		}, 1000);
+		return () => clearInterval(timer);
+	}, [marketPrices?.marketStartTime]);
 
 	if (!marketPrices?.btcPrice) return null;
 
@@ -37,6 +61,7 @@ export function MarketPricesCards() {
 		confidence,
 		direction,
 		indicatorsUpdatedAt,
+		marketStartTime,
 	} = marketPrices;
 
 	// Check if there's an active trade for this market
@@ -44,7 +69,23 @@ export function MarketPricesCards() {
 		(t) => t.status === 'open' && t.title === marketTitle,
 	);
 
-	const getValColor = (pass?: boolean) => pass === true ? 'text-emerald-400' : pass === false ? 'text-red-400' : 'text-zinc-200';
+	const getValColor = (pass?: boolean) =>
+		pass === true
+			? 'text-emerald-400'
+			: pass === false
+				? 'text-red-400'
+				: 'text-zinc-200';
+
+	// Market Age Guard Calculation
+	const minAgeSeconds = (sc?.minMarketAgeMinutes || 0) * 60;
+	const isAgePass = elapsedSeconds >= minAgeSeconds;
+	const timeStatusColor = isAgePass ? 'text-emerald-400' : 'text-red-400';
+
+	const diff = priceToBeat !== null ? btcPrice - priceToBeat : null;
+	const pctDiff =
+		priceToBeat && priceToBeat > 0 ? (diff! / priceToBeat) * 100 : null;
+	const isPriceWinning = diff !== null ? diff >= 0 : true;
+	const priceColor = isPriceWinning ? 'text-emerald-400' : 'text-red-400';
 
 	return (
 		<div className="space-y-4 mb-4">
@@ -56,14 +97,39 @@ export function MarketPricesCards() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<p className="text-2xl font-bold font-mono text-zinc-100">
+						<p
+							className={`text-2xl font-bold font-mono ${priceColor}`}
+						>
 							${fmtPrice(btcPrice)}
 						</p>
-						{updatedAt && (
-							<p className="text-xs text-zinc-500 mt-1">
-								Updated {fmtTime(updatedAt)}
-							</p>
-						)}
+						<div className="flex flex-col mt-2 gap-1.5">
+							<div className="flex justify-between items-center text-[10px]">
+								<span className="text-zinc-500 uppercase tracking-wider">
+									Updated
+								</span>
+								<span className="text-zinc-400 font-mono italic">
+									{updatedAt ? fmtTime(updatedAt) : '—'}
+								</span>
+							</div>
+							{diff !== null && (
+								<div className="flex justify-between items-center text-[10px]">
+									<span className="text-zinc-500 uppercase tracking-wider">
+										Diff
+									</span>
+									<span
+										className={`font-mono font-bold ${priceColor}`}
+									>
+										{diff >= 0 ? '+' : ''}$
+										{diff.toLocaleString(undefined, {
+											minimumFractionDigits: 2,
+											maximumFractionDigits: 2,
+										})}{' '}
+										({diff >= 0 ? '+' : ''}
+										{pctDiff?.toFixed(2)}%)
+									</span>
+								</div>
+							)}
+						</div>
 					</CardContent>
 				</Card>
 
@@ -150,25 +216,34 @@ export function MarketPricesCards() {
 							<div className="text-right flex items-center gap-3">
 								<div className="flex flex-col items-end">
 									<div className="flex items-center gap-1.5">
-										<span className={`text-xs font-bold ${direction === 'UP' ? 'text-emerald-400' : 'text-red-400'}`}>
-											{direction === 'UP' ? '▲ BUY UP' : '▼ BUY DOWN'}
+										<span
+											className={`text-xs font-bold ${direction === 'UP' ? 'text-emerald-400' : 'text-red-400'}`}
+										>
+											{direction === 'UP'
+												? '▲ BUY UP'
+												: '▼ BUY DOWN'}
 										</span>
 										<span
 											className={`text-sm font-bold font-mono ${
-												confidence! > 0.7
+												(confidence ?? 0) > 0.7
 													? 'text-emerald-400'
-													: confidence! > 0.5
+													: (confidence ?? 0) > 0.5
 														? 'text-amber-400'
 														: 'text-zinc-400'
 											}`}
 										>
-											{(confidence! * 100).toFixed(1)}%
+											{((confidence ?? 0) * 100).toFixed(
+												1,
+											)}
+											%
 										</span>
 									</div>
 									<div className="w-32 h-1.5 bg-zinc-800 rounded-full mt-1 overflow-hidden flex">
-										<div 
+										<div
 											className={`h-full transition-all duration-500 ${direction === 'UP' ? 'bg-emerald-500 ml-auto' : 'bg-red-500 mr-auto'}`}
-											style={{ width: `${confidence! * 100}%` }}
+											style={{
+												width: `${(confidence ?? 0) * 100}%`,
+											}}
 										/>
 									</div>
 								</div>
@@ -178,47 +253,74 @@ export function MarketPricesCards() {
 					<CardContent>
 						<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-4 text-[10px] sm:text-xs">
 							<div className="space-y-1">
-								<p className="text-zinc-500 uppercase">RSI (14)</p>
-								<p className={`font-mono font-semibold ${getValColor(indicators.rsi14Pass)}`}>
+								<p className="text-zinc-500 uppercase">
+									RSI (14)
+								</p>
+								<p
+									className={`font-mono font-semibold ${getValColor(indicators.rsi14Pass)}`}
+								>
 									{indicators.rsi14 || '—'}
 								</p>
 							</div>
 							<div className="space-y-1">
-								<p className="text-zinc-500 uppercase">StochRSI</p>
-								<p className={`font-mono font-semibold ${getValColor(indicators.stochRsiPass)}`}>
+								<p className="text-zinc-500 uppercase">
+									StochRSI
+								</p>
+								<p
+									className={`font-mono font-semibold ${getValColor(indicators.stochRsiPass)}`}
+								>
 									{indicators.stochRsi || '—'}
 								</p>
 							</div>
 							<div className="space-y-1">
-								<p className="text-zinc-500 uppercase">BB Pos</p>
-								<p className={`font-mono font-semibold ${getValColor(indicators.bbPositionPass)}`}>
+								<p className="text-zinc-500 uppercase">
+									BB Pos
+								</p>
+								<p
+									className={`font-mono font-semibold ${getValColor(indicators.bbPositionPass)}`}
+								>
 									{indicators.bbPosition || '—'}
 								</p>
 							</div>
 							<div className="space-y-1">
-								<p className="text-zinc-500 uppercase">BTC Price</p>
-								<p className={`font-mono font-semibold ${getValColor(indicators.entryPricePass)}`}>
-									${Number(indicators.currentPrice).toLocaleString()}
+								<p className="text-zinc-500 uppercase">
+									BTC Price
+								</p>
+								<p
+									className={`font-mono font-semibold ${getValColor(indicators.entryPricePass)}`}
+								>
+									$
+									{Number(
+										indicators.currentPrice,
+									).toLocaleString()}
 								</p>
 							</div>
 							<div className="space-y-1">
-								<p className="text-zinc-500 uppercase">Dist Ref</p>
-								<p className="font-mono font-semibold text-zinc-300">
-									{indicators.distFromRef || '—'}
+								<p className="text-zinc-500 uppercase">
+									Market Price
+								</p>
+								<p
+									className={`font-mono font-semibold ${getValColor(indicators.marketPricePass)}`}
+								>
+									{direction === 'UP'
+										? upPrice !== null
+											? upPrice.toFixed(3)
+											: '—'
+										: downPrice !== null
+											? downPrice.toFixed(3)
+											: '—'}
 								</p>
 							</div>
 							<div className="space-y-1">
-								<p className="text-zinc-500 uppercase">Market Price</p>
-								<p className={`font-mono font-semibold ${getValColor(indicators.marketPricePass)}`}>
-									{direction === 'UP' 
-										? (upPrice !== null ? upPrice.toFixed(3) : '—') 
-										: (downPrice !== null ? downPrice.toFixed(3) : '—')}
+								<p className="text-zinc-500 uppercase">
+									Time Status
 								</p>
-							</div>
-							<div className="space-y-1">
-								<p className="text-zinc-500 uppercase">Time Status</p>
-								<p className={`font-mono font-semibold ${getValColor(indicators.timeFramePass)}`}>
-									{indicators.timeRemaining || '—'}
+								<p
+									className={`font-mono font-semibold ${timeStatusColor}`}
+								>
+									{marketStartTime
+										? formatElapsed(elapsedSeconds)
+										: '—'}
 								</p>
 							</div>
 						</div>

@@ -207,6 +207,8 @@ export interface Market {
 	negRisk: boolean;
 	minOrderSize: number;
 	priceToBeat: number | null;
+	upPrice?: number;
+	downPrice?: number;
 }
 
 export interface MarketPrices {
@@ -273,6 +275,8 @@ export interface MarketDashboardData {
 	downPrice: number | null;
 	updatedAt: number;
 	marketTitle: string | null;
+	marketStartTime: number | null;
+	marketEndTime: number | null;
 	indicators?: Trade['indicators'];
 	confidence?: number;
 	direction?: 'UP' | 'DOWN';

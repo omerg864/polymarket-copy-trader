@@ -23,7 +23,7 @@ Automated trading bot for [Polymarket's BTC 5-minute up/down markets](https://po
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                     Strategy Engine                      │
 │  ┌──────────────┐  ┌────────────┐  ┌────────────────┐   │
@@ -137,6 +137,7 @@ Demo mode starts with a virtual $100 USDC balance and simulates trades using rea
 2. Ensure your Polymarket account has USDC.e on Polygon.
 
 3. Run:
+
     ```bash
     cd btc5-bot
     npm start
@@ -211,8 +212,8 @@ Once a position is entered:
 
 - The **risk manager** monitors the position every few seconds
 - Supports **Dual TP/SL**:
-    - **Percentage-based**: Exits when price moves ±X% from entry
-    - **Market-price-based**: Exits when the Polymarket token price hits a specific target (e.g., SL at $0.40)
+  - **Percentage-based**: Exits when price moves ±X% from entry
+  - **Market-price-based**: Exits when the Polymarket token price hits a specific target (e.g., SL at $0.40)
 - If neither threshold is hit, the position rides to market resolution (5-minute window end)
 
 ### Market Timing
@@ -221,7 +222,7 @@ The bot aligns its cycle to 5-minute intervals, attempting to analyze and enter 
 
 ## Project Structure
 
-```
+```text
 polymarket-5-minutes-bot/
 ├── shared/                    # Shared TypeScript types & constants
 │   └── src/

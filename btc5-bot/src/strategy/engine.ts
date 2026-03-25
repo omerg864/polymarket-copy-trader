@@ -146,9 +146,16 @@ class StrategyEngine {
 
 			// Save prices separately in Redis as requested
 			if (refPrice) {
-				await redisService.setPriceToBeat(refPrice, market.title);
+				await redisService.setPriceToBeat(
+					refPrice,
+					market.title,
+					new Date(market.startTime).getTime(),
+					new Date(market.endTime).getTime(),
+				);
 			}
 			if (prices) {
+				market.upPrice = prices.upPrice;
+				market.downPrice = prices.downPrice;
 				await redisService.setMarketPrices(
 					prices.upPrice,
 					prices.downPrice,
