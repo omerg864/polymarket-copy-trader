@@ -166,6 +166,8 @@ class RiskManager {
 
 		const sc = await getStrategyConfig();
 
+		const btcPrice = await priceAnalysisService.getCurrentPrice();
+
 		const priceToBeat = parseFloat(String(trade.priceToBeat));
 		if (!priceToBeat || priceToBeat <= 0) {
 			logger.error(
@@ -194,15 +196,32 @@ class RiskManager {
 		await redisService.saveTrade(trade);
 
 		// Take profit check
-		if (pctChange >= sc.takeProfitPct) {
-			const btcPrice = await priceAnalysisService.getCurrentPrice();
+		let isTakeProfit = false;
+		let tpPrice = 0;
+
+		if (sc.takeProfitType === 'market') {
+			isTakeProfit = currentPrice >= sc.marketPriceTakeProfit;
+			tpPrice = sc.marketPriceTakeProfit;
+		} else {
+			// Percentage based take profit
+			const tpPct = sc.takeProfitPct / 100;
+			tpPrice = trade.entryPrice * (1 + tpPct);
+			isTakeProfit = currentPrice >= tpPrice;
+		}
+
+		if (isTakeProfit) {
 			if (!btcPrice) {
 				logger.error(
 					`BTC price not available for trade ${trade.id}, using 0`,
 				);
 			}
+			const tpInfo =
+				sc.takeProfitType === 'market'
+					? `Price: ${currentPrice.toFixed(3)} >= ${tpPrice.toFixed(2)}`
+					: `Price: ${currentPrice.toFixed(3)} >= ${tpPrice.toFixed(3)} (+${sc.takeProfitPct}% TP)`;
+
 			logger.info(
-				`🟢 TAKE PROFIT triggered for ${trade.id} ${trade.direction} | Position: ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (+${(pctChange * 100).toFixed(1)}%) | BTC: $${(btcPrice ?? 0).toFixed(2)}`,
+				`🟢 TAKE PROFIT triggered for ${trade.id} ${trade.direction} | ${tpInfo} | Entry: ${trade.entryPrice.toFixed(3)} | BTC: $${(btcPrice ?? 0).toFixed(2)}`,
 			);
 			try {
 				await this.executeSell(
@@ -218,15 +237,32 @@ class RiskManager {
 		}
 
 		// Stop loss check
-		if (currentPrice <= sc.marketPriceStopLoss) {
-			const btcPrice = await priceAnalysisService.getCurrentPrice();
+		let isStopLoss = false;
+		let slPrice = 0;
+
+		if (sc.stopLossType === 'market') {
+			isStopLoss = currentPrice <= sc.marketPriceStopLoss;
+			slPrice = sc.marketPriceStopLoss;
+		} else {
+			// Percentage based stop loss
+			const slPct = sc.stopLossPct / 100;
+			slPrice = trade.entryPrice * (1 - slPct);
+			isStopLoss = currentPrice <= slPrice;
+		}
+
+		if (isStopLoss) {
 			if (!btcPrice) {
 				logger.error(
 					`BTC price not available for trade ${trade.id}, using 0`,
 				);
 			}
+			const slInfo =
+				sc.stopLossType === 'market'
+					? `Price: ${currentPrice.toFixed(3)} <= ${slPrice.toFixed(2)}`
+					: `Price: ${currentPrice.toFixed(3)} <= ${slPrice.toFixed(3)} (${sc.stopLossPct}% SL)`;
+
 			logger.info(
-				`🔴 STOP LOSS triggered for ${trade.id} ${trade.direction} | Price: ${currentPrice.toFixed(3)} <= ${sc.marketPriceStopLoss.toFixed(2)} | Entry: ${trade.entryPrice.toFixed(3)} | BTC: $${(btcPrice ?? 0).toFixed(2)}`,
+				`🔴 STOP LOSS triggered for ${trade.id} ${trade.direction} | ${slInfo} | Entry: ${trade.entryPrice.toFixed(3)} | BTC: $${(btcPrice ?? 0).toFixed(2)}`,
 			);
 			try {
 				await this.executeSell(
@@ -241,7 +277,6 @@ class RiskManager {
 			return;
 		}
 
-		const btcPrice = await priceAnalysisService.getCurrentPrice();
 		const emoji = pctChange >= 0 ? '📈' : '📉';
 		logger.info(
 			`${emoji} ${trade.id} ${trade.direction} | ${trade.entryPrice.toFixed(3)} → ${currentPrice.toFixed(3)} (${(pctChange * 100).toFixed(1)}%) | BTC: $${(btcPrice ?? 0).toFixed(2)} vs ref $${priceToBeat.toFixed(2)}`,

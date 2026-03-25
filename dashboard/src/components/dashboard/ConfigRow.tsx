@@ -10,6 +10,7 @@ export function ConfigRow({
 	editValues,
 	setEditValues,
 	min,
+	max,
 	type = 'number',
 	options,
 }: {
@@ -23,6 +24,7 @@ export function ConfigRow({
 		React.SetStateAction<Partial<StrategyConfig>>
 	>;
 	min?: number;
+	max?: number;
 	type?: string;
 	options?: string[];
 }) {
@@ -79,10 +81,13 @@ export function ConfigRow({
 						if (type === 'number') {
 							const parsed = parseFloat(val);
 							if (!isNaN(parsed)) {
-								const finalVal =
+								let finalVal =
 									min !== undefined
 										? Math.max(min, parsed)
 										: parsed;
+								if (max !== undefined) {
+									finalVal = Math.min(max, finalVal);
+								}
 								setEditValues(
 									(prev: Partial<StrategyConfig>) => ({
 										...prev,

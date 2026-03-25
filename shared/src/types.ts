@@ -78,9 +78,13 @@ export interface Trade {
 export interface StrategyConfig {
 	mode?: string;
 	fixedOrderSizeUsd: number;
-	confidenceThreshold: number;
+	minConfidence: number;
+	takeProfitType: 'market' | 'percent';
+	marketPriceTakeProfit: number;
 	takeProfitPct: number;
+	stopLossType: 'market' | 'percent';
 	marketPriceStopLoss: number;
+	stopLossPct: number;
 	maxConcurrentTrades: number;
 	minEntryPrice: number;
 	maxEntryPrice: number;
@@ -112,9 +116,13 @@ export interface StrategyConfig {
 
 export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 	fixedOrderSizeUsd: 100,
-	confidenceThreshold: 0.7,
-	takeProfitPct: 0.3,
+	minConfidence: 70,
+	takeProfitType: 'percent',
+	marketPriceTakeProfit: 0.98,
+	takeProfitPct: 30,
+	stopLossType: 'market',
 	marketPriceStopLoss: 0.4,
+	stopLossPct: 25, // 25% default percentage SL
 	maxConcurrentTrades: 3,
 	minEntryPrice: 0.8,
 	maxEntryPrice: 0.95,

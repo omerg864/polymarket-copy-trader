@@ -132,11 +132,13 @@ export function StrategyConfigDialog({
 						<ConfigSection title="Strategy Guards">
 							<ConfigRow
 								label="Min Confidence"
-								field="confidenceThreshold"
+								field="minConfidence"
+								suffix="%"
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
 								min={0}
+								max={100}
 							/>
 							<ConfigRow
 								label="Min Entry Price"
@@ -214,21 +216,66 @@ export function StrategyConfigDialog({
 								min={0}
 							/>
 							<ConfigRow
-								label="Take Profit"
-								field="takeProfitPct"
+								label="Take Profit Type"
+								field="takeProfitType"
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
-								min={0}
+								type="select"
+								options={['market', 'percent']}
 							/>
+							{editValues.takeProfitType === 'market' ? (
+								<ConfigRow
+									label="Market Price TP"
+									field="marketPriceTakeProfit"
+									editing={editing}
+									editValues={editValues}
+									setEditValues={setEditValues}
+									min={0}
+									max={1}
+								/>
+							) : (
+								<ConfigRow
+									label="Take Profit Percentage"
+									field="takeProfitPct"
+									suffix="%"
+									editing={editing}
+									editValues={editValues}
+									setEditValues={setEditValues}
+									min={0}
+									max={100}
+								/>
+							)}
 							<ConfigRow
-								label="Market Price Stop Loss"
-								field="marketPriceStopLoss"
+								label="Stop Loss Type"
+								field="stopLossType"
 								editing={editing}
 								editValues={editValues}
 								setEditValues={setEditValues}
-								min={0}
+								type="select"
+								options={['market', 'percent']}
 							/>
+							{editValues.stopLossType === 'market' ? (
+								<ConfigRow
+									label="Market Price SL"
+									field="marketPriceStopLoss"
+									editing={editing}
+									editValues={editValues}
+									setEditValues={setEditValues}
+									min={0}
+								/>
+							) : (
+								<ConfigRow
+									label="Stop Loss Percentage"
+									field="stopLossPct"
+									suffix="%"
+									editing={editing}
+									editValues={editValues}
+									setEditValues={setEditValues}
+									min={0}
+									max={100}
+								/>
+							)}
 							<ConfigRow
 								label="Force Close Before End"
 								field="maxSecLoseFct"

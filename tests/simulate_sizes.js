@@ -13,7 +13,7 @@ async function simulate() {
 
 		// Parameters
 		const config = {
-			confidenceThreshold: 0.73,
+			minConfidence: 73,
 			minOrderSizeUsd: 20, // NEW
 			maxOrderSizeUsd: 50, // NEW
 			highPriceThreshold: 0.9,
@@ -33,13 +33,14 @@ async function simulate() {
 
 			// Recreate sizing logic
 			const price = trade.entryPrice;
-			const confidence = trade.confidence || 0.73; // fallback
-			const confidenceRange = 1.0 - config.confidenceThreshold;
+			const confidence = trade.confidence || 0.73; // fallback (0-1)
+			const confidencePct = confidence * 100;
+			const confidenceRange = 100 - config.minConfidence;
 			const confidenceRatio =
 				confidenceRange > 0
 					? Math.max(
 							0,
-							(confidence - config.confidenceThreshold) /
+							(confidencePct - config.minConfidence) /
 								confidenceRange,
 						)
 					: 0;

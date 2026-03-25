@@ -37,7 +37,12 @@ class StrategyEngine {
 		);
 		logger.info('  Strategy: RSI + EMA + MACD momentum');
 		logger.info(
-			`  Order Size: $${sc.fixedOrderSizeUsd} (fixed) | TP: ${sc.takeProfitPct * 100}% | SL: $${sc.marketPriceStopLoss}`,
+			`  Order Size: $${sc.fixedOrderSizeUsd} (fixed) | Min Confidence: ${sc.minConfidence}%`,
+		);
+		const tpDisplay = sc.takeProfitType === 'market' ? `$${sc.marketPriceTakeProfit}` : `${sc.takeProfitPct}%`;
+		const slDisplay = sc.stopLossType === 'market' ? `$${sc.marketPriceStopLoss}` : `${sc.stopLossPct}%`;
+		logger.info(
+			`  TP: ${tpDisplay} | SL: ${slDisplay}`,
 		);
 		logger.info('═══════════════════════════════════════════════');
 		logger.info('');
@@ -262,9 +267,9 @@ class StrategyEngine {
 		);
 		const signal = await priceAnalysisService.getSignal(refPrice);
 
-		if (signal.confidence < sc.confidenceThreshold) {
+		if (signal.confidence * 100 < sc.minConfidence) {
 			logger.info(
-				`⚠️  Low confidence (${(signal.confidence * 100).toFixed(1)}% < ${sc.confidenceThreshold * 100}%). Skipping.`,
+				`⚠️  Low confidence (${(signal.confidence * 100).toFixed(1)}% < ${sc.minConfidence}%). Skipping.`,
 			);
 			return;
 		}

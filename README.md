@@ -12,7 +12,8 @@ Automated trading bot for [Polymarket's BTC 5-minute up/down markets](https://po
 - 👨‍💻 **Web Dashboard** — real-time monitoring of trades, P&L, balance, and bot status
 - 🔒 **Two-Tier Auth** — admin (full control) and read-only (view only) access
 - ⚙️ **Live Strategy Config** — all strategy parameters stored in MongoDB, editable from the dashboard, cached in Redis, and picked up by the bot automatically
-- 📈 **High-Price Sizing Bonus** — dynamically increases trade size for high-probability (high price) setups
+- 📈 **Fixed Trade Cost** — Uses a fixed $100 (configurable) per trade for simplicity and predictability
+- 🛡️ **Dual Take-Profit & Stop-Loss** — Configurable exits based on either percentage gains/losses OR specific market price targets (e.g., SL at 0.4, TP at 0.98)
 - 🛡️ **Entry Guards** — configurable thresholds for minimum entry price and market age to filter trades
 - 🗄️ Redis for persistent state, trade history, stats, and strategy config cache
 - 🍃 MongoDB for durable strategy configuration
@@ -180,24 +181,14 @@ The project uses three `.env` files — one per package. Only infrastructure and
 
 All trading strategy parameters are stored in MongoDB and cached in Redis. They can be edited live from the dashboard by admin users. The bot picks up changes automatically (within ~10 seconds).
 
-| Parameter               | Default | Description                                       |
-| ----------------------- | ------- | ------------------------------------------------- |
-| `minOrderSizeUsd`       | `5`     | Minimum USDC per trade                            |
-| `maxOrderSizeUsd`       | `20`    | Maximum USDC per trade (scaled by confidence)     |
-| `confidenceThreshold`   | `0.70`  | Min signal confidence (0–1) to enter a trade      |
-| `takeProfitPct`         | `0.30`  | Sell when price rises 30% from entry              |
-| `stopLossPct`           | `0.20`  | Sell when price drops 20% from entry              |
-| `maxConcurrentTrades`   | `3`     | Max simultaneous open positions                   |
-| `minEntryPrice`         | `0.80`  | Only enter trades with price ≥ this               |
-| `minMarketAgeMinutes`   | `2.0`   | Only enter trades after X minutes of market age   |
-| `candleCount`           | `60`    | Number of 1-minute candles to fetch for analysis  |
-| `rsiPeriod`             | `14`    | RSI calculation period                            |
-| `emaFast`               | `9`     | Fast EMA period                                   |
-| `emaSlow`               | `21`    | Slow EMA period                                   |
-| `riskMonitorIntervalMs` | `2000`  | Milliseconds between TP/SL checks                 |
-| `botAllowance`          | `100`   | Virtual USDC budget the bot is allowed to use     |
-| `highPriceThreshold`    | `0.90`  | Entry price above which the sizing bonus kicks in |
-| `highPriceMaxBonusPct`  | `1.0`   | Max multiplier (+100%) for high-price trades      |
+| `fixedOrderSizeUsd`     | `100`   | Fixed USDC per trade                              |
+| `minConfidence`         | `70`    | Min signal confidence (0–100%) to enter a trade   |
+| `takeProfitType`        | `percent`| `percent` or `market` (TP by % or market price)    |
+| `takeProfitPct`         | `30`    | Sell when price rises 30% from entry (percent TP) |
+| `marketPriceTakeProfit` | `0.98`  | Sell when market price reaches this (market TP)   |
+| `stopLossType`          | `market`| `percent` or `market` (SL by % or market price)    |
+| `marketPriceStopLoss`   | `0.40`  | Sell when market price reaches this (market SL)   |
+| `stopLossPct`           | `25`    | Sell when price drops 25% from entry (percent SL) |
 
 ## How the Strategy Works
 
@@ -218,9 +209,10 @@ Each indicator contributes a weighted score. The direction with the highest tota
 
 Once a position is entered:
 
-- The **risk manager** monitors the position every 10 seconds
-- If the position rises by `TAKE_PROFIT_PCT` (default 30%), it auto-sells for profit
-- If the position drops by `STOP_LOSS_PCT` (default 20%), it auto-sells to limit losses
+- The **risk manager** monitors the position every few seconds
+- Supports **Dual TP/SL**:
+    - **Percentage-based**: Exits when price moves ±X% from entry
+    - **Market-price-based**: Exits when the Polymarket token price hits a specific target (e.g., SL at $0.40)
 - If neither threshold is hit, the position rides to market resolution (5-minute window end)
 
 ### Market Timing
