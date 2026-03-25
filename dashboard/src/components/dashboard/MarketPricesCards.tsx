@@ -28,6 +28,7 @@ export function MarketPricesCards() {
 
 	const {
 		btcPrice,
+		priceToBeat,
 		updatedAt,
 		marketTitle,
 		upPrice,
@@ -47,7 +48,7 @@ export function MarketPricesCards() {
 
 	return (
 		<div className="space-y-4 mb-4">
-			<div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-4">
+			<div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4">
 				<Card className="bg-zinc-900 border-zinc-800">
 					<CardHeader className="pb-2">
 						<CardDescription className="text-xs text-zinc-500">
@@ -65,6 +66,29 @@ export function MarketPricesCards() {
 						)}
 					</CardContent>
 				</Card>
+
+				{priceToBeat !== null && (
+					<Card className="bg-zinc-900 border-zinc-800">
+						<CardHeader className="pb-2">
+							<CardDescription className="text-xs text-zinc-500">
+								🎯 Price to Beat
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<p className="text-2xl font-bold font-mono text-zinc-300">
+								${fmtPrice(priceToBeat)}
+							</p>
+							<div className="flex flex-col mt-0.5">
+								<p className="text-[10px] text-zinc-500 truncate leading-tight">
+									{marketTitle || 'BTC Market'}
+								</p>
+								<p className="text-[9px] text-zinc-600 font-medium uppercase tracking-wider">
+									Ref BTC Price
+								</p>
+							</div>
+						</CardContent>
+					</Card>
+				)}
 
 				{upPrice !== null && (
 					<Card className="bg-zinc-900 border-zinc-800">
@@ -152,7 +176,7 @@ export function MarketPricesCards() {
 						</div>
 					</CardHeader>
 					<CardContent>
-						<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 text-[10px] sm:text-xs">
+						<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-4 text-[10px] sm:text-xs">
 							<div className="space-y-1">
 								<p className="text-zinc-500 uppercase">RSI (14)</p>
 								<p className={`font-mono font-semibold ${getValColor(indicators.rsi14Pass)}`}>
@@ -175,6 +199,12 @@ export function MarketPricesCards() {
 								<p className="text-zinc-500 uppercase">BTC Price</p>
 								<p className={`font-mono font-semibold ${getValColor(indicators.entryPricePass)}`}>
 									${Number(indicators.currentPrice).toLocaleString()}
+								</p>
+							</div>
+							<div className="space-y-1">
+								<p className="text-zinc-500 uppercase">Dist Ref</p>
+								<p className="font-mono font-semibold text-zinc-300">
+									{indicators.distFromRef || '—'}
 								</p>
 							</div>
 							<div className="space-y-1">
