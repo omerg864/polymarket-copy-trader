@@ -71,6 +71,13 @@ export interface Trade {
 		bbPosition?: string;
 		momentum3: string;
 		volatility: string;
+		rsi14Pass?: boolean;
+		stochRsiPass?: boolean;
+		bbPositionPass?: boolean;
+		entryPricePass?: boolean;
+		marketPricePass?: boolean;
+		timeFramePass?: boolean;
+		timeRemaining?: string;
 	};
 	actualOutcome?: 'UP' | 'DOWN' | 'UNKNOWN';
 }
@@ -232,6 +239,7 @@ export interface Signal {
 	direction: 'UP' | 'DOWN';
 	confidence: number;
 	indicators: Trade['indicators'];
+	updatedAt?: number;
 }
 
 export interface BotStats {
@@ -265,4 +273,8 @@ export interface MarketDashboardData {
 	downPrice: number | null;
 	updatedAt: number;
 	marketTitle: string | null;
+	indicators?: Trade['indicators'];
+	confidence?: number;
+	direction?: 'UP' | 'DOWN';
+	indicatorsUpdatedAt?: number;
 }

@@ -10,6 +10,7 @@ export const REDIS_KEYS = {
 	BTC_PRICE: `${REDIS_PREFIX}btc_price`,
 	REF_PRICE: `${REDIS_PREFIX}ref_price`,
 	MARKET_PRICES: `${REDIS_PREFIX}market_prices`,
+	SIGNAL: `${REDIS_PREFIX}signal`,
 	STRATEGY_CONFIG: `${REDIS_PREFIX}strategy_config`,
 	NOTIFICATION_CONFIG: `${REDIS_PREFIX}notification_config`,
 	

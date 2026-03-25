@@ -154,6 +154,15 @@ class StrategyEngine {
 					prices.downPrice,
 				);
 			}
+
+			// Also calculate and store the signal indicators/confidence for the dashboard
+			try {
+				const signal = await priceAnalysisService.getSignal(refPrice, market);
+				signal.updatedAt = Date.now();
+				await redisService.setLastSignal(signal);
+			} catch (err) {
+				logger.error(`Error calculating background signal: ${err}`);
+			}
 		}
 
 		// Re-fetch active trades after resolution
@@ -261,11 +270,16 @@ class StrategyEngine {
 			`   Market prices — Up: ${prices.upPrice.toFixed(3)} | Down: ${prices.downPrice.toFixed(3)}`,
 		);
 
-		// Step 5: Analyze BTC price for signal
+		// Step 5: Get BTC price signal (Retrieve from Redis if already calculated this cycle, or calculate now)
 		logger.info(
 			`📊 Analyzing BTC price vs reference $${refPrice.toFixed(2)}...`,
 		);
-		const signal = await priceAnalysisService.getSignal(refPrice);
+		let signal = await redisService.getLastSignal();
+		if (!signal) {
+			signal = await priceAnalysisService.getSignal(refPrice, market);
+			signal.updatedAt = Date.now();
+			await redisService.setLastSignal(signal);
+		}
 
 		if (signal.confidence * 100 < sc.minConfidence) {
 			logger.info(

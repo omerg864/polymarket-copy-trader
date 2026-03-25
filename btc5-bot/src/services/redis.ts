@@ -324,6 +324,17 @@ class RedisService {
 			return { memoryUsed: 'Error', totalKeys: 0 };
 		}
 	}
+
+	async setLastSignal(signal: any): Promise<void> {
+		const client = this.getClient();
+		await client.set(REDIS_KEYS.SIGNAL, JSON.stringify(signal), 'EX', 60); // Expire after 60s
+	}
+
+	async getLastSignal(): Promise<any | null> {
+		const client = this.getClient();
+		const data = await client.get(REDIS_KEYS.SIGNAL);
+		return data ? JSON.parse(data) : null;
+	}
 }
 
 const redisService = new RedisService();

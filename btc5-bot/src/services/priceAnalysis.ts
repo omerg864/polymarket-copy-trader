@@ -128,7 +128,10 @@ class PriceAnalysisService {
 	/**
 	 * Generate a trading signal for a 5-minute binary market.
 	 */
-	async getSignal(priceToBeat: number | null = null): Promise<Signal> {
+	async getSignal(
+		priceToBeat: number | null = null,
+		market?: any,
+	): Promise<Signal> {
 		const candles = await this.getCandles();
 		if (candles.length < 20) {
 			logger.warn('Not enough candle data for signal generation');
@@ -334,6 +337,51 @@ class PriceAnalysisService {
 			confidence *= 0.7;
 		}
 
+		const sc = await getStrategyConfig();
+		const rsi14Pass = rsi14 >= sc.minRSI14 && rsi14 <= sc.maxRSI14;
+		const stochRsiPass = stochRsi.k >= sc.minStochRSI && stochRsi.k <= sc.maxStochRSI;
+		
+		let bbPositionPass = true;
+		let bbPositionVal = 0;
+		if (bb && bb.upper !== bb.lower) {
+			bbPositionVal = ((currentPrice - bb.lower) / (bb.upper - bb.lower)) * 100;
+			bbPositionPass = bbPositionVal >= sc.minBBPosition && bbPositionVal <= sc.maxBBPosition;
+		}
+
+		// Entry Price Pass (BTC vs refPrice + offset)
+		let entryPricePass = true;
+		if (priceToBeat != null) {
+			const offset = sc.btcPriceOffset || 0;
+			const threshold =
+				direction === 'UP' ? priceToBeat + offset : priceToBeat - offset;
+			entryPricePass =
+				direction === 'UP'
+					? currentPrice >= threshold
+					: currentPrice <= threshold;
+		}
+
+		// Market Price Pass
+		let marketPricePass = true;
+		if (market) {
+			const mPrice =
+				direction === 'UP' ? market.upPrice || 0 : market.downPrice || 0;
+			marketPricePass =
+				mPrice >= sc.minEntryPrice && mPrice <= sc.maxEntryPrice;
+		}
+
+		// Time Frame Pass (Formatted as M:SS)
+		let timeFramePass = true;
+		let timeRemaining = 'N/A';
+		if (market && market.endTime) {
+			const msUntilEnd =
+				new Date(market.endTime).getTime() - Date.now();
+			const totalSeconds = Math.max(0, Math.floor(msUntilEnd / 1000));
+			const minutes = Math.floor(totalSeconds / 60);
+			const seconds = totalSeconds % 60;
+			timeRemaining = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+			timeFramePass = totalSeconds >= (sc.minSecondsRemaining || 0);
+		}
+
 		const signal: Signal = {
 			direction,
 			confidence,
@@ -357,14 +405,17 @@ class PriceAnalysisService {
 				bbUpper: bb ? bb.upper.toFixed(2) : 'N/A',
 				bbPosition:
 					bb && bb.upper !== bb.lower
-						? (
-								((currentPrice - bb.lower) /
-									(bb.upper - bb.lower)) *
-								100
-							).toFixed(1) + '%'
+						? bbPositionVal.toFixed(1) + '%'
 						: 'N/A',
 				momentum3: (momentum3 * 100).toFixed(4) + '%',
 				volatility: (volatilityPct * 100).toFixed(4) + '%',
+				rsi14Pass,
+				stochRsiPass,
+				bbPositionPass,
+				entryPricePass,
+				marketPricePass,
+				timeFramePass,
+				timeRemaining,
 			},
 		};
 
