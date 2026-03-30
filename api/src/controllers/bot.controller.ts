@@ -1,5 +1,9 @@
 import type { Request, Response } from 'express';
-import type { StrategyConfig, TradeSummary } from '../../../shared/src/types';
+import type {
+	BotVersions,
+	StrategyConfig,
+	TradeSummary,
+} from '../../../shared/src/types';
 import config from '../config';
 import { resolveRole } from '../middleware/auth';
 import { DateTime } from 'luxon';
@@ -9,6 +13,7 @@ import {
 	getBotBalance,
 	getBotStartTime,
 	getBotStats,
+	getBotVersion,
 	getDailyPnl,
 	getMarketPrices,
 	getRedisInfo,
@@ -20,6 +25,7 @@ import {
 	getStrategyConfig,
 	updateStrategyConfig,
 } from '../services/strategyConfig';
+import pkg from '../../package.json';
 
 export async function getSummary(_req: Request, res: Response): Promise<void> {
 	const strategyConfig = await getStrategyConfig();
@@ -146,6 +152,23 @@ export function getTimezones(_req: Request, res: Response): void {
 		res.json(timezones);
 	} catch (error) {
 		// Fallback for older Node versions if necessary, though 18+ should have it
-		res.json(['Asia/Jerusalem', 'America/New_York', 'UTC', 'Europe/London']);
+		res.json([
+			'Asia/Jerusalem',
+			'America/New_York',
+			'UTC',
+			'Europe/London',
+		]);
+	}
+}
+
+export async function getVersions(_req: Request, res: Response): Promise<void> {
+	try {
+		const bot = await getBotVersion();
+		res.json({
+			bot: bot ?? null,
+			api: pkg.version,
+		} satisfies BotVersions);
+	} catch (error) {
+		res.status(500).json({ error: 'Failed to fetch versions' });
 	}
 }

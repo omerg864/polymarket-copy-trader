@@ -1,8 +1,8 @@
-import pkg from '../package.json';
 import { AnalysisDashboard } from '@/components/AnalysisDashboard';
 import { Dashboard } from '@/components/Dashboard';
 import { LoginPage } from '@/components/LoginPage';
 import { Badge } from '@/components/ui/badge';
+import { VersionBadge } from '@/components/shared/VersionBadge';
 import {
 	getAuthRole,
 	setAuthPassword,
@@ -46,9 +46,9 @@ function AuthenticatedApp() {
 							<span className="font-semibold text-zinc-100 xs:hidden">
 								Polymarket 5M Bot
 							</span>
-							<span className="text-[10px] text-zinc-500 font-mono self-end mb-0.5">
-								v{pkg.version}
-							</span>
+							<div className="self-end mb-0.5">
+								<VersionBadge />
+							</div>
 						</div>
 
 						{/* Desktop Nav */}

@@ -218,6 +218,11 @@ class RedisService {
 		return raw ? parseInt(raw, 10) : null;
 	}
 
+	async setBotVersion(version: string): Promise<void> {
+		const client = this.getClient();
+		await client.set(REDIS_KEYS.BOT_VERSION, version);
+	}
+
 	// ---- Daily PnL ----
 
 	async getDailyPnl(date: string): Promise<number> {

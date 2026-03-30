@@ -282,3 +282,8 @@ export interface MarketDashboardData {
 	direction?: 'UP' | 'DOWN';
 	indicatorsUpdatedAt?: number;
 }
+
+export interface BotVersions {
+	bot: string | null;
+	api: string;
+}

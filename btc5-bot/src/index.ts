@@ -7,13 +7,16 @@ import queueService from './services/queueService';
 import outcomeSyncService from './services/outcomeSync';
 import strategyEngine from './strategy/engine';
 import logger from './utils/logger';
+import pkg from '../package.json';
+
+const botVersion = pkg.version || 'unknown';
 
 // Bot mode is determined by MODE environment variable in config.ts
 
 async function main(): Promise<void> {
 	logger.info('');
 	logger.info('╔═══════════════════════════════════════════╗');
-	logger.info('║  Polymarket BTC 5-Min Trading Bot v1.0.0  ║');
+	logger.info(`║  Polymarket BTC 5-Min Bot v${botVersion.padEnd(15)} ║`);
 	logger.info('╚═══════════════════════════════════════════╝');
 	logger.info('');
 
@@ -35,6 +38,8 @@ async function main(): Promise<void> {
 	// Initialize Redis
 	try {
 		await redisService.connect();
+		await redisService.setBotVersion(botVersion);
+		logger.info(`🤖 Bot version ${botVersion} saved to Redis`);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		logger.error(`Failed to connect to Redis: ${message}`);

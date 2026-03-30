@@ -13,7 +13,8 @@ export const REDIS_KEYS = {
 	SIGNAL: `${REDIS_PREFIX}signal`,
 	STRATEGY_CONFIG: `${REDIS_PREFIX}strategy_config`,
 	NOTIFICATION_CONFIG: `${REDIS_PREFIX}notification_config`,
-	
+	BOT_VERSION: `${REDIS_PREFIX}bot_version`,
+
 	// Mode-specific (demo/live)
 	BALANCE: (mode: string) => `${REDIS_PREFIX}${mode}:balance`,
 	STATS: (mode: string) => `${REDIS_PREFIX}${mode}:stats`,
@@ -22,7 +23,8 @@ export const REDIS_KEYS = {
 	START_TIME: (mode: string) => `${REDIS_PREFIX}${mode}:start_time`,
 	STOP_REQUESTED: (mode: string) => `${REDIS_PREFIX}${mode}:stop_requested`,
 	DAILY_STOP: (mode: string) => `${REDIS_PREFIX}${mode}:daily_stop`, // persists { stopped: boolean, date: string }
-	DAILY_PNL: (mode: string, date: string) => `${REDIS_PREFIX}${mode}:daily_pnl:${date}`,
+	DAILY_PNL: (mode: string, date: string) =>
+		`${REDIS_PREFIX}${mode}:daily_pnl:${date}`,
 	ACTIVE_TRADES: (mode: string) => `${REDIS_PREFIX}${mode}:active_trades`,
 	TRADE_PREFIX: (mode: string) => `${REDIS_PREFIX}${mode}:trade:`, // followed by trade ID
 };
@@ -31,5 +33,5 @@ export const REDIS_KEYS = {
  * Helper to get the trade key
  */
 export function getTradeKey(mode: string, tradeId: string): string {
-    return `${REDIS_KEYS.TRADE_PREFIX(mode)}${tradeId}`;
+	return `${REDIS_KEYS.TRADE_PREFIX(mode)}${tradeId}`;
 }

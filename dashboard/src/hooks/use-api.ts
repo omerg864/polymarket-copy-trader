@@ -6,6 +6,7 @@ import type {
 	TradeSummary,
 	MarketDashboardData,
 	PriceCandle,
+	BotVersions,
 } from '@shared/types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
@@ -251,5 +252,14 @@ export function useCandles(params: {
 		},
 		enabled: params.enabled !== false,
 		staleTime: 60000, // 1 minute cache
+	});
+}
+
+export function useVersions(options: { enabled?: boolean } = {}) {
+	return useQuery<BotVersions>({
+		queryKey: ['versions'],
+		queryFn: () => fetchJson('/versions'),
+		refetchInterval: 30000,
+		...options,
 	});
 }

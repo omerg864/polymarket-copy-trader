@@ -7,6 +7,7 @@ import {
 	getRedisStats,
 	getSummary,
 	getTimezones,
+	getVersions,
 	listActiveTrades,
 	listTradeHistory,
 	stopBot,
@@ -25,6 +26,7 @@ router.get('/trade-history', authGuard, asyncHandler(listTradeHistory));
 router.post('/stop', authGuard, adminGuard, asyncHandler(stopBot));
 router.get('/config', authGuard, asyncHandler(getBotConfig));
 router.get('/timezones', authGuard, getTimezones);
+router.get('/versions', authGuard, asyncHandler(getVersions));
 router.put('/config', authGuard, adminGuard, asyncHandler(updateConfig));
 router.get('/redis-stats', authGuard, asyncHandler(getRedisStats));
 router.get('/market-prices', authGuard, asyncHandler(getMarketPricesData));

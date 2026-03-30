@@ -178,4 +178,8 @@ export async function getDailyPnl(date: string): Promise<number> {
 	return parseFloat(raw) || 0;
 }
 
+export async function getBotVersion(): Promise<string | null> {
+	return redis.get(REDIS_KEYS.BOT_VERSION);
+}
+
 export { redis };
