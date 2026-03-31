@@ -316,6 +316,21 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 						: '',
 			},
 			{
+				headerName: 'Analysis BTC',
+				width: 110,
+				type: 'numericColumn',
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) =>
+					params.data
+						? params.data?.indicators?.analysisBtcPrice
+						: params.value,
+				valueFormatter: (params: any) =>
+					params.value
+						? `$${Number(params.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+						: '',
+			},
+			{
 				headerName: 'Price Beat',
 				width: 110,
 				type: 'numericColumn',

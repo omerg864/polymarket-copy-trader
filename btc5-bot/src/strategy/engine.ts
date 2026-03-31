@@ -13,6 +13,7 @@ import logger from '../utils/logger';
 import riskManager from './riskManager';
 import binanceWsService from '../services/binanceWs';
 import polymarketWsService from '../services/polymarketWs';
+import polymarketPriceWs from '../services/polymarketPriceWs';
 
 /**
  * Strategy Engine — Core trading loop:
@@ -49,6 +50,7 @@ class StrategyEngine {
 
 		await riskManager.startMonitoring();
 		await binanceWsService.start();
+		await polymarketPriceWs.start();
 		await redisService.setBotStartTime(Date.now());
 
 		this.scheduleNextCycle(0);
@@ -58,6 +60,7 @@ class StrategyEngine {
 		this.running = false;
 		riskManager.stopMonitoring();
 		binanceWsService.stop();
+		polymarketPriceWs.stop();
 		if (this.loopTimer) {
 			clearTimeout(this.loopTimer);
 			this.loopTimer = null;

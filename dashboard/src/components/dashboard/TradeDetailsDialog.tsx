@@ -206,6 +206,15 @@ export function TradeDetailsDialog({
 									</>
 								)}
 								<span className="text-zinc-500">
+									Analysis BTC Price
+								</span>
+								<span className="text-right font-mono">
+									$
+									{trade.indicators.analysisBtcPrice?.toFixed(
+										2,
+									) || '—'}
+								</span>
+								<span className="text-zinc-500">
 									Entry BTC Price
 								</span>
 								<span className="text-right font-mono">

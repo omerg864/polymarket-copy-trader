@@ -35,7 +35,10 @@ export function MarketPricesCards() {
 
 	useEffect(() => {
 		const timer = setInterval(() => {
-			if (marketPrices?.marketStartTime) {
+			if (
+				marketPrices?.marketStartTime &&
+				new Date() <= new Date(marketPrices.marketEndTime ?? 0 + 1000)
+			) {
 				const elapsed = Math.max(
 					0,
 					Math.floor(
@@ -78,7 +81,9 @@ export function MarketPricesCards() {
 
 	// Market Age Guard Calculation
 	const minAgeSeconds = (sc?.minMarketAgeMinutes || 0) * 60;
-	const isAgePass = elapsedSeconds >= minAgeSeconds;
+	const isAgePass =
+		elapsedSeconds >= minAgeSeconds &&
+		elapsedSeconds <= 5 * 60 - (sc?.minSecondsRemaining ?? 0);
 	const timeStatusColor = isAgePass ? 'text-emerald-400' : 'text-red-400';
 
 	const diff = priceToBeat !== null ? btcPrice - priceToBeat : null;
@@ -225,11 +230,10 @@ export function MarketPricesCards() {
 										</span>
 										<span
 											className={`text-sm font-bold font-mono ${
-												(confidence ?? 0) > 0.7
+												(confidence ?? 0) * 100 >
+												(sc?.minConfidence ?? 0)
 													? 'text-emerald-400'
-													: (confidence ?? 0) > 0.5
-														? 'text-amber-400'
-														: 'text-zinc-400'
+													: 'text-red-400'
 											}`}
 										>
 											{((confidence ?? 0) * 100).toFixed(

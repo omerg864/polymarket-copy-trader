@@ -9,11 +9,12 @@ class BinanceWsService {
 	private currentPrice: number | null = null;
 	private candleBuffer: Candle[] = [];
 	private readonly maxBufferSize = 500;
-	
+
 	// Multi-stream URL format: stream?streams=stream1/stream2...
-	private readonly baseUrl = 'wss://stream.binance.com:9443/stream?streams=btcusdt@ticker/btcusdt@kline_1m';
+	private readonly baseUrl =
+		'wss://stream.binance.com:9443/stream?streams=btcusdt@ticker/btcusdt@kline_1m';
 	private readonly restUrl = 'https://api.binance.com/api/v3/klines';
-	
+
 	private reconnectTimeoutMs = 1000;
 	private readonly maxReconnectTimeoutMs = 30000;
 	private isStarted = false;
@@ -23,7 +24,7 @@ class BinanceWsService {
 	async start(): Promise<void> {
 		if (this.isStarted) return;
 		this.isStarted = true;
-		
+
 		// Prime the buffer before connecting WS
 		await this.primeCandles();
 		this.connect();
@@ -49,7 +50,7 @@ class BinanceWsService {
 				volume: parseFloat(c[5] as string),
 				closeTime: c[6] as number,
 			}));
-			
+
 			logger.info(`✅ Primed ${this.candleBuffer.length} candles`);
 		} catch (err) {
 			logger.error(`❌ Error priming candles: ${err}`);
@@ -58,7 +59,7 @@ class BinanceWsService {
 
 	private connect(): void {
 		if (!this.isStarted) return;
-		
+
 		logger.info(`🔌 Connecting to Binance WebSocket (Multi-Stream)`);
 		this.ws = new WebSocket(this.baseUrl);
 
@@ -84,7 +85,9 @@ class BinanceWsService {
 
 		this.ws.on('close', () => {
 			if (this.isStarted) {
-				logger.warn(`⚠️ Binance WebSocket closed. Reconnecting in ${this.reconnectTimeoutMs}ms...`);
+				logger.warn(
+					`⚠️ Binance WebSocket closed. Reconnecting in ${this.reconnectTimeoutMs}ms...`,
+				);
 				setTimeout(() => {
 					if (!this.isStarted) return;
 					this.reconnectTimeoutMs = Math.min(
@@ -105,11 +108,11 @@ class BinanceWsService {
 		const price = parseFloat(ticker.c);
 		if (!isNaN(price)) {
 			this.currentPrice = price;
-			
+
 			const now = Date.now();
 			if (now - this.lastRedisUpdateTime > this.redisThrottleMs) {
 				this.lastRedisUpdateTime = now;
-				await redisService.setBtcPrice(price);
+				this.currentPrice = price;
 			}
 		}
 	}
@@ -127,7 +130,11 @@ class BinanceWsService {
 		};
 
 		// If the kline is for the same openTime as our last candle, update it
-		if (this.candleBuffer.length > 0 && this.candleBuffer[this.candleBuffer.length - 1].openTime === candle.openTime) {
+		if (
+			this.candleBuffer.length > 0 &&
+			this.candleBuffer[this.candleBuffer.length - 1].openTime ===
+				candle.openTime
+		) {
 			this.candleBuffer[this.candleBuffer.length - 1] = candle;
 		} else {
 			// New candle started

@@ -11,6 +11,7 @@ import logger from '../utils/logger';
 import { getStrategyConfig } from './strategyConfig';
 import NotificationManager from './notificationManager';
 import binanceWsService from './binanceWs';
+import polymarketPriceWs from './polymarketPriceWs';
 
 class PriceAnalysisService {
 	private binanceApi: AxiosInstance;
@@ -28,7 +29,7 @@ class PriceAnalysisService {
 	async getCandles(limit?: number): Promise<Candle[]> {
 		const sc = await getStrategyConfig();
 		const count = limit ?? sc.candleCount;
-		
+
 		const wsCandles = binanceWsService.getCandles(count);
 		if (wsCandles.length >= count) {
 			return wsCandles;
@@ -44,7 +45,9 @@ class PriceAnalysisService {
 				},
 			});
 
-			logger.debug(`Candles fetched via REST fallback (WS buffer only has ${wsCandles.length}/${count})`);
+			logger.debug(
+				`Candles fetched via REST fallback (WS buffer only has ${wsCandles.length}/${count})`,
+			);
 			return response.data.map((candle) => ({
 				openTime: candle[0] as number,
 				open: parseFloat(candle[1] as string),
@@ -71,33 +74,41 @@ class PriceAnalysisService {
 	 * Get current BTC price
 	 */
 	async getCurrentPrice(): Promise<number | null> {
-		const wsPrice = binanceWsService.getCurrentPrice();
-		if (wsPrice !== null) {
-			return wsPrice;
-		}
+		// 1. Try Polymarket RTDS first (new primary source)
+		const pmPrice = polymarketPriceWs.getLatestPrice();
 
-		try {
-			// Fallback to REST if WebSocket price is unavailable
-			const response = await this.binanceApi.get<{ price: string }>(
-				'/ticker/price',
-				{
-					params: { symbol: 'BTCUSDT' },
-				},
-			);
-			const price = parseFloat(response.data.price);
-			logger.debug(`BTC price fetched via REST fallback: $${price.toFixed(2)}`);
-			return price;
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : String(error);
-			logger.error(`Error fetching BTC price: ${message}`);
-			NotificationManager.handleError(
-				error,
-				'PriceAnalysis',
-				'getCurrentPrice',
-			);
-			return null;
-		}
+		return pmPrice;
+
+		// 2. Fallback to Binance WebSocket
+		// const wsPrice = binanceWsService.getCurrentPrice();
+		// if (wsPrice !== null) {
+		// 	return wsPrice;
+		// }
+
+		// try {
+		// 	// Fallback to REST if WebSocket price is unavailable
+		// 	const response = await this.binanceApi.get<{ price: string }>(
+		// 		'/ticker/price',
+		// 		{
+		// 			params: { symbol: 'BTCUSDT' },
+		// 		},
+		// 	);
+		// 	const price = parseFloat(response.data.price);
+		// 	logger.debug(
+		// 		`BTC price fetched via REST fallback: $${price.toFixed(2)}`,
+		// 	);
+		// 	return price;
+		// } catch (error) {
+		// 	const message =
+		// 		error instanceof Error ? error.message : String(error);
+		// 	logger.error(`Error fetching BTC price: ${message}`);
+		// 	NotificationManager.handleError(
+		// 		error,
+		// 		'PriceAnalysis',
+		// 		'getCurrentPrice',
+		// 	);
+		// 	return null;
+		// }
 	}
 
 	/**
@@ -139,7 +150,12 @@ class PriceAnalysisService {
 		}
 
 		const closes = candles.map((c) => c.close);
-		const currentPrice = closes[closes.length - 1];
+		const analysisBtcPrice = closes[closes.length - 1];
+		const currentPrice = await this.getCurrentPrice();
+
+		if (!currentPrice) {
+			throw new Error('Failed to get current BTC price');
+		}
 
 		// === Indicator calculations ===
 
@@ -176,7 +192,7 @@ class PriceAnalysisService {
 		const vwap =
 			vwapValues.length > 0
 				? vwapValues[vwapValues.length - 1]
-				: currentPrice;
+				: analysisBtcPrice;
 
 		// Short-term EMA (3 vs 8)
 		const ema3Values = EMA.calculate({ values: closes, period: 3 });
@@ -184,11 +200,11 @@ class PriceAnalysisService {
 		const ema3 =
 			ema3Values.length > 0
 				? ema3Values[ema3Values.length - 1]
-				: currentPrice;
+				: analysisBtcPrice;
 		const ema8 =
 			ema8Values.length > 0
 				? ema8Values[ema8Values.length - 1]
-				: currentPrice;
+				: analysisBtcPrice;
 
 		// Bollinger Bands
 		const bbValues = BollingerBands.calculate({
@@ -276,10 +292,10 @@ class PriceAnalysisService {
 
 		// Factor 5: VWAP (weight: 2)
 		maxScore += 2;
-		if (currentPrice > vwap) {
-			bullScore += currentPrice > vwap * 1.0005 ? 2 : 1;
-		} else if (currentPrice < vwap) {
-			bearScore += currentPrice < vwap * 0.9995 ? 2 : 1;
+		if (analysisBtcPrice > vwap) {
+			bullScore += analysisBtcPrice > vwap * 1.0005 ? 2 : 1;
+		} else if (analysisBtcPrice < vwap) {
+			bearScore += analysisBtcPrice < vwap * 0.9995 ? 2 : 1;
 		}
 
 		// Factor 6: StochRSI (weight: 2)
@@ -297,13 +313,13 @@ class PriceAnalysisService {
 		// Factor 7: Bollinger Band (weight: 2)
 		if (bb) {
 			maxScore += 2;
-			if (currentPrice < bb.lower) {
+			if (analysisBtcPrice < bb.lower) {
 				bullScore += 2;
-			} else if (currentPrice <= bb.lower * 1.0002) {
+			} else if (analysisBtcPrice <= bb.lower * 1.0002) {
 				bullScore += 1;
-			} else if (currentPrice > bb.upper) {
+			} else if (analysisBtcPrice > bb.upper) {
 				bearScore += 2;
-			} else if (currentPrice >= bb.upper * 0.9998) {
+			} else if (analysisBtcPrice >= bb.upper * 0.9998) {
 				bearScore += 1;
 			}
 		}
@@ -339,13 +355,17 @@ class PriceAnalysisService {
 
 		const sc = await getStrategyConfig();
 		const rsi14Pass = rsi14 >= sc.minRSI14 && rsi14 <= sc.maxRSI14;
-		const stochRsiPass = stochRsi.k >= sc.minStochRSI && stochRsi.k <= sc.maxStochRSI;
-		
+		const stochRsiPass =
+			stochRsi.k >= sc.minStochRSI && stochRsi.k <= sc.maxStochRSI;
+
 		let bbPositionPass = true;
 		let bbPositionVal = 0;
 		if (bb && bb.upper !== bb.lower) {
-			bbPositionVal = ((currentPrice - bb.lower) / (bb.upper - bb.lower)) * 100;
-			bbPositionPass = bbPositionVal >= sc.minBBPosition && bbPositionVal <= sc.maxBBPosition;
+			bbPositionVal =
+				((analysisBtcPrice - bb.lower) / (bb.upper - bb.lower)) * 100;
+			bbPositionPass =
+				bbPositionVal >= sc.minBBPosition &&
+				bbPositionVal <= sc.maxBBPosition;
 		}
 
 		// Entry Price Pass (BTC vs refPrice + offset)
@@ -353,7 +373,9 @@ class PriceAnalysisService {
 		if (priceToBeat != null) {
 			const offset = sc.btcPriceOffset || 0;
 			const threshold =
-				direction === 'UP' ? priceToBeat + offset : priceToBeat - offset;
+				direction === 'UP'
+					? priceToBeat + offset
+					: priceToBeat - offset;
 			entryPricePass =
 				direction === 'UP'
 					? currentPrice >= threshold
@@ -364,7 +386,9 @@ class PriceAnalysisService {
 		let marketPricePass = true;
 		if (market) {
 			const mPrice =
-				direction === 'UP' ? market.upPrice || 0 : market.downPrice || 0;
+				direction === 'UP'
+					? market.upPrice || 0
+					: market.downPrice || 0;
 			marketPricePass =
 				mPrice >= sc.minEntryPrice && mPrice <= sc.maxEntryPrice;
 		}
@@ -373,8 +397,7 @@ class PriceAnalysisService {
 		let timeFramePass = true;
 		let timeRemaining = 'N/A';
 		if (market && market.endTime) {
-			const msUntilEnd =
-				new Date(market.endTime).getTime() - Date.now();
+			const msUntilEnd = new Date(market.endTime).getTime() - Date.now();
 			const totalSeconds = Math.max(0, Math.floor(msUntilEnd / 1000));
 			const minutes = Math.floor(totalSeconds / 60);
 			const seconds = totalSeconds % 60;
@@ -387,6 +410,7 @@ class PriceAnalysisService {
 			confidence,
 			indicators: {
 				currentPrice,
+				analysisBtcPrice,
 				priceToBeat: priceToBeat || 'N/A',
 				distFromRef: priceToBeat
 					? (

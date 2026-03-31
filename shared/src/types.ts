@@ -56,6 +56,7 @@ export interface Trade {
 	confidence?: number;
 	indicators?: {
 		currentPrice: number;
+		analysisBtcPrice: number;
 		priceToBeat: number | string;
 		distFromRef: string;
 		vwap?: string;
