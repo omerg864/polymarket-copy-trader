@@ -40,11 +40,16 @@ class PolymarketPriceWsService {
 			this.startHeartbeat();
 		});
 
-		this.ws.on('message', (data: string) => {
-			const message = data.toString();
-			if (message === 'PONG') return; // Ignore heartbeat responses
-			logger.debug(`Polymarket RTDS WebSocket message: ${message}`);
+		this.ws.on('message', (data: any) => {
 			try {
+				const message = data.toString();
+				if (!message) {
+					logger.debug('Polymarket RTDS received empty message');
+					return;
+				}
+				if (message === 'PONG') return;
+
+				logger.debug(`Polymarket RTDS WebSocket message: ${message}`);
 				const parsed = JSON.parse(message);
 
 				// Support both 'crypto_prices' and 'crypto_prices_chainlink'
@@ -60,16 +65,15 @@ class PolymarketPriceWsService {
 					if (typeof value === 'number') {
 						this.latestBtcPrice = value;
 						this.lastUpdateTimestamp = Date.now();
-						// Keep at debug level to avoid spam but visible for investigation
 						logger.debug(
 							`Polymarket RTDS BTC price: $${value} (${parsed.payload.symbol})`,
 						);
 					}
 				}
 			} catch (err) {
-				// Safely ignore non-JSON messages
-				logger.error(`❌ Polymarket RTDS WebSocket error: ${err}`);
-				this.stop();
+				const errMsg = err instanceof Error ? err.message : String(err);
+				logger.error(`❌ Polymarket RTDS message handle error: ${errMsg}`);
+				// DO NOT call this.stop() here as it kills the service on a single bad message
 			}
 		});
 
@@ -102,7 +106,6 @@ class PolymarketPriceWsService {
 			logger.info('📡 Subscribing to Polymarket BTC topic(s)');
 
 			const subscriptions = [
-				{ topic: 'crypto_prices', type: 'update' },
 				{ topic: 'crypto_prices_chainlink', type: 'update' },
 			];
 
@@ -134,16 +137,54 @@ class PolymarketPriceWsService {
 
 	/**
 	 * Returns the latest BTC price if it's fresh (last 2 seconds).
+	 * Also checks a watchdog: if no data for 30 seconds, it forces a reconnect.
 	 */
 	public getLatestPrice(): number | null {
-		if (!this.latestBtcPrice) return null;
+		if (!this.latestBtcPrice || this.lastUpdateTimestamp === 0) return null;
+
+		const now = Date.now();
+		const ageMs = now - this.lastUpdateTimestamp;
+
+		// Watchdog: If we haven't received a price in 30 seconds, the socket might be a "zombie".
+		// We force a reconnect to try and restore the data flow.
+		if (ageMs > 30000) {
+			logger.warn(
+				`🚨 No Polymarket BTC price received for 30s (last was ${ageMs / 1000}s ago). Force reconnecting...`,
+			);
+			this.forceReconnect();
+			return null;
+		}
 
 		const freshnessMs = 2000;
-		if (Date.now() - this.lastUpdateTimestamp > freshnessMs) {
+		if (ageMs > freshnessMs) {
+			// Transparently return null if slightly stale, but don't reconnect yet.
+			// The caller (PriceAnalysisService) will handle the null.
 			return null;
 		}
 
 		return this.latestBtcPrice;
+	}
+
+	/**
+	 * Closes the current connection and triggers a fresh connect().
+	 */
+	private forceReconnect(): void {
+		if (this.isConnecting && this.ws?.readyState === WebSocket.CONNECTING)
+			return;
+
+		logger.info('🔄 Forcing Polymarket RTDS reconnection...');
+		this.isConnecting = false; // Reset to allow connect() to proceed
+		if (this.ws) {
+			this.ws.removeAllListeners();
+			try {
+				this.ws.terminate();
+			} catch (e) {
+				// ignore
+			}
+			this.ws = null;
+		}
+		this.stopHeartbeat();
+		this.connect();
 	}
 
 	public stop(): void {

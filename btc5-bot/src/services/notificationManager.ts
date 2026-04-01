@@ -2,7 +2,6 @@ import {
 	BotStats,
 	NotificationType,
 	REDIS_KEYS,
-	calculateTodayPnl,
 	type NotificationConfig,
 	type Trade,
 } from '@shared/index';
