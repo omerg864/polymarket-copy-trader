@@ -21,6 +21,7 @@ import { DirectionBadge, PnlBadge, StatusBadge } from './badges';
 import { TradeDetailsDialog } from './TradeDetailsDialog';
 import { Filters, DEFAULT_FILTERS, type FilterValues } from '../shared/Filters';
 import { DateTime } from 'luxon';
+import { formatGlobalDateTime } from '@/lib/utils';
 
 type SortField = 'time' | 'pnl' | 'confidence' | 'cost';
 type SortDir = 'asc' | 'desc';
@@ -36,8 +37,7 @@ export function TradeHistoryTable() {
 	const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
 
 	const formatWithTimezone = (iso: string | undefined) => {
-		if (!iso) return '—';
-		return DateTime.fromISO(iso).setZone(timezone).toFormat('MMM d, HH:mm:ss');
+		return formatGlobalDateTime(iso, timezone);
 	};
 
 	const toggleSort = useMemoizedFn((field: SortField) => {

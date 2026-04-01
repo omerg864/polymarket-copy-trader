@@ -16,6 +16,7 @@ import { ActionsDropdown } from './ActionsDropdown';
 import { NotificationConfigDialog } from './NotificationConfigDialog';
 import { StrategyConfigDialog } from './StrategyConfigDialog';
 import RedisStats from './RedisStats';
+import { formatBtcPrice, formatGlobalDateTime } from '@/lib/utils';
 
 export function Header() {
 	const { data: summary, refetch: refetchSummary } = useSummary();
@@ -59,8 +60,8 @@ export function Header() {
 			Confidence: t.confidence
 				? `${(t.confidence * 100).toFixed(1)}%`
 				: '',
-			'Price to Beat': t.priceToBeat ?? '',
-			'BTC Price': t.indicators?.currentPrice ?? '',
+			'Price to Beat': t.priceToBeat ? formatBtcPrice(t.priceToBeat) : '',
+			'BTC Price': t.indicators?.currentPrice ? formatBtcPrice(t.indicators?.currentPrice) : '',
 			'Dist From Ref': t.indicators?.distFromRef ?? '',
 			VWAP: t.indicators?.vwap ?? '',
 			'VWAP Distance %': t.indicators?.vwapDistancePct ?? '',
@@ -76,14 +77,14 @@ export function Header() {
 			'Momentum (3m)': t.indicators?.momentum3 ?? '',
 			Volatility: t.indicators?.volatility ?? '',
 			'Market Start': t.startTime
-				? new Date(t.startTime).toLocaleString()
+				? formatGlobalDateTime(t.startTime, config?.timezone || 'Asia/Jerusalem')
 				: '',
-			'Market End': t.endTime ? new Date(t.endTime).toLocaleString() : '',
+			'Market End': t.endTime ? formatGlobalDateTime(t.endTime, config?.timezone || 'Asia/Jerusalem') : '',
 			'Opened At': t.enteredAt
-				? new Date(t.enteredAt).toLocaleString()
+				? formatGlobalDateTime(t.enteredAt, config?.timezone || 'Asia/Jerusalem')
 				: '',
 			'Closed At': t.closedAt
-				? new Date(t.closedAt).toLocaleString()
+				? formatGlobalDateTime(t.closedAt, config?.timezone || 'Asia/Jerusalem')
 				: '',
 		}));
 		const wsTrades = XLSX.utils.json_to_sheet(tradesData);

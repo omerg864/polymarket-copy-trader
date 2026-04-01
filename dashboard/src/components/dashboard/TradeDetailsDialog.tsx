@@ -14,7 +14,10 @@ import {
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { useConfig } from '@/hooks/use-api';
-import { DateTime } from 'luxon';
+import {
+	formatBtcPrice,
+	formatGlobalDateTime,
+} from '@/lib/utils';
 
 interface TradeDetailsDialogProps {
 	trade: Trade | null;
@@ -38,8 +41,7 @@ export function TradeDetailsDialog({
 	};
 
 	const formatWithTimezone = (iso: string | undefined) => {
-		if (!iso) return '—';
-		return DateTime.fromISO(iso).setZone(timezone).toFormat('MMM d, HH:mm:ss');
+		return formatGlobalDateTime(iso, timezone);
 	};
 
 	return (
@@ -172,14 +174,7 @@ export function TradeDetailsDialog({
 											Exit BTC Price
 										</span>
 										<span className="text-right font-mono text-zinc-300">
-											$
-											{trade.exitBtcPrice.toLocaleString(
-												undefined,
-												{
-													minimumFractionDigits: 2,
-													maximumFractionDigits: 2,
-												},
-											)}
+											${formatBtcPrice(trade.exitBtcPrice)}
 										</span>
 										<span className="text-zinc-500">
 											BTC Diff
@@ -198,10 +193,10 @@ export function TradeDetailsDialog({
 											0
 												? '+'
 												: ''}
-											{(
+											{formatBtcPrice(
 												trade.exitBtcPrice -
-												trade.priceToBeat
-											).toFixed(2)}
+													trade.priceToBeat,
+											)}
 										</span>
 									</>
 								)}
@@ -209,27 +204,43 @@ export function TradeDetailsDialog({
 									Analysis BTC Price
 								</span>
 								<span className="text-right font-mono">
-									$
-									{trade.indicators.analysisBtcPrice?.toFixed(
-										2,
-									) || '—'}
+									${formatBtcPrice(trade.indicators.analysisBtcPrice)}
 								</span>
 								<span className="text-zinc-500">
 									Entry BTC Price
 								</span>
 								<span className="text-right font-mono">
-									$
-									{trade.indicators.currentPrice?.toFixed(
-										2,
-									) || '—'}
+									${formatBtcPrice(trade.indicators.currentPrice)}
+								</span>
+								<span className="text-zinc-500">
+									Analysis BTC Diff
+								</span>
+								<span
+									className={`text-right font-mono ${
+										trade.indicators.currentPrice -
+											trade.indicators.analysisBtcPrice >=
+										0
+											? 'text-emerald-400'
+											: 'text-red-400'
+									}`}
+								>
+									{trade.indicators.currentPrice -
+										trade.indicators.analysisBtcPrice >=
+									0
+										? '+'
+										: ''}
+									{formatBtcPrice(
+										trade.indicators.currentPrice -
+											trade.indicators.analysisBtcPrice,
+									)}
 								</span>
 								<span className="text-zinc-500">
 									Price to Beat
 								</span>
 								<span className="text-right font-mono">
-									{trade.indicators.priceToBeat === 'N/A'
+									{trade.indicators.priceToBeat === 'N/A' || !trade.indicators.priceToBeat
 										? 'N/A'
-										: `$${Number(trade.indicators.priceToBeat).toFixed(2)}`}
+										: `$${formatBtcPrice(trade.indicators.priceToBeat)}`}
 								</span>
 								<span className="text-zinc-500">
 									Entry BTC Diff
@@ -237,7 +248,9 @@ export function TradeDetailsDialog({
 								<span
 									className={`text-right font-mono ${
 										trade.indicators.currentPrice -
-											Number(trade.indicators.priceToBeat) >=
+											Number(
+												trade.indicators.priceToBeat,
+											) >=
 										0
 											? 'text-emerald-400'
 											: 'text-red-400'
@@ -248,10 +261,10 @@ export function TradeDetailsDialog({
 									0
 										? '+'
 										: ''}
-									{(
+											{formatBtcPrice(
 										trade.indicators.currentPrice -
-										Number(trade.indicators.priceToBeat)
-									).toFixed(2)}
+											Number(trade.indicators.priceToBeat),
+									)}
 								</span>
 								<span className="text-zinc-500">
 									Dist From Ref

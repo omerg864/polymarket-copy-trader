@@ -7,19 +7,8 @@ import {
 } from '@/components/ui/card';
 import { useActiveTrades, useMarketPrices, useConfig } from '@/hooks/use-api';
 import { MarketOutcomeBadge } from './badges';
+import { formatBtcPrice, formatGlobalTime } from '@/lib/utils';
 
-const fmtPrice = (n: number | undefined) =>
-	n?.toLocaleString(undefined, {
-		minimumFractionDigits: 2,
-		maximumFractionDigits: 2,
-	});
-
-const fmtTime = (ts: number) =>
-	new Date(ts).toLocaleTimeString(undefined, {
-		hour: '2-digit',
-		minute: '2-digit',
-		second: '2-digit',
-	});
 
 const formatElapsed = (seconds: number) => {
 	const mins = Math.floor(seconds / 60);
@@ -105,7 +94,7 @@ export function MarketPricesCards() {
 						<p
 							className={`text-2xl font-bold font-mono ${priceColor}`}
 						>
-							${fmtPrice(btcPrice)}
+							${formatBtcPrice(btcPrice)}
 						</p>
 						<div className="flex flex-col mt-2 gap-1.5">
 							<div className="flex justify-between items-center text-[10px]">
@@ -113,7 +102,7 @@ export function MarketPricesCards() {
 									Updated
 								</span>
 								<span className="text-zinc-400 font-mono italic">
-									{updatedAt ? fmtTime(updatedAt) : '—'}
+									{updatedAt ? formatGlobalTime(updatedAt, sc?.timezone || 'Asia/Jerusalem') : '—'}
 								</span>
 							</div>
 							{diff !== null && (
@@ -124,11 +113,7 @@ export function MarketPricesCards() {
 									<span
 										className={`font-mono font-bold ${priceColor}`}
 									>
-										{diff >= 0 ? '+' : ''}$
-										{diff.toLocaleString(undefined, {
-											minimumFractionDigits: 2,
-											maximumFractionDigits: 2,
-										})}{' '}
+										{diff >= 0 ? '+' : ''}${formatBtcPrice(diff)}{' '}
 										({diff >= 0 ? '+' : ''}
 										{pctDiff?.toFixed(2)}%)
 									</span>
@@ -147,7 +132,7 @@ export function MarketPricesCards() {
 						</CardHeader>
 						<CardContent>
 							<p className="text-2xl font-bold font-mono text-zinc-300">
-								${fmtPrice(priceToBeat)}
+								${formatBtcPrice(priceToBeat)}
 							</p>
 							<div className="flex flex-col mt-0.5">
 								<p className="text-[10px] text-zinc-500 truncate leading-tight">
@@ -214,7 +199,7 @@ export function MarketPricesCards() {
 								</CardDescription>
 								{indicatorsUpdatedAt && (
 									<p className="text-[10px] text-zinc-500">
-										Updated: {fmtTime(indicatorsUpdatedAt)}
+										Updated: {formatGlobalTime(indicatorsUpdatedAt, sc?.timezone || 'Asia/Jerusalem')}
 									</p>
 								)}
 							</div>
@@ -293,10 +278,7 @@ export function MarketPricesCards() {
 								<p
 									className={`font-mono font-semibold ${getValColor(indicators.entryPricePass)}`}
 								>
-									$
-									{Number(
-										indicators.currentPrice,
-									).toLocaleString()}
+									${formatBtcPrice(indicators.currentPrice)}
 								</p>
 							</div>
 							<div className="space-y-1">

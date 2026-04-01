@@ -33,6 +33,10 @@ import {
 	PnlBadge,
 } from '../dashboard/badges';
 import { useConfig } from '@/hooks/use-api';
+import {
+	formatBtcPrice,
+	formatGlobalDateTime,
+} from '@/lib/utils';
 
 const myTheme = themeQuartz.withPart(colorSchemeDarkBlue);
 
@@ -63,8 +67,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 	const [pinnedBottomRowData, setPinnedBottomRowData] = useState<any[]>([]);
 
 	const formatWithTimezone = useCallback((iso: string | undefined) => {
-		if (!iso) return '—';
-		return DateTime.fromISO(iso).setZone(timezone).toFormat('MMM d, HH:mm:ss');
+		return formatGlobalDateTime(iso, timezone);
 	}, [timezone]);
 
 	// Handle total recalculation when filters change
@@ -311,9 +314,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 						? params.data?.indicators?.currentPrice
 						: params.value,
 				valueFormatter: (params: any) =>
-					params.value
-						? `$${Number(params.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-						: '',
+					params.value != null ? `$${formatBtcPrice(params.value)}` : '',
 			},
 			{
 				headerName: 'Analysis BTC',
@@ -326,9 +327,31 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 						? params.data?.indicators?.analysisBtcPrice
 						: params.value,
 				valueFormatter: (params: any) =>
-					params.value
-						? `$${Number(params.value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-						: '',
+					params.value != null ? `$${formatBtcPrice(params.value)}` : '',
+			},
+			{
+				headerName: 'Analysis BTC Diff',
+				width: 130,
+				type: 'numericColumn',
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) => {
+					if (!params.data) return params.value;
+					const current = Number(params.data?.indicators?.currentPrice);
+					const analysis = Number(params.data?.indicators?.analysisBtcPrice);
+					if (isNaN(current) || isNaN(analysis)) return null;
+					return current - analysis;
+				},
+				cellRenderer: (params: any) => {
+					const val = params.value;
+					if (val === null || val === undefined) return '';
+					return (
+						<div className={val >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+							{val >= 0 ? '+' : ''}
+							{formatBtcPrice(val)}
+						</div>
+					);
+				},
 			},
 			{
 				headerName: 'Price Beat',
@@ -344,9 +367,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 						: Number(val);
 				},
 				valueFormatter: (params: any) =>
-					params.value
-						? `$${params.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-						: '',
+					params.value != null ? `$${formatBtcPrice(params.value)}` : '',
 			},
 			{
 				headerName: 'Entry Diff',
@@ -374,7 +395,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 							}
 						>
 							{val >= 0 ? '+' : ''}
-							{Number(val).toFixed(2)}
+							{formatBtcPrice(val)}
 						</div>
 					);
 				},
@@ -387,9 +408,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				aggFunc: 'avg',
 				filter: 'agNumberColumnFilter',
 				valueFormatter: (params: any) =>
-					params.value
-						? `$${params.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-						: '',
+					params.value != null ? `$${formatBtcPrice(params.value)}` : '',
 			},
 			{
 				headerName: 'Exit Diff',
@@ -414,7 +433,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 							}
 						>
 							{val >= 0 ? '+' : ''}
-							{Number(val).toFixed(2)}
+							{formatBtcPrice(val)}
 						</div>
 					);
 				},

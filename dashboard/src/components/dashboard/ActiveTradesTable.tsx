@@ -18,7 +18,7 @@ import type { Trade } from '@/types';
 import { useState } from 'react';
 import { DirectionBadge } from './badges';
 import { TradeDetailsDialog } from './TradeDetailsDialog';
-import { DateTime } from 'luxon';
+import { formatGlobalDateTime } from '@/lib/utils';
 
 export function ActiveTradesTable() {
 	const { data: activeTrades } = useActiveTrades();
@@ -27,8 +27,7 @@ export function ActiveTradesTable() {
 	const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
 
 	const formatWithTimezone = (iso: string | undefined) => {
-		if (!iso) return '—';
-		return DateTime.fromISO(iso).setZone(timezone).toFormat('MMM d, HH:mm:ss');
+		return formatGlobalDateTime(iso, timezone);
 	};
 
 	if (!activeTrades || activeTrades.length === 0) return null;
