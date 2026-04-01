@@ -14,6 +14,7 @@ export const REDIS_KEYS = {
 	STRATEGY_CONFIG: `${REDIS_PREFIX}strategy_config`,
 	NOTIFICATION_CONFIG: `${REDIS_PREFIX}notification_config`,
 	BOT_VERSION: `${REDIS_PREFIX}bot_version`,
+	THROTTLE: (type: string, hash: string) => `${REDIS_PREFIX}throttle:${type}:${hash}`,
 
 	// Mode-specific (demo/live)
 	BALANCE: (mode: string) => `${REDIS_PREFIX}${mode}:balance`,

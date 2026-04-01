@@ -43,7 +43,7 @@ class PolymarketPriceWsService {
 		this.ws.on('message', (data: string) => {
 			const message = data.toString();
 			if (message === 'PONG') return; // Ignore heartbeat responses
-
+			logger.debug(`Polymarket RTDS WebSocket message: ${message}`);
 			try {
 				const parsed = JSON.parse(message);
 

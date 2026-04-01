@@ -1,11 +1,13 @@
 import {
 	BotStats,
 	NotificationType,
+	REDIS_KEYS,
+	calculateTodayPnl,
 	type NotificationConfig,
 	type Trade,
-} from '@shared/types';
-import { calculateTodayPnl } from '@shared/utils';
+} from '@shared/index';
 import { DateTime } from 'luxon';
+import crypto from 'crypto';
 import config from '../config';
 import logger from '../utils/logger';
 import redisService from './redis';
@@ -27,6 +29,24 @@ export class NotificationManager {
 		// Run in background
 		(async () => {
 			try {
+				// Throttle logic: prevent sending the same notification within 3 minutes
+				const dataHash = crypto
+					.createHash('md5')
+					.update(JSON.stringify(data))
+					.digest('hex');
+				const throttleKey = REDIS_KEYS.THROTTLE(type, dataHash);
+				const isNew = await redisService.checkThrottle(
+					throttleKey,
+					180,
+				);
+
+				if (!isNew) {
+					logger.debug(
+						`Throttling duplicate notification: ${type} (${dataHash.slice(0, 8)})`,
+					);
+					return;
+				}
+
 				const response = await fetch(
 					`${config.apiUrl}/api/notifications/notify`,
 					{

@@ -347,6 +347,16 @@ class RedisService {
 		const data = await client.get(REDIS_KEYS.SIGNAL);
 		return data ? JSON.parse(data) : null;
 	}
+
+	/**
+	 * Check if a throttle key exists. If not, set it with the given TTL.
+	 * Returns true if the key was set (not throttled), false if it already exists (throttled).
+	 */
+	async checkThrottle(key: string, ttlSeconds: number): Promise<boolean> {
+		const client = this.getClient();
+		const result = await client.set(key, '1', 'EX', ttlSeconds, 'NX');
+		return result === 'OK';
+	}
 }
 
 const redisService = new RedisService();
