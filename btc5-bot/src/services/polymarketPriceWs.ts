@@ -68,6 +68,8 @@ class PolymarketPriceWsService {
 				}
 			} catch (err) {
 				// Safely ignore non-JSON messages
+				logger.error(`❌ Polymarket RTDS WebSocket error: ${err}`);
+				this.stop();
 			}
 		});
 
