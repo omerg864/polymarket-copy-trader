@@ -256,7 +256,10 @@ class QueueService {
 		}
 
 		const sc = await getStrategyConfig();
-		const todayStr = DateTime.now().setZone(sc.timezone).toISODate() || '';
+		const baseDate = trade.enteredAt
+			? DateTime.fromISO(trade.enteredAt)
+			: DateTime.now();
+		const todayStr = baseDate.setZone(sc.timezone).toISODate() || '';
 
 		const totalFee = (trade.fee || 0) + sellFee;
 		trade.pnl = revenue - trade.cost - totalFee;
@@ -290,8 +293,8 @@ class QueueService {
 		await redisService.setBotBalance(newBalance);
 
 		// Increment daily PnL counter (Optimized)
-		if (trade.pnl) {
-			await redisService.incrementDailyPnl(todayStr, trade.pnl);
+		if (trade.pnl !== undefined) {
+			await redisService.incrementDailyPnl(todayStr, trade.pnl, trade.pnl >= 0);
 		}
 
 		const stats = await redisService.getBotStats();

@@ -3,6 +3,9 @@ export interface TradeSummary {
 	initialBalance: number;
 	totalPnl: number;
 	todayPnl: number;
+	todayWins?: number;
+	todayLosses?: number;
+	todayTrades?: number;
 	totalFees: number;
 	totalTrades: number;
 	wins: number;

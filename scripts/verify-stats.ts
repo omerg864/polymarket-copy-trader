@@ -40,10 +40,15 @@ async function main() {
 	let computedLosses = 0;
 	let computedTotalTrades = 0;
 	let sumTodayPnl = 0;
+	let sumTodayWins = 0;
+	let sumTodayLosses = 0;
+	const dailyStatsMap = new Map<
+		string,
+		{ pnl: number; wins: number; losses: number }
+	>();
 
 	const timezone = sc.timezone || 'Asia/Jerusalem';
 	const todayStr = DateTime.now().setZone(timezone).toISODate() || '';
-	const startOfToday = DateTime.now().setZone(timezone).startOf('day');
 
 	// Active trades
 	const activeIds = await redis.smembers(`${PREFIX}${MODE}:active_trades`);
@@ -102,30 +107,41 @@ async function main() {
 			);
 		}
 
+		const pnl = t.pnl ?? 0;
 		sumFees += t.fee ?? 0;
-		sumPnl += t.pnl ?? 0;
+		sumPnl += pnl;
 		computedTotalTrades += 1;
-		if ((t.pnl ?? 0) >= 0) {
+		if (pnl >= 0) {
 			computedWins += 1;
 		} else {
 			computedLosses += 1;
 		}
 
-		// Calculate today's PnL
+		// Calculate daily stats (PnL, Wins, Losses)
 		if (t.enteredAt) {
-			const enteredAt = DateTime.fromISO(t.enteredAt);
-			if (enteredAt >= startOfToday) {
-				sumTodayPnl += t.pnl ?? 0;
+			const dateStr =
+				DateTime.fromISO(t.enteredAt).setZone(timezone).toISODate() ||
+				'';
+			const dStats = dailyStatsMap.get(dateStr) || {
+				pnl: 0,
+				wins: 0,
+				losses: 0,
+			};
+			dStats.pnl += pnl;
+			if (pnl >= 0) dStats.wins += 1;
+			else dStats.losses += 1;
+			dailyStatsMap.set(dateStr, dStats);
+
+			if (dateStr === todayStr) {
+				sumTodayPnl = dStats.pnl;
+				sumTodayWins = dStats.wins;
+				sumTodayLosses = dStats.losses;
 			}
 		}
 	}
 
 	// Expected balance:
-	// - Buy deducts (cost + buyFee) from balance
-	// - Sell adds (revenue - sellFee) to balance
-	// - Resolve adds revenue (no sell fee)
-	// Since pnl = revenue - cost - totalFee, for closed trades the net effect is pnl + cost + fee - cost - fee...
-	// Simpler: balance = initialBalance + totalPnl(closed) - activeCost - activeFee
+	// balance = initialBalance + totalPnl(closed) - activeCost - activeFee
 	const expectedBalance =
 		initialBalance + sumPnl - activeCostTotal - activeFeeTotal;
 
@@ -163,9 +179,24 @@ async function main() {
 	console.log(`  totalTrades: ${stats.totalTrades}`);
 
 	const dailyPnlKey = `${PREFIX}${MODE}:daily_pnl:${todayStr}`;
-	const dailyPnlRaw = await redis.get(dailyPnlKey);
-	const todayPnl = dailyPnlRaw ? parseFloat(dailyPnlRaw) : 0;
-	console.log(`  todayPnl:    ${todayPnl} (${dailyPnlKey})`);
+	const dailyType = await redis.type(dailyPnlKey);
+	let todayPnL = 0;
+	let todayWins = 0;
+	let todayLosses = 0;
+
+	if (dailyType === 'hash') {
+		const h = await redis.hgetall(dailyPnlKey);
+		todayPnL = parseFloat(h.pnl) || 0;
+		todayWins = parseInt(h.wins, 10) || 0;
+		todayLosses = parseInt(h.losses, 10) || 0;
+	} else if (dailyType === 'string') {
+		const raw = await redis.get(dailyPnlKey);
+		todayPnL = raw ? parseFloat(raw) : 0;
+	}
+
+	console.log(
+		`  todayPnl:    ${todayPnL} (W: ${todayWins}, L: ${todayLosses}) [Type: ${dailyType}]`,
+	);
 	console.log();
 
 	const feesMatch = Math.abs((stats.totalFees ?? 0) - sumFees) < 0.001;
@@ -176,11 +207,16 @@ async function main() {
 	const winsMatch = (stats.wins ?? 0) === computedWins;
 	const lossesMatch = (stats.losses ?? 0) === computedLosses;
 	const tradesMatch = (stats.totalTrades ?? 0) === computedTotalTrades;
-	const todayPnlMatch = Math.abs(todayPnl - sumTodayPnl) < 0.001;
+
+	const todayPnlMatch = Math.abs(todayPnL - sumTodayPnl) < 0.001;
+	const todayWinsMatch = todayWins === sumTodayWins;
+	const todayLossesMatch = todayLosses === sumTodayLosses;
 
 	console.log(`Fees match:      ${feesMatch ? '✅' : '❌'}`);
 	console.log(`PnL match:       ${pnlMatch ? '✅' : '❌'}`);
 	console.log(`Today PnL match: ${todayPnlMatch ? '✅' : '❌'}`);
+	console.log(`Today Wins match: ${todayWinsMatch ? '✅' : '❌'}`);
+	console.log(`Today Losses match:${todayLossesMatch ? '✅' : '❌'}`);
 	console.log(`Balance match:   ${balMatch ? '✅' : '❌'}`);
 	console.log(`Wins match:      ${winsMatch ? '✅' : '❌'}`);
 	console.log(`Losses match:    ${lossesMatch ? '✅' : '❌'}`);
@@ -194,9 +230,12 @@ async function main() {
 		!winsMatch ||
 		!lossesMatch ||
 		!tradesMatch ||
-		!todayPnlMatch;
+		!todayPnlMatch ||
+		!todayWinsMatch ||
+		!todayLossesMatch ||
+		dailyType !== 'hash';
 
-	const FIX = true;
+	const FIX = false;
 
 	if (needsFix) {
 		if (!FIX) {
@@ -220,15 +259,26 @@ async function main() {
 			await redis.set(balanceKey, fixedBalance.toString());
 			console.log(`  Balance → $${fixedBalance}`);
 
-			if (!todayPnlMatch) {
-				const fixedTodayPnl = Math.round(sumTodayPnl * 10000) / 10000;
-				await redis.set(dailyPnlKey, fixedTodayPnl.toString());
-				console.log(`  todayPnl → $${fixedTodayPnl}`);
+			// Fix all days found in history
+			for (const [date, dStats] of dailyStatsMap.entries()) {
+				const key = `${PREFIX}${MODE}:daily_pnl:${date}`;
+				// Clear string if exists
+				const t = await redis.type(key);
+				if (t === 'string') await redis.del(key);
+
+				await redis.hset(key, {
+					pnl: Math.round(dStats.pnl * 10000) / 10000,
+					wins: dStats.wins,
+					losses: dStats.losses,
+				});
+				await redis.expire(key, 60 * 60 * 24 * 3);
+				console.log(
+					`  daily_stats [${date}] → PnL: $${dStats.pnl.toFixed(2)}, W: ${dStats.wins}, L: ${dStats.losses}`,
+				);
 			}
 
 			console.log('\n✅ All fixed.');
 		}
-	} else {
 		console.log('\n✅ Everything matches. No fix needed.');
 	}
 

@@ -228,15 +228,40 @@ class RedisService {
 	async getDailyPnl(date: string): Promise<number> {
 		const client = this.getClient();
 		const key = REDIS_KEYS.DAILY_PNL(this.mode, date);
-		const raw = await client.get(key);
+		const raw = await client.hget(key, 'pnl');
 		if (raw === null) return 0;
 		return parseFloat(raw) || 0;
 	}
 
-	async incrementDailyPnl(date: string, pnl: number): Promise<void> {
+	async getDailyStats(
+		date: string,
+	): Promise<{ pnl: number; wins: number; losses: number }> {
 		const client = this.getClient();
 		const key = REDIS_KEYS.DAILY_PNL(this.mode, date);
-		await client.incrbyfloat(key, pnl);
+		const data = await client.hgetall(key);
+		return {
+			pnl: parseFloat(data.pnl) || 0,
+			wins: parseInt(data.wins, 10) || 0,
+			losses: parseInt(data.losses, 10) || 0,
+		};
+	}
+
+	async incrementDailyPnl(
+		date: string,
+		pnl: number,
+		won: boolean,
+	): Promise<void> {
+		const client = this.getClient();
+		const key = REDIS_KEYS.DAILY_PNL(this.mode, date);
+
+		// If it's a string (old format), remove it
+		const type = await client.type(key);
+		if (type === 'string') {
+			await client.del(key);
+		}
+
+		await client.hincrbyfloat(key, 'pnl', pnl);
+		await client.hincrby(key, won ? 'wins' : 'losses', 1);
 		// Expire after 3 days to keep Redis clean
 		await client.expire(key, 60 * 60 * 24 * 3);
 	}

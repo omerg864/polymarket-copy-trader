@@ -16,6 +16,7 @@ import {
 	getBotStartTime,
 	getBotStats,
 	getDailyPnl,
+	getDailyStats,
 	getStopRequested,
 } from '../services/redis';
 import { DateTime } from 'luxon';
@@ -123,11 +124,18 @@ export async function handleWebhook(
 		const todayStr = DateTime.now()
 			.setZone(strategyConfig.timezone)
 			.toFormat('yyyy-MM-dd');
-		const dailyPnl = await getDailyPnl(todayStr);
-
+		const todayStats = await getDailyStats(todayStr);
 		const winRate =
 			stats.totalTrades > 0
 				? ((stats.wins / stats.totalTrades) * 100).toFixed(1)
+				: '0.0';
+
+		const todayWinRate =
+			todayStats.wins + todayStats.losses > 0
+				? (
+						(todayStats.wins / (todayStats.wins + todayStats.losses)) *
+						100
+					).toFixed(1)
 				: '0.0';
 
 		const uptime = botStartTime
@@ -138,10 +146,11 @@ export async function handleWebhook(
 			`<b>📊 Bot Statistics</b>\n\n` +
 			`<b>Balance:</b> <code class="text-emerald-400">$${balance.toFixed(2)}</code>\n` +
 			`<b>Initial:</b> $${strategyConfig.botAllowance.toFixed(2)}\n` +
-			`<b>Today's P&L:</b> <code class="${dailyPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${dailyPnl.toFixed(2)}</code>\n` +
+			`<b>Today's P&L:</b> <code class="${todayStats.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${todayStats.pnl.toFixed(2)}</code>\n` +
+			`<b>Today's Trades:</b> ${todayStats.wins + todayStats.losses} (${todayStats.wins}W / ${todayStats.losses}L) - ${todayWinRate}%\n` +
 			`<b>Total P&L:</b> <code class="${stats.totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${stats.totalPnl.toFixed(2)}</code>\n` +
-			`<b>Win Rate:</b> ${winRate}%\n` +
-			`<b>Trades:</b> ${stats.totalTrades} (${stats.wins}W / ${stats.losses}L)\n` +
+			`<b>Total Win Rate:</b> ${winRate}%\n` +
+			`<b>Total Trades:</b> ${stats.totalTrades} (${stats.wins}W / ${stats.losses}L)\n` +
 			`<b>Active Trades:</b> ${activeTrades.length}\n` +
 			`<b>Uptime:</b> ${uptime} hours\n` +
 			`<b>Status:</b> ${isStopping ? '🛑 Stopping' : '🏃 Running'}`;
@@ -217,6 +226,12 @@ export async function triggerNotification(
 		if (canNotify) {
 			const statusText = isTp ? 'Take Profit' : 'Win';
 			const todayPnl = data.todayPnl ?? 0;
+			const todayWins = data.todayWins ?? 0;
+			const todayLosses = data.todayLosses ?? 0;
+			const todayTotal = todayWins + todayLosses;
+			const todayWinRate =
+				todayTotal > 0 ? ((todayWins / todayTotal) * 100).toFixed(1) : '0.0';
+
 			shouldNotify = true;
 			message =
 				`<b>🚀 NEW WIN!</b>\n\n` +
@@ -225,6 +240,7 @@ export async function triggerNotification(
 				`<b>Profit:</b> <code class="text-emerald-400">$${data.pnl?.toFixed(2)}</code>\n` +
 				`<b>Return:</b> ${(data.pctChange * 100)?.toFixed(2)}%\n` +
 				`<b>Today's P&L:</b> <code class="${todayPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${todayPnl.toFixed(2)}</code>\n` +
+				`<b>Today's Stats:</b> ${todayWins}W / ${todayLosses}L (${todayWinRate}%)\n` +
 				`<b>Exit Price:</b> $${data.exitPrice}\n` +
 				`<b>Balance:</b> $${data.balance?.toFixed(2)}`;
 		}
@@ -244,6 +260,12 @@ export async function triggerNotification(
 					? 'Forced Closure'
 					: 'Loss';
 			const todayPnl = data.todayPnl ?? 0;
+			const todayWins = data.todayWins ?? 0;
+			const todayLosses = data.todayLosses ?? 0;
+			const todayTotal = todayWins + todayLosses;
+			const todayWinRate =
+				todayTotal > 0 ? ((todayWins / todayTotal) * 100).toFixed(1) : '0.0';
+
 			shouldNotify = true;
 			message =
 				`<b>📉 Trade Loss</b>\n\n` +
@@ -252,30 +274,52 @@ export async function triggerNotification(
 				`<b>Loss:</b> <code class="text-red-400">$${Math.abs(data.pnl)?.toFixed(2)}</code>\n` +
 				`<b>Return:</b> ${(data.pctChange * 100)?.toFixed(2)}%\n` +
 				`<b>Today's P&L:</b> <code class="${todayPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${todayPnl.toFixed(2)}</code>\n` +
+				`<b>Today's Stats:</b> ${todayWins}W / ${todayLosses}L (${todayWinRate}%)\n` +
 				`<b>Exit Price:</b> $${data.exitPrice}\n` +
 				`<b>Balance:</b> $${data.balance?.toFixed(2)}`;
 		}
 	} else if (type === 'goal' && config.notificationOnPnlGoal) {
+		const todayWins = data.todayWins ?? 0;
+		const todayLosses = data.todayLosses ?? 0;
+		const todayTotal = todayWins + todayLosses;
+		const todayWinRate =
+			todayTotal > 0 ? ((todayWins / todayTotal) * 100).toFixed(1) : '0.0';
+
 		shouldNotify = true;
 		message =
 			`<b>🏆 DAILY GOAL REACHED!</b>\n\n` +
 			`<b>Today's P&L:</b> <code class="text-emerald-400">$${data.todayPnl?.toFixed(2)}</code>\n` +
+			`<b>Today's Stats:</b> ${todayWins}W / ${todayLosses}L (${todayWinRate}%)\n` +
 			`<b>Goal:</b> $${data.goal}\n` +
-			`<b>Total Trades:</b> ${data.totalTrades}`;
+			`<b>Bot Total Trades:</b> ${data.totalTrades}`;
 	} else if (type === 'min_pnl') {
+		const todayWins = data.todayWins ?? 0;
+		const todayLosses = data.todayLosses ?? 0;
+		const todayTotal = todayWins + todayLosses;
+		const todayWinRate =
+			todayTotal > 0 ? ((todayWins / todayTotal) * 100).toFixed(1) : '0.0';
+
 		shouldNotify = true;
 		message =
 			`<b>⚠️ DAILY LOSS LIMIT REACHED</b>\n\n` +
 			`<b>Today's P&L:</b> <code class="text-red-400">$${data.todayPnl?.toFixed(2)}</code>\n` +
+			`<b>Today's Stats:</b> ${todayWins}W / ${todayLosses}L (${todayWinRate}%)\n` +
 			`<b>Limit:</b> $${data.min}\n` +
-			`<b>Total Trades:</b> ${data.totalTrades}`;
+			`<b>Bot Total Trades:</b> ${data.totalTrades}`;
 	} else if (type === 'max_pnl') {
+		const todayWins = data.todayWins ?? 0;
+		const todayLosses = data.todayLosses ?? 0;
+		const todayTotal = todayWins + todayLosses;
+		const todayWinRate =
+			todayTotal > 0 ? ((todayWins / todayTotal) * 100).toFixed(1) : '0.0';
+
 		shouldNotify = true;
 		message =
 			`<b>💰 DAILY PROFIT TARGET REACHED</b>\n\n` +
 			`<b>Today's P&L:</b> <code class="text-emerald-400">$${data.todayPnl?.toFixed(2)}</code>\n` +
+			`<b>Today's Stats:</b> ${todayWins}W / ${todayLosses}L (${todayWinRate}%)\n` +
 			`<b>Target:</b> $${data.max}\n` +
-			`<b>Total Trades:</b> ${data.totalTrades}`;
+			`<b>Bot Total Trades:</b> ${data.totalTrades}`;
 	} else if (type === 'error' && config.notificationOnError) {
 		shouldNotify = true;
 		message =

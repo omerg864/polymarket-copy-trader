@@ -14,7 +14,7 @@ import {
 	getBotStartTime,
 	getBotStats,
 	getBotVersion,
-	getDailyPnl,
+	getDailyStats,
 	getMarketPrices,
 	getRedisInfo,
 	getStopRequested,
@@ -32,13 +32,13 @@ export async function getSummary(_req: Request, res: Response): Promise<void> {
 	const timezone = strategyConfig.timezone || 'Asia/Jerusalem';
 	const todayStr = DateTime.now().setZone(timezone).toISODate() || '';
 
-	const [stats, activeTrades, botStartTime, isStopping, todayPnl] =
+	const [stats, activeTrades, botStartTime, isStopping, dailyStats] =
 		await Promise.all([
 			getBotStats(),
 			getActiveTrades(),
 			getBotStartTime(),
 			getStopRequested(),
-			getDailyPnl(todayStr),
+			getDailyStats(todayStr),
 		]);
 
 	const balance = await getBotBalance(strategyConfig);
@@ -47,7 +47,10 @@ export async function getSummary(_req: Request, res: Response): Promise<void> {
 		balance,
 		initialBalance: strategyConfig.botAllowance,
 		totalPnl: stats.totalPnl,
-		todayPnl,
+		todayPnl: dailyStats.pnl,
+		todayWins: dailyStats.wins,
+		todayLosses: dailyStats.losses,
+		todayTrades: dailyStats.wins + dailyStats.losses,
 		totalFees: stats.totalFees,
 		totalTrades: stats.totalTrades,
 		wins: stats.wins,

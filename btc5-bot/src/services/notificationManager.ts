@@ -108,14 +108,21 @@ export class NotificationManager {
 	): Promise<void> {
 		const sc = await getStrategyConfig();
 		const nc = await this.getNotificationConfig();
-		const todayStr = DateTime.now().setZone(sc.timezone).toISODate() || '';
-		const todayPnl = await redisService.getDailyPnl(todayStr);
+		// Use trade's enteredAt for consistent daily stats attribution in notifications
+		const baseDate = trade.enteredAt
+			? DateTime.fromISO(trade.enteredAt)
+			: DateTime.now();
+		const todayStr = baseDate.setZone(sc.timezone).toISODate() || '';
+		const dailyStats = await redisService.getDailyStats(todayStr);
+		const todayPnl = dailyStats.pnl;
 
 		// Trigger win/loss notification in background
 		this.trigger(trade.pnl >= 0 ? 'win' : 'loss', {
 			title: trade.title,
 			pnl: trade.pnl,
 			todayPnl,
+			todayWins: dailyStats.wins,
+			todayLosses: dailyStats.losses,
 			pctChange:
 				trade.pctChange ||
 				(trade.cost > 0 ? trade.pnl / trade.cost : 0),
@@ -132,6 +139,8 @@ export class NotificationManager {
 		) {
 			this.trigger('goal', {
 				todayPnl,
+				todayWins: dailyStats.wins,
+				todayLosses: dailyStats.losses,
 				goal: sc.dayPnlGoal,
 				totalTrades: stats.totalTrades,
 			});
@@ -147,6 +156,8 @@ export class NotificationManager {
 			) {
 				this.trigger('min_pnl', {
 					todayPnl,
+					todayWins: dailyStats.wins,
+					todayLosses: dailyStats.losses,
 					min: nc.minTodayPnLNotification,
 					totalTrades: stats.totalTrades,
 				});
@@ -160,6 +171,8 @@ export class NotificationManager {
 			) {
 				this.trigger('max_pnl', {
 					todayPnl,
+					todayWins: dailyStats.wins,
+					todayLosses: dailyStats.losses,
 					max: nc.maxTodayPnLNotification,
 					totalTrades: stats.totalTrades,
 				});

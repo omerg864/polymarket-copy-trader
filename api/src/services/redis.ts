@@ -173,9 +173,22 @@ export async function getRedisInfo(): Promise<RedisInfo> {
 export async function getDailyPnl(date: string): Promise<number> {
 	const isDemo = config.isDemo;
 	const key = REDIS_KEYS.DAILY_PNL(isDemo ? 'demo' : 'live', date);
-	const raw = await redis.get(key);
+	const raw = await redis.hget(key, 'pnl');
 	if (raw === null) return 0;
 	return parseFloat(raw) || 0;
+}
+
+export async function getDailyStats(
+	date: string,
+): Promise<{ pnl: number; wins: number; losses: number }> {
+	const isDemo = config.isDemo;
+	const key = REDIS_KEYS.DAILY_PNL(isDemo ? 'demo' : 'live', date);
+	const data = await redis.hgetall(key);
+	return {
+		pnl: parseFloat(data.pnl) || 0,
+		wins: parseInt(data.wins, 10) || 0,
+		losses: parseInt(data.losses, 10) || 0,
+	};
 }
 
 export async function getBotVersion(): Promise<string | null> {
