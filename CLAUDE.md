@@ -155,7 +155,7 @@ All under `pmbot:` prefix:
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **polymarket-5-minutes-bot** (745 symbols, 2054 relationships, 49 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **polymarket-5-minutes-bot** (742 symbols, 2040 relationships, 46 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

@@ -123,10 +123,10 @@ export function TradeDetailsDialog({
 								${trade.entryPrice.toFixed(3)}
 							</span>
 							<span className="text-zinc-500">
-								Confidence * Entry Price
+								Overall Confidence
 							</span>
 							<span className="text-right font-mono">
-								${confidenceEntryPriceAvg.toFixed(3)}
+								{confidenceEntryPriceAvg.toFixed(1)}%
 							</span>
 							<span className="text-zinc-500">Exit Price</span>
 							<span className="text-right font-mono">

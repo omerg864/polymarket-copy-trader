@@ -33,10 +33,7 @@ import {
 	PnlBadge,
 } from '../dashboard/badges';
 import { useConfig } from '@/hooks/use-api';
-import {
-	formatBtcPrice,
-	formatGlobalDateTime,
-} from '@/lib/utils';
+import { formatBtcPrice, formatGlobalDateTime } from '@/lib/utils';
 
 const myTheme = themeQuartz.withPart(colorSchemeDarkBlue);
 
@@ -66,9 +63,12 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 	const timezone = config?.timezone || 'Asia/Jerusalem';
 	const [pinnedBottomRowData, setPinnedBottomRowData] = useState<any[]>([]);
 
-	const formatWithTimezone = useCallback((iso: string | undefined) => {
-		return formatGlobalDateTime(iso, timezone);
-	}, [timezone]);
+	const formatWithTimezone = useCallback(
+		(iso: string | undefined) => {
+			return formatGlobalDateTime(iso, timezone);
+		},
+		[timezone],
+	);
 
 	// Handle total recalculation when filters change
 	const onModelUpdated = useCallback((params: any) => {
@@ -225,7 +225,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				},
 			},
 			{
-				headerName: 'Conf * Entry $',
+				headerName: 'Overall Confidence',
 				width: 120,
 				type: 'numericColumn',
 				aggFunc: 'avg',
@@ -240,7 +240,7 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				valueFormatter: (params: any) => {
 					if (params.value == null) return '';
 					const val = Number(params.value);
-					return isNaN(val) ? '' : `$${val.toFixed(3)}`;
+					return isNaN(val) ? '' : `${val.toFixed(1)}%`;
 				},
 			},
 			{
@@ -333,7 +333,9 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 						? params.data?.indicators?.currentPrice
 						: params.value,
 				valueFormatter: (params: any) =>
-					params.value != null ? `$${formatBtcPrice(params.value)}` : '',
+					params.value != null
+						? `$${formatBtcPrice(params.value)}`
+						: '',
 			},
 			{
 				headerName: 'Analysis BTC',
@@ -346,7 +348,9 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 						? params.data?.indicators?.analysisBtcPrice
 						: params.value,
 				valueFormatter: (params: any) =>
-					params.value != null ? `$${formatBtcPrice(params.value)}` : '',
+					params.value != null
+						? `$${formatBtcPrice(params.value)}`
+						: '',
 			},
 			{
 				headerName: 'Analysis BTC Diff',
@@ -356,8 +360,12 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				filter: 'agNumberColumnFilter',
 				valueGetter: (params: any) => {
 					if (!params.data) return params.value;
-					const current = Number(params.data?.indicators?.currentPrice);
-					const analysis = Number(params.data?.indicators?.analysisBtcPrice);
+					const current = Number(
+						params.data?.indicators?.currentPrice,
+					);
+					const analysis = Number(
+						params.data?.indicators?.analysisBtcPrice,
+					);
 					if (isNaN(current) || isNaN(analysis)) return null;
 					return current - analysis;
 				},
@@ -365,7 +373,11 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 					const val = params.value;
 					if (val === null || val === undefined) return '';
 					return (
-						<div className={val >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+						<div
+							className={
+								val >= 0 ? 'text-emerald-400' : 'text-red-400'
+							}
+						>
 							{val >= 0 ? '+' : ''}
 							{formatBtcPrice(val)}
 						</div>
@@ -386,7 +398,9 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 						: Number(val);
 				},
 				valueFormatter: (params: any) =>
-					params.value != null ? `$${formatBtcPrice(params.value)}` : '',
+					params.value != null
+						? `$${formatBtcPrice(params.value)}`
+						: '',
 			},
 			{
 				headerName: 'Entry Diff',
@@ -427,7 +441,9 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				aggFunc: 'avg',
 				filter: 'agNumberColumnFilter',
 				valueFormatter: (params: any) =>
-					params.value != null ? `$${formatBtcPrice(params.value)}` : '',
+					params.value != null
+						? `$${formatBtcPrice(params.value)}`
+						: '',
 			},
 			{
 				headerName: 'Exit Diff',
