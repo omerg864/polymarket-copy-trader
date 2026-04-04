@@ -1,6 +1,6 @@
 {
 	"name": "polymarket-5-minutes-bot",
-	"version": "2.3.5",
+	"version": "2.3.6",
 	"description": "Automated trading bot for Polymarket BTC 5-minute up/down markets",
 	"type": "module",
 	"main": "src/index.js",

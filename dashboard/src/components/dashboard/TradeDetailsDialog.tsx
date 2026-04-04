@@ -14,10 +14,7 @@ import {
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { useConfig } from '@/hooks/use-api';
-import {
-	formatBtcPrice,
-	formatGlobalDateTime,
-} from '@/lib/utils';
+import { formatBtcPrice, formatGlobalDateTime } from '@/lib/utils';
 
 interface TradeDetailsDialogProps {
 	trade: Trade | null;
@@ -33,6 +30,9 @@ export function TradeDetailsDialog({
 	const [copied, setCopied] = useState(false);
 
 	if (!trade) return null;
+
+	const confidenceEntryPriceAvg =
+		((trade.confidence ?? 0) * 100 + trade.entryPrice * 100) / 2;
 
 	const copyToClipboard = () => {
 		navigator.clipboard.writeText(trade.id);
@@ -122,6 +122,12 @@ export function TradeDetailsDialog({
 							<span className="text-right font-mono">
 								${trade.entryPrice.toFixed(3)}
 							</span>
+							<span className="text-zinc-500">
+								Confidence * Entry Price
+							</span>
+							<span className="text-right font-mono">
+								${confidenceEntryPriceAvg.toFixed(3)}
+							</span>
 							<span className="text-zinc-500">Exit Price</span>
 							<span className="text-right font-mono">
 								{trade.exitPrice != null
@@ -174,7 +180,8 @@ export function TradeDetailsDialog({
 											Exit BTC Price
 										</span>
 										<span className="text-right font-mono text-zinc-300">
-											${formatBtcPrice(trade.exitBtcPrice)}
+											$
+											{formatBtcPrice(trade.exitBtcPrice)}
 										</span>
 										<span className="text-zinc-500">
 											BTC Diff
@@ -204,13 +211,19 @@ export function TradeDetailsDialog({
 									Analysis BTC Price
 								</span>
 								<span className="text-right font-mono">
-									${formatBtcPrice(trade.indicators.analysisBtcPrice)}
+									$
+									{formatBtcPrice(
+										trade.indicators.analysisBtcPrice,
+									)}
 								</span>
 								<span className="text-zinc-500">
 									Entry BTC Price
 								</span>
 								<span className="text-right font-mono">
-									${formatBtcPrice(trade.indicators.currentPrice)}
+									$
+									{formatBtcPrice(
+										trade.indicators.currentPrice,
+									)}
 								</span>
 								<span className="text-zinc-500">
 									Analysis BTC Diff
@@ -238,7 +251,8 @@ export function TradeDetailsDialog({
 									Price to Beat
 								</span>
 								<span className="text-right font-mono">
-									{trade.indicators.priceToBeat === 'N/A' || !trade.indicators.priceToBeat
+									{trade.indicators.priceToBeat === 'N/A' ||
+									!trade.indicators.priceToBeat
 										? 'N/A'
 										: `$${formatBtcPrice(trade.indicators.priceToBeat)}`}
 								</span>
@@ -261,9 +275,11 @@ export function TradeDetailsDialog({
 									0
 										? '+'
 										: ''}
-											{formatBtcPrice(
+									{formatBtcPrice(
 										trade.indicators.currentPrice -
-											Number(trade.indicators.priceToBeat),
+											Number(
+												trade.indicators.priceToBeat,
+											),
 									)}
 								</span>
 								<span className="text-zinc-500">

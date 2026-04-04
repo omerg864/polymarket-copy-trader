@@ -225,6 +225,25 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				},
 			},
 			{
+				headerName: 'Conf * Entry $',
+				width: 120,
+				type: 'numericColumn',
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				valueGetter: (params: any) => {
+					if (!params.data) return params.value;
+					if (params.data.isTotalRow) return null;
+					const confidence = params.data.confidence ?? 0;
+					const entryPrice = params.data.entryPrice ?? 0;
+					return (confidence * 100 + entryPrice * 100) / 2;
+				},
+				valueFormatter: (params: any) => {
+					if (params.value == null) return '';
+					const val = Number(params.value);
+					return isNaN(val) ? '' : `$${val.toFixed(3)}`;
+				},
+			},
+			{
 				field: 'exitPrice',
 				headerName: 'Exit $',
 				width: 100,
