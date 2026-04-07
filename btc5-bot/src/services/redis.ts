@@ -109,8 +109,8 @@ class RedisService {
 		};
 		await client.lpush(historyKey, JSON.stringify(record));
 		await client.sadd(idsKey, trade.id);
-		// Keep last 500 trades
-		await client.ltrim(historyKey, 0, 499);
+		// Keep last 500,000 trades
+		await client.ltrim(historyKey, 0, 499999);
 		return record;
 	}
 
