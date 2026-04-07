@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
 	Accordion,
 	AccordionContent,
@@ -29,6 +28,7 @@ import { AnalysisGrid } from './analysis/AnalysisGrid';
 import { CandlestickChart } from './analysis/CandlestickChart';
 import { Filters, DEFAULT_FILTERS, type FilterValues } from './shared/Filters';
 import { TradeDetailsDialog } from './dashboard/TradeDetailsDialog';
+import { BalanceGraph } from './analysis/BalanceGraph';
 
 function calculateStats(trades: Trade[]) {
 	const total = trades.length;
@@ -1093,6 +1093,12 @@ export function AnalysisDashboard() {
 					))}
 				</ul>
 			</div>
+
+			<BalanceGraph
+				trades={history || []}
+				config={config}
+				timezone={timezone}
+			/>
 
 			{/* New Actual Outcome, Stop Loss & FCT Section */}
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
