@@ -6,6 +6,7 @@ import redisService from './services/redis';
 import queueService from './services/queueService';
 import outcomeSyncService from './services/outcomeSync';
 import strategyEngine from './strategy/engine';
+import tradeService from './services/tradeService';
 import logger from './utils/logger';
 import pkg from '../package.json';
 
@@ -54,6 +55,8 @@ async function main(): Promise<void> {
 		try {
 			await mongoose.connect(config.mongoUri);
 			logger.info('📦 Connected to MongoDB');
+			// Sync Redis HISTORY_IDS from MongoDB
+			await tradeService.syncHistoryIds();
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : String(error);

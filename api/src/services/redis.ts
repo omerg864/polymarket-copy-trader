@@ -38,18 +38,6 @@ export async function getActiveTrades(): Promise<Trade[]> {
 	return trades.filter((t): t is Trade => t !== null);
 }
 
-export async function getTradeHistory(limit?: number): Promise<Trade[]> {
-	const isDemo = config.isDemo;
-	const key = REDIS_KEYS.HISTORY(isDemo ? 'demo' : 'live');
-	let records: string[];
-	if (limit) {
-		records = await redis.lrange(key, 0, limit - 1);
-	} else {
-		records = await redis.lrange(key, 0, -1);
-	}
-	return records.map((r) => JSON.parse(r) as Trade);
-}
-
 interface BotStats {
 	totalTrades: number;
 	wins: number;

@@ -1,5 +1,4 @@
-import axios from 'axios';
-import redisService from './redis';
+import tradeService from './tradeService';
 import polymarketService from './polymarket';
 import logger from '../utils/logger';
 import { TradeStatus, type Trade } from '@shared/types';
@@ -38,7 +37,7 @@ class OutcomeSyncService {
 
 		try {
 			logger.info('🔄 Checking for trades without actual outcomes...');
-			const historyTrades = await redisService.getTradeHistory();
+			const historyTrades = await tradeService.getTradeHistory(100);
 			const tradesToUpdate = historyTrades.filter(
 				(t: Trade) => !t.actualOutcome || t.actualOutcome === 'UNKNOWN',
 			);
@@ -64,8 +63,10 @@ class OutcomeSyncService {
 					}
 
 					if (actualOutcome !== 'UNKNOWN') {
-						trade.actualOutcome = actualOutcome;
-						await redisService.updateTradeInHistory(trade);
+						await tradeService.updateTradeInHistory({
+							actualOutcome,
+							id: trade.id,
+						});
 						logger.info(
 							`✅ Updated outcome for trade ${trade.id}: ${actualOutcome}`,
 						);

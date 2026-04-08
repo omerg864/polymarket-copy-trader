@@ -24,10 +24,10 @@ process.env.MODE = 'demo'; // The 4 stuck trades are demo mode
 process.env.MODE = 'demo'; // The 4 stuck trades are demo mode
 
 const STUCK_TRADE_IDS = [
-	'7bf27fc0-3dba-4379-91ce-fe7a6c6772f1',
-	'd2f1e6e1-57be-4c43-8201-e381de1554a0',
-	'5dff553b-c4f4-498b-bd9c-e6fe408f3861',
-	'2364a800-0713-4908-93c5-768d0b1ca9e5',
+	'37f56d70-b5c3-4018-acfa-18c1bb41efc3',
+	'01413c73-0120-40f2-9ce1-2f856703a05b',
+	'f1b43a95-164c-46da-928e-9da85bc1694e',
+	'cae7ebf3-25b3-4a4e-829a-e1ca83b04ea8',
 ];
 
 async function main() {
@@ -47,7 +47,25 @@ async function main() {
     const connection = new Redis(process.env.REDIS_URL!, { maxRetriesPerRequest: null });
     const sellQueue = new Queue('sell-trades', { connection });
 
-	for (const id of STUCK_TRADE_IDS) {
+	// 2. Discover all expired trades from Redis
+    const activeIds = await redisService.getActiveTrades();
+    const expiredTrades: any[] = [];
+    const now = new Date();
+
+    for (const t of activeIds) {
+        if (t.status === 'open' && new Date(t.endTime) < now) {
+            expiredTrades.push(t);
+        }
+    }
+
+    if (expiredTrades.length === 0) {
+        console.log('✅ No expired trades found in Redis.');
+    } else {
+        console.log(`🔍 Found ${expiredTrades.length} expired trade(s). Ensuring they are in the queue...`);
+    }
+
+	for (const trade of expiredTrades) {
+        const id = trade.id;
 		const existingJob = await sellQueue.getJob(id);
 		if (existingJob) {
             const state = await existingJob.getState();
@@ -67,14 +85,6 @@ async function main() {
             }
 		}
 
-		const tradeKey = `pmbot:demo:trade:${id}`;
-		const rawTrade = await redisService.getRaw(tradeKey);
-		if (!rawTrade) {
-			console.log(`❌ Trade ${id} not found in Redis (Key: ${tradeKey}). Skipping.`);
-			continue;
-		}
-
-		const trade = JSON.parse(rawTrade);
 		console.log(`📦 Adding RESOLVE job for: ${trade.title} (${id})`);
 		
 		await queueService.addSellJob({

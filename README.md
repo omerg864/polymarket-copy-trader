@@ -15,8 +15,8 @@ Automated trading bot for [Polymarket's BTC 5-minute up/down markets](https://po
 - 📈 **Fixed Trade Cost** — Uses a fixed $100 (configurable) per trade for simplicity and predictability
 - 🛡️ **Dual Take-Profit & Stop-Loss** — Configurable exits based on either percentage gains/losses OR specific market price targets (e.g., SL at 0.4, TP at 0.98)
 - 🛡️ **Entry Guards** — configurable thresholds for minimum entry price and market age to filter trades
-- 🗄️ Redis for persistent state, trade history, stats, and strategy config cache
-- 🍃 MongoDB for durable strategy configuration
+- 🗄️ Redis for persistent state, active trades, and fast historical ID lookups
+- 🍃 MongoDB for durable strategy configuration and complete trade history
 - 🔄 Auto-aligns to 5-minute market intervals
 
 ---
@@ -35,22 +35,22 @@ Automated trading bot for [Polymarket's BTC 5-minute up/down markets](https://po
 │  Bollinger Bands   Order Placement    Auto-Sell Exits    │
 └─────────┬─────────────────┬───────────────┬──────────────┘
           │                 │               │
-     ┌────▼─────────────────▼───────────────▼───┐
-     │                 Redis                     │
-     │ Active trades, History, Balance, Cache,   │
-     │ Strategy Config (cache from MongoDB)      │
-     └──────────────────┬───────────────────────┘
-                        │
-     ┌──────────────────▼───────────────────────┐
-     │              API Server                   │
-     │ Express + Mongoose — REST endpoints,      │
-     │ strategy config CRUD, two-tier auth       │
-     └──────────────────┬───────────────────────┘
-                        │
-     ┌──────────────────▼───────────────────────┐
-     │              MongoDB                      │
-     │ Durable strategy config (key/value)       │
-     └──────────────────────────────────────────┘
+      ┌────▼─────────────────▼───────────────▼───┐
+      │                 Redis                     │
+      │ Active trades, History ID Set, Balance,   │
+      │ Cache, Strategy Config Cache              │
+      └──────────────────┬───────────────────────┘
+                         │
+      ┌──────────────────▼───────────────────────┐
+      │              API Server                   │
+      │ Express + Mongoose — REST endpoints,      │
+      │ strategy config CRUD, two-tier auth       │
+      └──────────────────┬───────────────────────┘
+                         │
+      ┌──────────────────▼───────────────────────┐
+      │              MongoDB                      │
+      │ Strategy Config, Trade History (full)     │
+      └──────────────────────────────────────────┘
 ```
 
 ## Prerequisites

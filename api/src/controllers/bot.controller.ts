@@ -18,9 +18,9 @@ import {
 	getMarketPrices,
 	getRedisInfo,
 	getStopRequested,
-	getTradeHistory,
 	setStopRequested,
 } from '../services/redis';
+import { tradeService } from '../services/tradeService';
 import {
 	getStrategyConfig,
 	updateStrategyConfig,
@@ -79,10 +79,9 @@ export async function listTradeHistory(
 	req: Request,
 	res: Response,
 ): Promise<void> {
-	const limit = parseInt((req.query.limit as string) || '1000', 10);
-	const trades = await getTradeHistory(
-		req.query.limit && !isNaN(limit) ? limit : undefined,
-	);
+	const limitStr = req.query.limit as string;
+	const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+	const trades = await tradeService.getTradeHistory(limit);
 	res.json(trades);
 }
 

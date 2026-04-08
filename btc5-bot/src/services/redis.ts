@@ -51,7 +51,7 @@ class RedisService {
 		logger.info('Redis disconnected');
 	}
 
-	private getClient(): Redis {
+	public getClient(): Redis {
 		return this.client;
 	}
 
@@ -96,41 +96,11 @@ class RedisService {
 		await client.srem(REDIS_KEYS.ACTIVE_TRADES(this.mode), tradeId);
 	}
 
-	// ---- Trade History ----
+	// ---- Trade History (Redis part) ----
 
-	async saveTradeHistory(trade: Trade): Promise<Trade> {
+	async addToHistoryIds(tradeId: string): Promise<void> {
 		const client = this.getClient();
-		const historyKey = REDIS_KEYS.HISTORY(this.mode);
-		const idsKey = REDIS_KEYS.HISTORY_IDS(this.mode);
-
-		const record: Trade = {
-			...trade,
-			closedAt: new Date().toISOString(),
-		};
-		await client.lpush(historyKey, JSON.stringify(record));
-		await client.sadd(idsKey, trade.id);
-		// Keep last 500,000 trades
-		await client.ltrim(historyKey, 0, 499999);
-		return record;
-	}
-
-	async getTradeHistory(limit: number = 50): Promise<Trade[]> {
-		const client = this.getClient();
-		const key = REDIS_KEYS.HISTORY(this.mode);
-		const records = await client.lrange(key, 0, limit - 1);
-		return records.map((r) => JSON.parse(r) as Trade);
-	}
-
-	async updateTradeInHistory(trade: Trade): Promise<void> {
-		const client = this.getClient();
-		const key = REDIS_KEYS.HISTORY(this.mode);
-		const records = await client.lrange(key, 0, -1);
-		const trades = records.map((r) => JSON.parse(r) as Trade);
-
-		const index = trades.findIndex((t) => t.id === trade.id);
-		if (index !== -1) {
-			await client.lset(key, index, JSON.stringify(trade));
-		}
+		await client.sadd(REDIS_KEYS.HISTORY_IDS(this.mode), tradeId);
 	}
 
 	async isTradeInHistory(tradeId: string): Promise<boolean> {

@@ -8,6 +8,7 @@ import redisService from './redis';
 import polymarketService from './polymarket';
 import notificationManager from './notificationManager';
 import { getStrategyConfig } from './strategyConfig';
+import tradeService from './tradeService';
 import { DateTime } from 'luxon';
 
 // BullMQ connection must have maxRetriesPerRequest: null
@@ -113,8 +114,8 @@ class QueueService {
 
 			// Resolve jobs need much longer retry windows because Polymarket
 			// resolution metadata can lag behind market end time.
-			const attempts = isResolve ? 30 : 5;
-			const backoffDelay = isResolve ? 30000 : 2000; // Resolution: 30s | Sell: 2s
+			const attempts = isResolve ? 60 : 5;
+			const backoffDelay = isResolve ? 60000 : 2000; // Resolution: 60s | Sell: 2s
 			const backoffType = isResolve ? 'fixed' : 'exponential';
 
 			await this.sellQueue.add(`sell-${data.trade.id}`, data, {
@@ -286,7 +287,7 @@ class QueueService {
 			logger.error(`Failed to remove trade ${trade.id}: ${error}`);
 		}
 
-		await redisService.saveTradeHistory(trade); // This adds to history_ids
+		await tradeService.saveTradeHistory(trade);
 
 		const bal = await redisService.getBotBalance(sc);
 		const newBalance = bal + revenue - sellFee;
