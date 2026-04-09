@@ -29,6 +29,7 @@ import { CandlestickChart } from './analysis/CandlestickChart';
 import { Filters, DEFAULT_FILTERS, type FilterValues } from './shared/Filters';
 import { TradeDetailsDialog } from './dashboard/TradeDetailsDialog';
 import { BalanceGraph } from './analysis/BalanceGraph';
+import { PnLByHourGraph } from './analysis/PnLByHourGraph';
 
 function calculateStats(trades: Trade[]) {
 	const total = trades.length;
@@ -756,6 +757,41 @@ export function AnalysisDashboard() {
 					resolved.filter((t) => t.actualOutcome === 'DOWN'),
 				),
 			},
+			pnlByHourByDate: (() => {
+				// Group PnL by date and hour
+				const datePnL: Record<string, Record<number, number>> = {};
+				const allDates: Set<string> = new Set();
+
+				resolved.forEach((t) => {
+					if (!t.enteredAt) return;
+					const dt = DateTime.fromISO(t.enteredAt).setZone(timezone);
+					const dateKey = dt.toFormat('yyyy-MM-dd');
+					const hour = dt.hour;
+					allDates.add(dateKey);
+
+					if (!datePnL[dateKey]) datePnL[dateKey] = {};
+					datePnL[dateKey][hour] =
+						(datePnL[dateKey][hour] || 0) + (t.pnl || 0);
+				});
+
+				// Calculate cumulative PnL for each date and hour
+				// Take last 7 days of active trading to keep the graph readable
+				const sortedDates = Array.from(allDates).sort().slice(-7);
+
+				const result = [];
+				for (let h = 0; h < 24; h++) {
+					const hourData: any = { hour: h };
+					sortedDates.forEach((date) => {
+						let cumulative = 0;
+						for (let i = 0; i <= h; i++) {
+							cumulative += datePnL[date]?.[i] || 0;
+						}
+						hourData[date] = cumulative;
+					});
+					result.push(hourData);
+				}
+				return { data: result, dates: sortedDates };
+			})(),
 			filteredHistory: filtered,
 		};
 	}, [history, config?.dayPnlGoal, filters, timezone]);
@@ -2064,6 +2100,12 @@ export function AnalysisDashboard() {
 					</CardContent>
 				</Card>
 			</div>
+
+			<PnLByHourGraph
+				data={analysis.pnlByHourByDate.data}
+				dates={analysis.pnlByHourByDate.dates}
+				className="mb-6"
+			/>
 			{/* Raw Trade Data Grid */}
 			<Card className="bg-zinc-900 border-zinc-800">
 				<CardHeader>

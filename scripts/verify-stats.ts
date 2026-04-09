@@ -11,8 +11,11 @@ dotenv.config({
 
 import Redis from 'ioredis';
 import { DateTime } from 'luxon';
+import mongoose, { Schema } from 'mongoose';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const MONGO_URI =
+	process.env.MONGO_URI || 'mongodb://localhost:27017/polymarket-bot';
 const PREFIX = 'pmbot:';
 const MODE = process.env.MODE || 'demo';
 const FEE_RATE = 0.0175;
@@ -22,9 +25,53 @@ function calculateFee(shares: number, price: number): number {
 	return Math.round(raw * 10000) / 10000;
 }
 
+const tradeSchema = new Schema(
+	{
+		tradeId: { type: String, required: true, unique: true, index: true },
+		type: {
+			type: String,
+			enum: ['demo', 'live'],
+			required: true,
+			index: true,
+		},
+		direction: { type: String, enum: ['UP', 'DOWN'], required: true },
+		tokenId: { type: String, required: true },
+		conditionId: { type: String, required: true },
+		slug: { type: String },
+		eventTicker: { type: String },
+		title: { type: String },
+		side: { type: String },
+		entryPrice: { type: Number, required: true },
+		currentPrice: { type: Number },
+		exitPrice: { type: Number },
+		exitBtcPrice: { type: Number },
+		size: { type: Number, required: true },
+		cost: { type: Number, required: true },
+		fee: { type: Number, required: true },
+		status: { type: String, required: true },
+		startTime: { type: String, required: true },
+		endTime: { type: String, required: true },
+		enteredAt: { type: String, required: true },
+		closedAt: { type: String, index: true },
+		priceToBeat: { type: Number, required: true },
+		pnl: { type: Number, required: true },
+		pctChange: { type: Number },
+		confidence: { type: Number },
+		indicators: { type: Schema.Types.Mixed },
+		actualOutcome: { type: String, enum: ['UP', 'DOWN', 'UNKNOWN'] },
+	},
+	{ timestamps: true },
+);
+
+const TradeModel = (mongoose.models.Trade ||
+	mongoose.model('Trade', tradeSchema)) as mongoose.Model<any>;
+
 async function main() {
 	const redis = new Redis(REDIS_URL, { maxRetriesPerRequest: 3 });
-	console.log('Connected to Redis\n');
+	console.log('Connected to Redis');
+
+	await mongoose.connect(MONGO_URI);
+	console.log('Connected to MongoDB\n');
 
 	// Get initial balance from strategy config
 	const scRaw = await redis.get(`${PREFIX}strategy_config`);
@@ -67,13 +114,17 @@ async function main() {
 		activeFeeTotal += t.fee;
 	}
 
-	// History trades
-	const historyKey = `${PREFIX}${MODE}:history`;
-	const historyLen = await redis.llen(historyKey);
-	for (let i = 0; i < historyLen; i++) {
-		const raw = await redis.lindex(historyKey, i);
-		if (!raw) continue;
-		const t = JSON.parse(raw);
+	// History trades from MongoDB
+	const historyTrades = await TradeModel.find({
+		type: MODE === 'live' ? 'live' : 'demo',
+	});
+	const historyLen = historyTrades.length;
+
+	for (const doc of historyTrades) {
+		const t = doc.toObject();
+		// Map tradeId to id for compatibility with the script's logic
+		t.id = t.tradeId;
+
 		let changed = false;
 
 		// Fix fee if missing
@@ -101,9 +152,12 @@ async function main() {
 		}
 
 		if (changed) {
-			await redis.lset(historyKey, i, JSON.stringify(t));
+			await TradeModel.updateOne(
+				{ _id: doc._id },
+				{ $set: { fee: t.fee, pnl: t.pnl } },
+			);
 			console.log(
-				`  Fixed [${i}] ${t.id}: fee=${t.fee.toFixed(4)} pnl=${t.pnl?.toFixed(4)}`,
+				`  Fixed ${t.id} in MongoDB: fee=${t.fee.toFixed(4)} pnl=${t.pnl?.toFixed(4)}`,
 			);
 		}
 
@@ -279,10 +333,12 @@ async function main() {
 
 			console.log('\n✅ All fixed.');
 		}
+	} else {
 		console.log('\n✅ Everything matches. No fix needed.');
 	}
 
 	await redis.quit();
+	await mongoose.disconnect();
 }
 
 main().catch((err) => {
