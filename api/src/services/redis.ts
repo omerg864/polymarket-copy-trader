@@ -1,5 +1,6 @@
 import {
 	REDIS_KEYS,
+	getTradeKey,
 	type MarketDashboardData,
 	type RedisInfo,
 	type StrategyConfig,
@@ -54,6 +55,11 @@ export async function getBotStats(): Promise<BotStats> {
 		: { totalTrades: 0, wins: 0, losses: 0, totalPnl: 0, totalFees: 0 };
 }
 
+export async function setBotStats(stats: BotStats): Promise<void> {
+	const key = REDIS_KEYS.STATS(config.isDemo ? 'demo' : 'live');
+	await redis.set(key, JSON.stringify(stats));
+}
+
 export async function getBotBalance(
 	configParams?: StrategyConfig,
 ): Promise<number> {
@@ -67,6 +73,12 @@ export async function getBotBalance(
 	const botAllowance =
 		configParams?.botAllowance ?? DEFAULT_STRATEGY_CONFIG.botAllowance;
 	return botAllowance;
+}
+
+export async function setBotBalance(balance: number): Promise<void> {
+	const isDemo = config.isDemo;
+	const key = REDIS_KEYS.BALANCE(isDemo ? 'demo' : 'live');
+	await redis.set(key, balance.toString());
 }
 
 export async function getBotStartTime(): Promise<number | null> {
@@ -224,8 +236,28 @@ export async function getDailyStats(
 	};
 }
 
+export async function setDailyStats(
+	date: string,
+	stats: { pnl: number; wins: number; losses: number },
+): Promise<void> {
+	const isDemo = config.isDemo;
+	const key = REDIS_KEYS.DAILY_PNL(isDemo ? 'demo' : 'live', date);
+
+	// Clear if it was a string (legacy)
+	const t = await redis.type(key);
+	if (t === 'string') await redis.del(key);
+
+	await redis.hset(key, {
+		pnl: stats.pnl.toString(),
+		wins: stats.wins.toString(),
+		losses: stats.losses.toString(),
+	});
+	// Expire after 3 days to keep Redis clean (MongoDB is source of truth)
+	await redis.expire(key, 60 * 60 * 24 * 3);
+}
+
 export async function getBotVersion(): Promise<string | null> {
 	return redis.get(REDIS_KEYS.BOT_VERSION);
 }
 
-export { redis };
+export { redis, REDIS_KEYS, getTradeKey };
