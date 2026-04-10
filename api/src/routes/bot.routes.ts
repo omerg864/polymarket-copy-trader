@@ -15,6 +15,7 @@ import {
 	updateBotStartTime,
 	updateConfig,
 	verifyAuth,
+	verifyStats,
 } from '../controllers/bot.controller';
 import { adminGuard, authGuard } from '../middleware/auth';
 
@@ -39,6 +40,12 @@ router.post(
 	authGuard,
 	adminGuard,
 	asyncHandler(resetBotData),
+);
+router.post(
+	'/verify-stats',
+	authGuard,
+	adminGuard,
+	asyncHandler(verifyStats),
 );
 
 export default router;

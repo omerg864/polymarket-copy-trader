@@ -18,6 +18,7 @@ import { StrategyConfigDialog } from './StrategyConfigDialog';
 import { StartTimeDialog } from './StartTimeDialog';
 import RedisStats from './RedisStats';
 import MongoStats from './MongoStats';
+import { VerificationStatsDialog } from './VerificationStatsDialog';
 import { formatBtcPrice, formatGlobalDateTime } from '@/lib/utils';
 
 export function Header() {
@@ -35,6 +36,7 @@ export function Header() {
 	const [configOpen, setConfigOpen] = useState(false);
 	const [notificationOpen, setNotificationOpen] = useState(false);
 	const [startTimeOpen, setStartTimeOpen] = useState(false);
+	const [verifyStatsOpen, setVerifyStatsOpen] = useState(false);
 
 	const handleExport = useMemoizedFn(() => {
 		if (!history || !summary || !config) return;
@@ -153,6 +155,7 @@ export function Header() {
 					onOpenAlerts={() => setNotificationOpen(true)}
 					onOpenConfig={() => setConfigOpen(true)}
 					onOpenStartTime={() => setStartTimeOpen(true)}
+					onOpenVerifyStats={() => setVerifyStatsOpen(true)}
 					onOpenReset={() =>
 						resetBot.mutate(undefined, {
 							onSuccess: () => {
@@ -164,6 +167,11 @@ export function Header() {
 					onExport={handleExport}
 					isTogglePending={toggleStop.isPending}
 					isResetPending={resetBot.isPending}
+				/>
+
+				<VerificationStatsDialog
+					open={verifyStatsOpen}
+					onOpenChange={setVerifyStatsOpen}
 				/>
 
 				<StrategyConfigDialog

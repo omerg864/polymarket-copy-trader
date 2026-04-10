@@ -25,6 +25,7 @@ import {
 	Play,
 	RotateCcw,
 	Settings2,
+	ShieldCheck,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { StrategyConfig, Trade, TradeSummary } from '@/types';
@@ -40,6 +41,7 @@ interface ActionsDropdownProps {
 	onOpenReset: () => void;
 	onOpenConfig: () => void;
 	onOpenStartTime: () => void;
+	onOpenVerifyStats: () => void;
 	onExport: () => void;
 	isTogglePending: boolean;
 	isResetPending: boolean;
@@ -56,6 +58,7 @@ export function ActionsDropdown({
 	onOpenReset,
 	onOpenConfig,
 	onOpenStartTime,
+	onOpenVerifyStats,
 	onExport,
 	isTogglePending,
 	isResetPending,
@@ -163,7 +166,14 @@ export function ActionsDropdown({
 						<Clock className="h-3.5 w-3.5 mr-2" />
 						Change Bot Start Time
 					</DropdownMenuItem>
-
+					<DropdownMenuItem
+						onClick={onOpenVerifyStats}
+						disabled={!isAdmin}
+						className="cursor-pointer focus:bg-zinc-900"
+					>
+						<ShieldCheck className="h-3.5 w-3.5 mr-2" />
+						Verify Bot Stats
+					</DropdownMenuItem>
 					<DropdownMenuSeparator className="bg-zinc-800" />
 
 					<DropdownMenuItem

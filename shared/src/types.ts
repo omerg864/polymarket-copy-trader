@@ -297,3 +297,53 @@ export interface BotVersions {
 	bot: string | null;
 	api: string;
 }
+
+export interface VerificationResult {
+	success: boolean;
+	fix: boolean;
+	initialBalance: number;
+	activeTrades: {
+		count: number;
+		cost: number;
+		fee: number;
+	};
+	historyTrades: {
+		count: number;
+	};
+	computed: {
+		sumFees: number;
+		sumPnl: number;
+		expectedBalance: number;
+		wins: number;
+		losses: number;
+		totalTrades: number;
+		todayPnl: number;
+		todayWins: number;
+		todayLosses: number;
+	};
+	redis: {
+		totalFees: number;
+		totalPnl: number;
+		balance: number;
+		wins: number;
+		losses: number;
+		totalTrades: number;
+		todayPnl: number;
+		todayWins: number;
+		todayLosses: number;
+		dailyType: string;
+	};
+	matches: {
+		fees: boolean;
+		pnl: boolean;
+		balance: boolean;
+		wins: boolean;
+		losses: boolean;
+		totalTrades: boolean;
+		todayPnl: boolean;
+		todayWins: boolean;
+		todayLosses: boolean;
+	};
+	needsFix: boolean;
+	logs: string[];
+}

@@ -7,4 +7,5 @@ export type {
 	MarketDashboardData,
 	Candle,
 	PriceCandle,
+	VerificationResult,
 } from '@shared/types';

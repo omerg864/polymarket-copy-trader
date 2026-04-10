@@ -3,6 +3,7 @@ import type {
 	BotVersions,
 	StrategyConfig,
 	TradeSummary,
+	VerificationResult,
 } from '../../../shared/src/types';
 import config from '../config';
 import { resolveRole } from '../middleware/auth';
@@ -26,6 +27,7 @@ import {
 	getStrategyConfig,
 	updateStrategyConfig,
 } from '../services/strategyConfig';
+import { verificationService } from '../services/verificationService';
 import pkg from '../../package.json';
 
 export async function getSummary(_req: Request, res: Response): Promise<void> {
@@ -205,5 +207,16 @@ export async function getVersions(_req: Request, res: Response): Promise<void> {
 		} satisfies BotVersions);
 	} catch (error) {
 		res.status(500).json({ error: 'Failed to fetch versions' });
+	}
+}
+
+export async function verifyStats(req: Request, res: Response): Promise<void> {
+	const { fix } = req.body as { fix?: boolean };
+	try {
+		const result = await verificationService.verifyAndFixStats(!!fix);
+		res.json(result);
+	} catch (error) {
+		console.error(`Failed to verify stats: ${error}`);
+		res.status(500).json({ error: 'Failed to verify stats' });
 	}
 }

@@ -8,6 +8,7 @@ import type {
 	PriceCandle,
 	BotVersions,
 	MongoInfo,
+	VerificationResult,
 } from '@shared/types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
@@ -224,6 +225,24 @@ export function useUpdateBotStartTime() {
 			if (res.status === 403) throw new Error('Admin access required');
 			if (!res.ok) throw new Error(`API error: ${res.statusText}`);
 			return res.json();
+		},
+	});
+}
+
+export function useVerifyStats() {
+	return useMutation({
+		mutationFn: async (fix: boolean) => {
+			const res = await fetch(`${API_BASE}/verify-stats`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					...getAuthHeaders(),
+				},
+				body: JSON.stringify({ fix }),
+			});
+			if (res.status === 403) throw new Error('Admin access required');
+			if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+			return res.json() as Promise<VerificationResult>;
 		},
 	});
 }
