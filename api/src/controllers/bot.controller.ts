@@ -8,7 +8,7 @@ import config from '../config';
 import { resolveRole } from '../middleware/auth';
 import { DateTime } from 'luxon';
 import {
-	flushRedis,
+	clearModeData,
 	getActiveTrades,
 	getBotBalance,
 	getBotStartTime,
@@ -18,6 +18,7 @@ import {
 	getMarketPrices,
 	getRedisInfo,
 	getStopRequested,
+	setBotStartTime,
 	setStopRequested,
 } from '../services/redis';
 import { tradeService } from '../services/tradeService';
@@ -91,6 +92,19 @@ export async function stopBot(req: Request, res: Response): Promise<void> {
 	res.json({ success: true, isStopping: !!stop });
 }
 
+export async function updateBotStartTime(
+	req: Request,
+	res: Response,
+): Promise<void> {
+	const { startTime } = req.body as { startTime?: number };
+	if (!startTime || typeof startTime !== 'number') {
+		res.status(400).json({ error: 'startTime is required and must be a number' });
+		return;
+	}
+	await setBotStartTime(startTime);
+	res.json({ success: true, botStartTime: startTime });
+}
+
 export async function getBotConfig(
 	_req: Request,
 	res: Response,
@@ -113,6 +127,14 @@ export async function getRedisStats(
 	res.json(stats);
 }
 
+export async function getMongoStats(
+	_req: Request,
+	res: Response,
+): Promise<void> {
+	const stats = await tradeService.getMongoStats();
+	res.json(stats);
+}
+
 export async function getMarketPricesData(
 	_req: Request,
 	res: Response,
@@ -121,12 +143,23 @@ export async function getMarketPricesData(
 	res.json(data);
 }
 
-export async function flushRedisData(
+export async function resetBotData(
 	_req: Request,
 	res: Response,
 ): Promise<void> {
-	await flushRedis();
-	res.json({ success: true });
+	const isDemo = config.isDemo;
+	const mode = isDemo ? 'demo' : 'live';
+
+	try {
+		await Promise.all([
+			tradeService.clearAllTrades(mode),
+			clearModeData(mode),
+		]);
+		res.json({ success: true, mode });
+	} catch (error) {
+		console.error(`Failed to reset bot data: ${error}`);
+		res.status(500).json({ error: 'Failed to reset bot data' });
+	}
 }
 
 export function verifyAuth(req: Request, res: Response): void {

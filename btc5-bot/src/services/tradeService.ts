@@ -1,4 +1,4 @@
-import { REDIS_KEYS, type Trade } from '@shared/index';
+import { DEFAULT_STRATEGY_CONFIG, REDIS_KEYS, type Trade } from '@shared/index';
 import config from '../config';
 import { TradeModel } from '../models/Trade';
 import logger from '../utils/logger';
@@ -70,20 +70,39 @@ class TradeService {
 	async syncHistoryIds(): Promise<void> {
 		try {
 			logger.info('🔄 Synchronizing history IDs from MongoDB to Redis...');
-			// Fetch only the tradeId field for efficiency
-			const trades = await TradeModel.find({ type: this.mode }, 'tradeId');
+			// 1. Calculate limit (10 * maxConcurrentTrades)
+			let maxConcurrent = DEFAULT_STRATEGY_CONFIG.maxConcurrentTrades;
+			try {
+				const rawConfig = await redisService.getRaw(REDIS_KEYS.STRATEGY_CONFIG);
+				if (rawConfig) {
+					const config = JSON.parse(rawConfig);
+					if (config && typeof config === 'object' && config.maxConcurrentTrades) {
+						maxConcurrent = config.maxConcurrentTrades;
+					}
+				}
+			} catch (err) {
+				// Fallback to default
+			}
+			const limit = maxConcurrent * 10;
+
+			// 2. Fetch only the last N trades for efficiency
+			const trades = await TradeModel.find({ type: this.mode }, 'tradeId')
+				.sort({ closedAt: -1 })
+				.limit(limit);
 			
 			if (trades.length === 0) {
 				logger.info('✅ No historical trades found in MongoDB to sync.');
 				return;
 			}
 
-			// Add all IDs to Redis SET
-			for (const trade of trades) {
+			// 3. Add IDs to Redis ZSET
+			// Reverse to add oldest first (lower rank) and newest last (higher rank)
+			const reversedTrades = [...trades].reverse();
+			for (const trade of reversedTrades) {
 				await redisService.addToHistoryIds(trade.tradeId);
 			}
 
-			logger.info(`✅ Successfully synchronized ${trades.length} history IDs to Redis.`);
+			logger.info(`✅ Successfully synchronized ${trades.length} history IDs to Redis (Limited to last ${limit}).`);
 		} catch (err) {
 			logger.error(`Failed to sync history IDs: ${err}`);
 		}

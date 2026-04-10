@@ -100,16 +100,39 @@ class RedisService {
 
 	async addToHistoryIds(tradeId: string): Promise<void> {
 		const client = this.getClient();
-		await client.sadd(REDIS_KEYS.HISTORY_IDS(this.mode), tradeId);
+		const key = REDIS_KEYS.HISTORY_IDS(this.mode);
+		
+		// 1. Add with current timestamp as score
+		await client.zadd(key, Date.now(), tradeId);
+
+		// 2. Fetch limit (10 * maxConcurrentTrades)
+		let maxConcurrent = DEFAULT_STRATEGY_CONFIG.maxConcurrentTrades;
+		try {
+			const rawConfig = await client.get(REDIS_KEYS.STRATEGY_CONFIG);
+			if (rawConfig) {
+				const config = JSON.parse(rawConfig);
+				if (config.maxConcurrentTrades) {
+					maxConcurrent = config.maxConcurrentTrades;
+				}
+			}
+		} catch (err) {
+			// Fallback to default if config read fails
+		}
+		
+		const limit = maxConcurrent * 10;
+
+		// 3. Trim to last N elements
+		// Remove elements with rank 0 to -(limit + 1)
+		await client.zremrangebyrank(key, 0, -(limit + 1));
 	}
 
 	async isTradeInHistory(tradeId: string): Promise<boolean> {
 		const client = this.getClient();
-		const result = await client.sismember(
+		const score = await client.zscore(
 			REDIS_KEYS.HISTORY_IDS(this.mode),
 			tradeId,
 		);
-		return result === 1;
+		return score !== null;
 	}
 
 	// ---- Market Cache ----

@@ -7,6 +7,7 @@ import type {
 	MarketDashboardData,
 	PriceCandle,
 	BotVersions,
+	MongoInfo,
 } from '@shared/types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
@@ -162,6 +163,14 @@ export function useRedisStats() {
 	});
 }
 
+export function useMongoStats() {
+	return useQuery<MongoInfo>({
+		queryKey: ['mongo-stats'],
+		queryFn: () => fetchJson('/mongo-stats'),
+		refetchInterval: 30000,
+	});
+}
+
 export function useMarketPrices() {
 	return useQuery<MarketDashboardData | null>({
 		queryKey: ['market-prices'],
@@ -170,10 +179,10 @@ export function useMarketPrices() {
 	});
 }
 
-export function useFlushRedis() {
+export function useResetBot() {
 	return useMutation({
 		mutationFn: async () => {
-			const res = await fetch(`${API_BASE}/flush-redis`, {
+			const res = await fetch(`${API_BASE}/reset-bot`, {
 				method: 'POST',
 				headers: { ...getAuthHeaders() },
 			});
@@ -200,6 +209,25 @@ export function useUpdateConfig() {
 		},
 	});
 }
+
+export function useUpdateBotStartTime() {
+	return useMutation({
+		mutationFn: async (startTime: number) => {
+			const res = await fetch(`${API_BASE}/bot-start-time`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					...getAuthHeaders(),
+				},
+				body: JSON.stringify({ startTime }),
+			});
+			if (res.status === 403) throw new Error('Admin access required');
+			if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+			return res.json();
+		},
+	});
+}
+
 
 export function useNotificationConfig() {
 	return useQuery<NotificationConfig>({

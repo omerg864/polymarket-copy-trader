@@ -18,12 +18,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
 	Bell,
+	Clock,
 	Download,
 	MoreVertical,
 	Pause,
 	Play,
+	RotateCcw,
 	Settings2,
-	Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { StrategyConfig, Trade, TradeSummary } from '@/types';
@@ -36,11 +37,12 @@ interface ActionsDropdownProps {
 	isAdmin: boolean;
 	onToggleStop: (stopping: boolean) => void;
 	onOpenAlerts: () => void;
-	onOpenFlush: () => void;
+	onOpenReset: () => void;
 	onOpenConfig: () => void;
+	onOpenStartTime: () => void;
 	onExport: () => void;
 	isTogglePending: boolean;
-	isFlushPending: boolean;
+	isResetPending: boolean;
 }
 
 export function ActionsDropdown({
@@ -51,14 +53,15 @@ export function ActionsDropdown({
 	isAdmin,
 	onToggleStop,
 	onOpenAlerts,
-	onOpenFlush,
+	onOpenReset,
 	onOpenConfig,
+	onOpenStartTime,
 	onExport,
 	isTogglePending,
-	isFlushPending,
+	isResetPending,
 }: ActionsDropdownProps) {
 	const [pauseConfirmOpen, setPauseConfirmOpen] = useState(false);
-	const [flushConfirmOpen, setFlushConfirmOpen] = useState(false);
+	const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
 
 	const handleToggleAction = () => {
 		if (summary?.isStopping) {
@@ -152,18 +155,27 @@ export function ActionsDropdown({
 						Export to Excel
 					</DropdownMenuItem>
 
+					<DropdownMenuItem
+						onClick={onOpenStartTime}
+						disabled={!isAdmin}
+						className="cursor-pointer focus:bg-zinc-900"
+					>
+						<Clock className="h-3.5 w-3.5 mr-2" />
+						Change Bot Start Time
+					</DropdownMenuItem>
+
 					<DropdownMenuSeparator className="bg-zinc-800" />
 
 					<DropdownMenuItem
-						disabled={isFlushPending || isReadonly}
+						disabled={isResetPending || isReadonly}
 						onSelect={(e) => {
 							e.preventDefault();
-							setFlushConfirmOpen(true);
+							setResetConfirmOpen(true);
 						}}
 						className="cursor-pointer text-red-400 focus:text-red-300 focus:bg-red-500/10"
 					>
-						<Trash2 className="h-3.5 w-3.5 mr-2" />
-						Flush Redis Data
+						<RotateCcw className="h-3.5 w-3.5 mr-2" />
+						Reset Bot Data
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
@@ -205,18 +217,19 @@ export function ActionsDropdown({
 				</DialogContent>
 			</Dialog>
 
-			{/* Flush Confirmation Dialog */}
-			<Dialog open={flushConfirmOpen} onOpenChange={setFlushConfirmOpen}>
+			{/* Reset Confirmation Dialog */}
+			<Dialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
 				<DialogContent className="sm:max-w-[400px] bg-zinc-950 border border-zinc-800 text-zinc-100">
 					<DialogHeader>
 						<DialogTitle className="text-lg text-red-400 flex items-center gap-2">
-							<Trash2 className="h-5 w-5" />
-							Flush Redis?
+							<RotateCcw className="h-5 w-5" />
+							Reset Bot Data?
 						</DialogTitle>
 						<DialogDescription className="text-zinc-400">
-							This will permanently delete all data in Redis
-							including trade history, stats, and active trades.
-							This action cannot be undone.
+							This will permanently delete active trades,
+							history, daily stats, and balance for the current
+							mode (demo/live) in both Redis and MongoDB.
+							Bot start time will be reset to now.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter className="gap-2 sm:gap-0">
@@ -232,13 +245,13 @@ export function ActionsDropdown({
 							variant="destructive"
 							className="bg-red-600 hover:bg-red-700 text-white"
 							onClick={() => {
-								onOpenFlush(); // This should trigger the actual flush mutation
-								setFlushConfirmOpen(false);
+								onOpenReset();
+								setResetConfirmOpen(false);
 							}}
 						>
-							{isFlushPending
-								? 'Flushing...'
-								: 'Yes, Flush All Data'}
+							{isResetPending
+								? 'Resetting...'
+								: 'Yes, Reset Everything'}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

@@ -25,6 +25,33 @@ class TradeService {
 			return [];
 		}
 	}
+
+	async clearAllTrades(type: 'demo' | 'live'): Promise<void> {
+		try {
+			await TradeModel.deleteMany({ type });
+			console.log(`Cleared all ${type} trades from MongoDB`);
+		} catch (err) {
+			console.error(`Failed to clear trades from MongoDB: ${err}`);
+			throw err;
+		}
+	}
+
+	async getMongoStats(): Promise<{ totalTrades: number; storageSize: string; storageSizeInBytes: number }> {
+		try {
+			const totalTrades = await TradeModel.countDocuments();
+			const stats = await TradeModel.db.db!.stats();
+			const storageSizeMB = (stats.storageSize / (1024 * 1024)).toFixed(2);
+
+			return {
+				totalTrades,
+				storageSize: `${storageSizeMB} MB`,
+				storageSizeInBytes: stats.storageSize,
+			};
+		} catch (err) {
+			console.error(`Failed to fetch MongoDB stats: ${err}`);
+			return { totalTrades: 0, storageSize: '0 MB', storageSizeInBytes: 0 };
+		}
+	}
 }
 
 export const tradeService = new TradeService();

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState, useCallback } from 'react';
 import { AgGridReact, AgGridProvider } from 'ag-grid-react';
 import { DateTime } from 'luxon';
@@ -181,6 +180,25 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 					return DateTime.fromISO(params.data.enteredAt)
 						.setZone(timezone)
 						.toFormat('HH:00');
+				},
+			},
+			{
+				headerName: 'Sec After Open',
+				width: 120,
+				type: 'numericColumn',
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				sortable: true,
+				valueGetter: (params: any) => {
+					if (!params.data?.startTime || !params.data?.enteredAt)
+						return null;
+					const start = DateTime.fromISO(params.data.startTime);
+					const entered = DateTime.fromISO(params.data.enteredAt);
+					return Math.floor(entered.diff(start, 'seconds').seconds);
+				},
+				valueFormatter: (params: any) => {
+					if (params.value == null) return '';
+					return `${params.value}s`;
 				},
 			},
 			{

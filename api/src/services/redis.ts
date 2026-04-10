@@ -77,6 +77,15 @@ export async function getBotStartTime(): Promise<number | null> {
 	return raw ? parseInt(raw, 10) : null;
 }
 
+export async function setBotStartTime(startTime: number): Promise<void> {
+	const isDemo = config.isDemo;
+	await redis.set(
+		REDIS_KEYS.START_TIME(isDemo ? 'demo' : 'live'),
+		startTime.toString(),
+	);
+}
+
+
 export async function getStopRequested(): Promise<boolean> {
 	const isDemo = config.isDemo;
 	const val = await redis.get(
@@ -95,6 +104,42 @@ export async function setStopRequested(stop: boolean): Promise<void> {
 
 export async function flushRedis(): Promise<void> {
 	await redis.flushdb();
+}
+
+/**
+ * Clears bot state only for the specified mode (demo or live).
+ * Preserves global data like price feeds and config cache.
+ */
+export async function clearModeData(mode: 'demo' | 'live'): Promise<void> {
+	const keysToDelete = [
+		REDIS_KEYS.ACTIVE_TRADES(mode),
+		REDIS_KEYS.BALANCE(mode),
+		REDIS_KEYS.STATS(mode),
+		REDIS_KEYS.HISTORY(mode),
+		REDIS_KEYS.HISTORY_IDS(mode),
+		REDIS_KEYS.DAILY_STOP(mode),
+		REDIS_KEYS.STOP_REQUESTED(mode),
+	];
+
+	// Find pattern-based keys
+	const tradePrefix = REDIS_KEYS.TRADE_PREFIX(mode);
+	const dailyPnlPrefix = REDIS_KEYS.DAILY_PNL(mode, '').replace(/:$/, ''); // Get prefix without trailing colon
+
+	const [tradeKeys, dailyPnlKeys] = await Promise.all([
+		redis.keys(`${tradePrefix}*`),
+		redis.keys(`${dailyPnlPrefix}*`),
+	]);
+
+	keysToDelete.push(...tradeKeys, ...dailyPnlKeys);
+
+	if (keysToDelete.length > 0) {
+		await redis.del(...keysToDelete);
+	}
+
+	// Reset start time to now
+	await setBotStartTime(Math.floor(Date.now() / 1000));
+
+	console.log(`Cleared all ${mode} state from Redis`);
 }
 
 export async function getMarketPrices(): Promise<MarketDashboardData | null> {

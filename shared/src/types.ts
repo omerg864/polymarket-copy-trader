@@ -272,6 +272,12 @@ export interface RedisInfo {
 	totalKeys: number;
 }
 
+export interface MongoInfo {
+	totalTrades: number;
+	storageSize: string;
+	storageSizeInBytes: number;
+}
+
 export interface MarketDashboardData {
 	btcPrice: number;
 	priceToBeat: number | null;

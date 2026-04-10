@@ -1,16 +1,18 @@
 import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 import {
-	flushRedisData,
 	getBotConfig,
 	getMarketPricesData,
+	getMongoStats,
 	getRedisStats,
 	getSummary,
 	getTimezones,
 	getVersions,
 	listActiveTrades,
 	listTradeHistory,
+	resetBotData,
 	stopBot,
+	updateBotStartTime,
 	updateConfig,
 	verifyAuth,
 } from '../controllers/bot.controller';
@@ -28,13 +30,15 @@ router.get('/config', authGuard, asyncHandler(getBotConfig));
 router.get('/timezones', authGuard, getTimezones);
 router.get('/versions', authGuard, asyncHandler(getVersions));
 router.put('/config', authGuard, adminGuard, asyncHandler(updateConfig));
+router.post('/bot-start-time', authGuard, adminGuard, asyncHandler(updateBotStartTime));
 router.get('/redis-stats', authGuard, asyncHandler(getRedisStats));
+router.get('/mongo-stats', authGuard, asyncHandler(getMongoStats));
 router.get('/market-prices', authGuard, asyncHandler(getMarketPricesData));
 router.post(
-	'/flush-redis',
+	'/reset-bot',
 	authGuard,
 	adminGuard,
-	asyncHandler(flushRedisData),
+	asyncHandler(resetBotData),
 );
 
 export default router;

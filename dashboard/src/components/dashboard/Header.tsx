@@ -1,7 +1,7 @@
 import {
 	getAuthRole,
 	useConfig,
-	useFlushRedis,
+	useResetBot,
 	useRedisStats,
 	useSummary,
 	useToggleStop,
@@ -15,7 +15,9 @@ import * as XLSX from 'xlsx';
 import { ActionsDropdown } from './ActionsDropdown';
 import { NotificationConfigDialog } from './NotificationConfigDialog';
 import { StrategyConfigDialog } from './StrategyConfigDialog';
+import { StartTimeDialog } from './StartTimeDialog';
 import RedisStats from './RedisStats';
+import MongoStats from './MongoStats';
 import { formatBtcPrice, formatGlobalDateTime } from '@/lib/utils';
 
 export function Header() {
@@ -26,12 +28,13 @@ export function Header() {
 		useNotificationConfig();
 	const toggleStop = useToggleStop();
 	const { refetch: refetchRedisStats } = useRedisStats();
-	const flushRedis = useFlushRedis();
+	const resetBot = useResetBot();
 	const isReadonly = getAuthRole() === 'readonly';
 	const isAdmin = getAuthRole() === 'admin';
 
 	const [configOpen, setConfigOpen] = useState(false);
 	const [notificationOpen, setNotificationOpen] = useState(false);
+	const [startTimeOpen, setStartTimeOpen] = useState(false);
 
 	const handleExport = useMemoizedFn(() => {
 		if (!history || !summary || !config) return;
@@ -132,7 +135,7 @@ export function Header() {
 				</h1>
 				<p className="text-xs sm:text-sm text-zinc-500 mt-1">
 					BTC 5-Minute Up/Down Markets • Auto-refreshes every 5s •{' '}
-					<RedisStats />
+					<RedisStats /> <MongoStats />
 				</p>
 			</div>
 			<div className="flex flex-wrap items-center gap-2 sm:gap-4">
@@ -149,16 +152,18 @@ export function Header() {
 					}
 					onOpenAlerts={() => setNotificationOpen(true)}
 					onOpenConfig={() => setConfigOpen(true)}
-					onOpenFlush={() =>
-						flushRedis.mutate(undefined, {
+					onOpenStartTime={() => setStartTimeOpen(true)}
+					onOpenReset={() =>
+						resetBot.mutate(undefined, {
 							onSuccess: () => {
 								refetchRedisStats();
+								refetchSummary();
 							},
 						})
 					}
 					onExport={handleExport}
 					isTogglePending={toggleStop.isPending}
-					isFlushPending={flushRedis.isPending}
+					isResetPending={resetBot.isPending}
 				/>
 
 				<StrategyConfigDialog
@@ -175,6 +180,16 @@ export function Header() {
 					notificationConfig={notificationConfig}
 					isAdmin={isAdmin}
 					refetchNotificationConfig={refetchNotificationConfig}
+				/>
+
+				<StartTimeDialog
+					key={startTimeOpen ? `open-${summary?.botStartTime}` : 'closed'}
+					open={startTimeOpen}
+					onOpenChange={setStartTimeOpen}
+					currentStartTime={summary?.botStartTime}
+					onSuccess={() => {
+						refetchSummary();
+					}}
 				/>
 			</div>
 		</div>

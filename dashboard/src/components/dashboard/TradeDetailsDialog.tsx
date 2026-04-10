@@ -13,6 +13,7 @@ import {
 } from './badges';
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
+import { DateTime } from 'luxon';
 import { useConfig } from '@/hooks/use-api';
 import { formatBtcPrice, formatGlobalDateTime } from '@/lib/utils';
 
@@ -105,6 +106,17 @@ export function TradeDetailsDialog({
 							<span className="text-zinc-500">Opened At</span>
 							<span className="text-right text-xs text-zinc-400">
 								{formatWithTimezone(trade.enteredAt)}
+							</span>
+							<span className="text-zinc-500">Sec After Open</span>
+							<span className="text-right font-mono">
+								{trade.startTime && trade.enteredAt
+									? `${Math.floor(
+											DateTime.fromISO(trade.enteredAt).diff(
+												DateTime.fromISO(trade.startTime),
+												'seconds',
+											).seconds,
+										)}s`
+									: '—'}
 							</span>
 							<span className="text-zinc-500">Closed At</span>
 							<span className="text-right text-xs text-zinc-400">
