@@ -11,7 +11,7 @@ import {
 	setDailyStats,
 } from './redis';
 import { getStrategyConfig } from './strategyConfig';
-import { calculateFee } from '@shared/utils';
+import { calculateFee } from '../../../shared/src/utils';
 
 export class VerificationService {
 	async verifyAndFixStats(fix: boolean): Promise<VerificationResult> {
@@ -235,7 +235,9 @@ export class VerificationService {
 				};
 				await setBotStats(fixedStats);
 
-				await setBotBalance(Math.round(expectedBalance * 10000) / 10000);
+				await setBotBalance(
+					Math.round(expectedBalance * 10000) / 10000,
+				);
 
 				// Fix all days found in history
 				for (const [date, dStats] of dailyStatsMap.entries()) {
