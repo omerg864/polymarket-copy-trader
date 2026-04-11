@@ -1,0 +1,185 @@
+{
+  "nodes": [
+    {
+      "id": "readme_polymarket_btc_bot",
+      "label": "Polymarket BTC 5-Minute Trading Bot",
+      "file_type": "document",
+      "source_file": "README.md"
+    },
+    {
+      "id": "readme_technical_analysis_engine",
+      "label": "Technical Analysis Engine",
+      "file_type": "document",
+      "source_file": "README.md"
+    },
+    {
+      "id": "readme_risk_manager",
+      "label": "Risk Manager",
+      "file_type": "document",
+      "source_file": "README.md"
+    },
+    {
+      "id": "readme_trading_modes",
+      "label": "Demo and Live Modes",
+      "file_type": "document",
+      "source_file": "README.md"
+    },
+    {
+      "id": "readme_web_dashboard",
+      "label": "Web Dashboard",
+      "file_type": "document",
+      "source_file": "README.md"
+    },
+    {
+      "id": "readme_strategy_config_service",
+      "label": "Live Strategy Config",
+      "file_type": "document",
+      "source_file": "README.md"
+    },
+    {
+      "id": "agents_gitnexus",
+      "label": "GitNexus",
+      "file_type": "document",
+      "source_file": "AGENTS.md"
+    },
+    {
+      "id": "readme_fixed_trade_cost_rationale",
+      "label": "Fixed Cost Rationale",
+      "file_type": "document",
+      "source_file": "README.md"
+    },
+    {
+      "id": "readme_indicator_weighting_rationale",
+      "label": "Weighted Indicator Rationale",
+      "file_type": "document",
+      "source_file": "README.md"
+    },
+    {
+      "id": "readme_dual_exit_rationale",
+      "label": "Dual Exit Rationale",
+      "file_type": "document",
+      "source_file": "README.md"
+    },
+    {
+      "id": "agents_impact_analysis_rationale",
+      "label": "Impact Analysis Rationale",
+      "file_type": "document",
+      "source_file": "AGENTS.md"
+    },
+    {
+      "id": "dashboard/public/favicon-16x16.png",
+      "label": "favicon-16x16.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/favicon-16x16.png"
+    },
+    {
+      "id": "dashboard/public/maskable_icon_x192.png",
+      "label": "maskable_icon_x192.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/maskable_icon_x192.png"
+    },
+    {
+      "id": "dashboard/public/maskable_icon.png",
+      "label": "maskable_icon.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/maskable_icon.png"
+    },
+    {
+      "id": "dashboard/public/android-chrome-192x192.png",
+      "label": "android-chrome-192x192.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/android-chrome-192x192.png"
+    },
+    {
+      "id": "dashboard/public/apple-touch-icon.png",
+      "label": "apple-touch-icon.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/apple-touch-icon.png"
+    },
+    {
+      "id": "dashboard/public/vite.svg",
+      "label": "vite.svg",
+      "file_type": "image",
+      "source_file": "dashboard/public/vite.svg"
+    },
+    {
+      "id": "dashboard/public/android-chrome-512x512.png",
+      "label": "android-chrome-512x512.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/android-chrome-512x512.png"
+    },
+    {
+      "id": "dashboard/public/maskable_icon_x512.png",
+      "label": "maskable_icon_x512.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/maskable_icon_x512.png"
+    },
+    {
+      "id": "dashboard/public/favicon-32x32.png",
+      "label": "favicon-32x32.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/favicon-32x32.png"
+    }
+  ],
+  "edges": [
+    {
+      "source": "readme_polymarket_btc_bot",
+      "target": "readme_technical_analysis_engine",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md"
+    },
+    {
+      "source": "readme_polymarket_btc_bot",
+      "target": "readme_risk_manager",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md"
+    },
+    {
+      "source": "readme_web_dashboard",
+      "target": "readme_polymarket_btc_bot",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "README.md"
+    },
+    {
+      "source": "readme_technical_analysis_engine",
+      "target": "readme_indicator_weighting_rationale",
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "README.md"
+    },
+    {
+      "source": "readme_risk_manager",
+      "target": "readme_dual_exit_rationale",
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "README.md"
+    },
+    {
+      "source": "agents_gitnexus",
+      "target": "readme_polymarket_btc_bot",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "AGENTS.md"
+    },
+    {
+      "source": "agents_gitnexus",
+      "target": "agents_impact_analysis_rationale",
+      "relation": "rationale_for",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9,
+      "source_file": "AGENTS.md"
+    }
+  ],
+  "hyperedges": [],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

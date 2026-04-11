@@ -8,6 +8,7 @@ import {
 	Tooltip,
 	ResponsiveContainer,
 	Legend,
+	ReferenceLine,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3 } from 'lucide-react';
@@ -16,6 +17,7 @@ import { formatBtcPrice } from '@/lib/utils';
 interface PnLByHourGraphProps {
 	data: any[];
 	dates: string[];
+	dayPnlGoal?: number;
 	className?: string;
 }
 
@@ -27,15 +29,27 @@ const COLORS = [
 	'#10b981', // Emerald
 	'#f59e0b', // Amber
 	'#ef4444', // Red
+	'#3b82f6', // Blue
+	'#84cc16', // Lime
+	'#f97316', // Orange
+	'#a855f7', // Purple
+	'#0ea5e9', // Sky
+	'#14b8a6', // Teal
+	'#d946ef', // Fuchsia
+	'#2dd4bf', // Aquamarine
+	'#fb7185', // Rose
+	'#c084fc', // Bright Purple
+	'#4ade80', // Light Green
+	'#fb923c', // Light Orange
+	'#38bdf8', // Light Sky
 ];
 
 export const PnLByHourGraph: React.FC<PnLByHourGraphProps> = ({
 	data,
 	dates,
+	dayPnlGoal,
 	className,
 }) => {
-	const lastDate = dates[dates.length - 1];
-
 	return (
 		<Card
 			className={`bg-zinc-900 border-zinc-800 shadow-2xl relative overflow-hidden group ${className}`}
@@ -54,14 +68,11 @@ export const PnLByHourGraph: React.FC<PnLByHourGraphProps> = ({
 				</div>
 			</CardHeader>
 			<CardContent>
-				<div className="h-[400px] w-full mt-4">
-					<ResponsiveContainer
-						width="100%"
-						height="100%"
-					>
+				<div className="h-[450px] w-full mt-4">
+					<ResponsiveContainer width="100%" height="100%">
 						<LineChart
 							data={data}
-							margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+							margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
 						>
 							<CartesianGrid
 								strokeDasharray="3 3"
@@ -83,7 +94,9 @@ export const PnLByHourGraph: React.FC<PnLByHourGraphProps> = ({
 								fontSize={12}
 								tickLine={false}
 								axisLine={false}
-								tickFormatter={(value) => `$${value.toFixed(1)}`}
+								tickFormatter={(value) =>
+									`$${value.toFixed(1)}`
+								}
 							/>
 							<Tooltip
 								contentStyle={{
@@ -93,7 +106,10 @@ export const PnLByHourGraph: React.FC<PnLByHourGraphProps> = ({
 									color: '#f4f4f5',
 									border: '1px solid rgba(255,255,255,0.1)',
 								}}
-								itemStyle={{ fontSize: '12px', padding: '2px 0' }}
+								itemStyle={{
+									fontSize: '12px',
+									padding: '2px 0',
+								}}
 								labelStyle={{
 									fontWeight: 'bold',
 									marginBottom: '4px',
@@ -103,11 +119,14 @@ export const PnLByHourGraph: React.FC<PnLByHourGraphProps> = ({
 									`Hour: ${hour.toString().padStart(2, '0')}:00`
 								}
 								formatter={(value: any, name: any) => {
-									const val = typeof value === 'number' ? value : 0;
+									const val =
+										typeof value === 'number' ? value : 0;
 									return [
 										<span
 											className={
-												val >= 0 ? 'text-emerald-400' : 'text-red-400'
+												val >= 0
+													? 'text-emerald-400'
+													: 'text-red-400'
 											}
 										>
 											{val >= 0 ? '+' : ''}
@@ -126,20 +145,36 @@ export const PnLByHourGraph: React.FC<PnLByHourGraphProps> = ({
 									</span>
 								)}
 							/>
+
+							{dayPnlGoal !== undefined && (
+								<ReferenceLine
+									y={dayPnlGoal}
+									stroke="#fbbf24"
+									strokeDasharray="5 5"
+									label={{
+										value: `Goal: $${dayPnlGoal}`,
+										position: 'right',
+										fill: '#fbbf24',
+										fontSize: 10,
+										fontWeight: 'bold',
+									}}
+								/>
+							)}
+
 							{dates.map((date, index) => (
 								<Line
 									key={date}
 									type="monotone"
 									dataKey={date}
 									stroke={COLORS[index % COLORS.length]}
-									strokeWidth={date === lastDate ? 3 : 1.5}
+									strokeWidth={2}
 									dot={false}
 									activeDot={{
 										r: 4,
 										strokeWidth: 0,
 										fill: COLORS[index % COLORS.length],
 									}}
-									opacity={date === lastDate ? 1 : 0.4}
+									opacity={0.7}
 									animationDuration={1500}
 								/>
 							))}

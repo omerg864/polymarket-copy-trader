@@ -1,0 +1,62 @@
+{
+  "nodes": [
+    {
+      "id": "dashboard/public/favicon-16x16.png",
+      "label": "favicon-16x16.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/favicon-16x16.png"
+    },
+    {
+      "id": "dashboard/public/maskable_icon_x192.png",
+      "label": "maskable_icon_x192.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/maskable_icon_x192.png"
+    },
+    {
+      "id": "dashboard/public/maskable_icon.png",
+      "label": "maskable_icon.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/maskable_icon.png"
+    },
+    {
+      "id": "dashboard/public/android-chrome-192x192.png",
+      "label": "android-chrome-192x192.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/android-chrome-192x192.png"
+    },
+    {
+      "id": "dashboard/public/apple-touch-icon.png",
+      "label": "apple-touch-icon.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/apple-touch-icon.png"
+    },
+    {
+      "id": "dashboard/public/vite.svg",
+      "label": "vite.svg",
+      "file_type": "image",
+      "source_file": "dashboard/public/vite.svg"
+    },
+    {
+      "id": "dashboard/public/android-chrome-512x512.png",
+      "label": "android-chrome-512x512.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/android-chrome-512x512.png"
+    },
+    {
+      "id": "dashboard/public/maskable_icon_x512.png",
+      "label": "maskable_icon_x512.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/maskable_icon_x512.png"
+    },
+    {
+      "id": "dashboard/public/favicon-32x32.png",
+      "label": "favicon-32x32.png",
+      "file_type": "image",
+      "source_file": "dashboard/public/favicon-32x32.png"
+    }
+  ],
+  "edges": [],
+  "hyperedges": [],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

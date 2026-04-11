@@ -30,6 +30,7 @@ import {
 	MarketOutcomeBadge,
 	StatusBadge,
 	PnlBadge,
+	ExpectedOutcomeBadge,
 } from '../dashboard/badges';
 import { useConfig } from '@/hooks/use-api';
 import { formatBtcPrice, formatGlobalDateTime } from '@/lib/utils';
@@ -147,6 +148,25 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 				cellRenderer: (params: any) => {
 					if (params.data?.isTotalRow) return '';
 					return <MarketOutcomeBadge outcome={params.value} />;
+				},
+			},
+			{
+				headerName: 'Expected Outcome',
+				width: 140,
+				enableRowGroup: true,
+				filter: 'agSetColumnFilter',
+				valueGetter: (params: any) => {
+					if (!params.data || params.data.isTotalRow) return null;
+					if (
+						!params.data.actualOutcome ||
+						params.data.actualOutcome === 'UNKNOWN'
+					)
+						return null;
+					return params.data.direction === params.data.actualOutcome;
+				},
+				cellRenderer: (params: any) => {
+					if (params.data?.isTotalRow) return '';
+					return <ExpectedOutcomeBadge isCorrect={params.value} />;
 				},
 			},
 			{

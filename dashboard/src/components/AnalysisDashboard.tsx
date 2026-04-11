@@ -775,8 +775,8 @@ export function AnalysisDashboard() {
 				});
 
 				// Calculate cumulative PnL for each date and hour
-				// Take last 7 days of active trading to keep the graph readable
-				const sortedDates = Array.from(allDates).sort().slice(-7);
+				// Take all dates of active trading to show the full progression
+				const sortedDates = Array.from(allDates).sort();
 
 				const result = [];
 				for (let h = 0; h < 24; h++) {
@@ -2104,6 +2104,7 @@ export function AnalysisDashboard() {
 			<PnLByHourGraph
 				data={analysis.pnlByHourByDate.data}
 				dates={analysis.pnlByHourByDate.dates}
+				dayPnlGoal={dayPnlGoal}
 				className="mb-6"
 			/>
 			{/* Raw Trade Data Grid */}

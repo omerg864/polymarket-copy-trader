@@ -112,3 +112,44 @@ export function MarketOutcomeBadge({
 		</Badge>
 	);
 }
+
+export function ExpectedOutcomeBadge({
+	isCorrect,
+	className,
+}: {
+	isCorrect?: boolean | null;
+	className?: string;
+}) {
+	if (isCorrect === true) {
+		return (
+			<Badge
+				className={cn(
+					'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 font-bold',
+					className,
+				)}
+			>
+				TRUE
+			</Badge>
+		);
+	}
+	if (isCorrect === false) {
+		return (
+			<Badge
+				className={cn(
+					'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/20 font-bold',
+					className,
+				)}
+			>
+				FALSE
+			</Badge>
+		);
+	}
+	return (
+		<Badge
+			variant="outline"
+			className={cn('text-zinc-500 border-zinc-800 italic', className)}
+		>
+			UNKNOWN
+		</Badge>
+	);
+}
