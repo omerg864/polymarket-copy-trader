@@ -113,7 +113,7 @@ export function ConfigRow({
 			<span className="text-zinc-500">{label}</span>
 			<span className="text-right">
 				{prefix}
-				{value}
+				{typeof value !== 'object' ? value : null}
 				{suffix}
 			</span>
 		</>

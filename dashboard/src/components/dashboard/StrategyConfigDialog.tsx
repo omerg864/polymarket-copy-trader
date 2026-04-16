@@ -8,10 +8,11 @@ import {
 } from '@/components/ui/dialog';
 import { useTimezones, useUpdateConfig } from '@/hooks/use-api';
 import type { StrategyConfig } from '@/types';
-import { Pencil } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { Pencil, Plus, Trash2, Clock } from 'lucide-react';
+import React, { useCallback, useState } from 'react';
 import { ConfigRow } from './ConfigRow';
 import { ConfigSection } from './ConfigSection';
+import { Input } from '@/components/ui/input';
 
 interface StrategyConfigDialogProps {
 	open: boolean;
@@ -34,6 +35,7 @@ export function StrategyConfigDialog({
 	const [editValues, setEditValues] = useState<Partial<StrategyConfig>>({});
 	const [prevConfig, setPrevConfig] = useState(config);
 	const [prevOpen, setPrevOpen] = useState(open);
+	const [newWindow, setNewWindow] = useState({ start: '', end: '' });
 
 	if (config !== prevConfig || open !== prevOpen) {
 		setPrevConfig(config);
@@ -54,6 +56,24 @@ export function StrategyConfigDialog({
 		}
 		setEditing(false);
 	}, [config]);
+	const handleAddWindow = () => {
+		if (newWindow.start && newWindow.end) {
+			const current = editValues.excludedTimeWindows || [];
+			setEditValues({
+				...editValues,
+				excludedTimeWindows: [...current, newWindow],
+			});
+			setNewWindow({ start: '', end: '' });
+		}
+	};
+
+	const handleRemoveWindow = (index: number) => {
+		const current = editValues.excludedTimeWindows || [];
+		setEditValues({
+			...editValues,
+			excludedTimeWindows: current.filter((_, i) => i !== index),
+		});
+	};
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -344,6 +364,108 @@ export function StrategyConfigDialog({
 								min={1}
 							/>
 						</ConfigSection>
+
+						<ConfigSection title="Time Exclusions">
+							{!editing ? (
+								(config.excludedTimeWindows || []).length >
+								0 ? (
+									(config.excludedTimeWindows || []).map(
+										(w, i) => (
+											<React.Fragment key={i}>
+												<span className="text-zinc-500 flex items-center gap-2">
+													<Clock className="h-3 w-3" />
+													Window #{i + 1}
+												</span>
+												<span className="text-right text-zinc-300">
+													{w.start} — {w.end}
+												</span>
+											</React.Fragment>
+										),
+									)
+								) : (
+									<div className="col-span-2 text-zinc-600 italic py-1">
+										No exclusion windows defined
+									</div>
+								)
+							) : (
+								<>
+									{(
+										editValues.excludedTimeWindows || []
+									).map((w, i) => (
+										<React.Fragment key={i}>
+											<div className="flex items-center gap-2">
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-6 w-6 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+													onClick={() =>
+														handleRemoveWindow(i)
+													}
+												>
+													<Trash2 className="h-3.5 w-3.5" />
+												</Button>
+												<span className="text-zinc-400">
+													{w.start} — {w.end}
+												</span>
+											</div>
+											<div />
+										</React.Fragment>
+									))}
+									<div className="col-span-2 border-t border-zinc-800/50 mt-2 pt-3 flex flex-col gap-2">
+										<div className="flex items-center gap-2">
+											<div className="grid grid-cols-2 gap-2 flex-grow">
+												<div className="space-y-1">
+													<label className="text-[10px] text-zinc-500 uppercase">
+														Start
+													</label>
+													<Input
+														type="time"
+														value={newWindow.start}
+														onChange={(e) =>
+															setNewWindow({
+																...newWindow,
+																start: e.target
+																	.value,
+															})
+														}
+														className="h-8 bg-zinc-900 border-zinc-800 text-xs"
+													/>
+												</div>
+												<div className="space-y-1">
+													<label className="text-[10px] text-zinc-500 uppercase">
+														End
+													</label>
+													<Input
+														type="time"
+														value={newWindow.end}
+														onChange={(e) =>
+															setNewWindow({
+																...newWindow,
+																end: e.target
+																	.value,
+															})
+														}
+														className="h-8 bg-zinc-900 border-zinc-800 text-xs"
+													/>
+												</div>
+											</div>
+											<Button
+												size="icon"
+												className="h-8 w-8 mt-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700"
+												onClick={handleAddWindow}
+												disabled={
+													!newWindow.start ||
+													!newWindow.end
+												}
+											>
+												<Plus className="h-4 w-4" />
+											</Button>
+										</div>
+									</div>
+								</>
+							)}
+						</ConfigSection>
+
 						<ConfigSection title="Advanced">
 							<ConfigRow
 								label="Risk Monitor Interval"

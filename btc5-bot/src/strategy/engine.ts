@@ -205,9 +205,21 @@ class StrategyEngine {
 			return;
 		}
 
-		// Reset daily stop if date changed
 		if (dailyStop && dailyStop.date !== todayStr) {
 			await redisService.setDailyStop(false, todayStr || '');
+		}
+
+		// Step 2.1: Check for excluded time windows
+		if (sc.excludedTimeWindows && sc.excludedTimeWindows.length > 0) {
+			const nowTz = DateTime.now().setZone(sc.timezone);
+			for (const window of sc.excludedTimeWindows) {
+				if (this.isTimeExcluded(nowTz, window)) {
+					logger.info(
+						`🚫 Current time ${nowTz.toFormat('HH:mm')} is within exclusion window ${window.start}-${window.end}. Skipping new trades.`,
+					);
+					return;
+				}
+			}
 		}
 
 		// Step 3: Use discovered market (from Step 2)
@@ -562,6 +574,34 @@ class StrategyEngine {
 		} catch (error) {
 			logger.error(`Failed to cleanup WS subscriptions: ${error}`);
 		}
+	}
+	/**
+	 * Check if current time falls within an exclusion window (HH:mm format)
+	 */
+	private isTimeExcluded(
+		now: DateTime,
+		window: { start: string; end: string },
+	): boolean {
+		const [startH, startM] = window.start.split(':').map(Number);
+		const [endH, endM] = window.end.split(':').map(Number);
+
+		const currentTimeInMinutes = now.hour * 60 + now.minute;
+		const startTotalMinutes = startH * 60 + startM;
+		let endTotalMinutes = endH * 60 + endM;
+
+		// Handle midnight wrap-around (e.g., 23:00 to 01:00)
+		if (endTotalMinutes <= startTotalMinutes) {
+			// Window crosses midnight
+			return (
+				currentTimeInMinutes >= startTotalMinutes ||
+				currentTimeInMinutes < endTotalMinutes
+			);
+		}
+
+		return (
+			currentTimeInMinutes >= startTotalMinutes &&
+			currentTimeInMinutes < endTotalMinutes
+		);
 	}
 }
 

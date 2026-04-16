@@ -123,6 +123,7 @@ export interface StrategyConfig {
 	dailyStopLoss: number;
 	fctBtcOffset: number;
 	timezone: string;
+	excludedTimeWindows: { start: string; end: string }[];
 }
 
 export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
@@ -161,6 +162,7 @@ export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 	dailyStopLoss: 1,
 	fctBtcOffset: 4,
 	timezone: 'Asia/Jerusalem',
+	excludedTimeWindows: [],
 };
 
 export interface NotificationConfig {
