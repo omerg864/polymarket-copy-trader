@@ -60,8 +60,8 @@ npm run verify-stats            # Audit trade history vs. stored stats
 **Redis is the single source of truth at runtime.** All keys are prefixed `pmbot:` with a mode sub-namespace (`demo:` or `live:`). The bot owns all state writes; the API is a pure read/write proxy. Both services connect independently to the same Redis instance.
 
 ```
-btc5-bot ──writes──→ Redis ←──reads──→ api ←──reads──→ dashboard
-btc5-bot ──reads──→ MongoDB ←──writes──→ api (strategy config only)
+btc5-bot ──writes──→ Redis ←──reads/writes──→ api ←──reads/writes──→ dashboard
+btc5-bot ──writes/reads──→ MongoDB ←──writes/reads──→ api
 ```
 
 ### Bot Execution Loop (`btc5-bot/src/strategy/engine.ts`)
@@ -85,7 +85,7 @@ Score is a weighted sum of 7 factors: distance from priceToBeat (weight 4), shor
 Two queues prevent race conditions when multiple positions exit simultaneously:
 
 1. **`sell-trades`** (concurrency 5) — places CLOB sell order if applicable, then pushes to completion queue
-2. **`trade-completion`** (concurrency 1) — serialized balance + stats updates, saves to Redis history, triggers Telegram notification
+2. **`trade-completion`** (concurrency 1) — serialized balance + stats updates, saves to mongoDB history, triggers Telegram notification
 
 Risk manager runs two parallel intervals: position monitor (TP/SL checks every 2s) and FCT monitor (force-close if ≤13s remain on losing trade, every 1s).
 
@@ -137,7 +137,7 @@ All under `pmbot:` prefix:
 - `pmbot:{mode}:stats` — BotStats JSON
 - `pmbot:{mode}:active_trades` — set of active trade IDs
 - `pmbot:{mode}:trade:{id}` — individual active trade JSON
-- `pmbot:{mode}:history` — list of last 500,000 closed trades
+- `pmbot:{mode}:history_ids` — sorted set of trade IDs (IDs only) for quick lookup
 - `pmbot:{mode}:stop_requested` — pause flag (`"true"`/`"false"`)
 - `pmbot:strategy_config` — cached strategy config JSON
 - `pmbot:market:{conditionId}` — Gamma market cache (TTL 600s)
@@ -156,7 +156,7 @@ All under `pmbot:` prefix:
 
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **polymarket-5-minutes-bot** (742 symbols, 2040 relationships, 46 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **polymarket-5-minutes-bot** (1059 symbols, 2630 relationships, 70 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

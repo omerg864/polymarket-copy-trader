@@ -1,4 +1,6 @@
 import { Wallet } from '@ethersproject/wallet';
+import { RelayClient, RelayerTxType } from '@polymarket/builder-relayer-client';
+import { BuilderConfig } from '@polymarket/builder-signing-sdk';
 import { ClobClient, OrderType, Side } from '@polymarket/clob-client';
 import type { Market, MarketPrices } from '@shared/types';
 import axios, { AxiosInstance } from 'axios';
@@ -66,6 +68,7 @@ class PolymarketService {
 	private clobClient: ClobClient | null = null;
 	private gammaApi: AxiosInstance;
 	private signer: Wallet | null = null;
+	private builderConfig: BuilderConfig | null = null;
 
 	constructor() {
 		this.gammaApi = axios.create({
@@ -86,7 +89,18 @@ class PolymarketService {
 
 		validateLiveConfig();
 
-		this.signer = new Wallet(config.privateKey);
+		this.builderConfig = new BuilderConfig({
+			localBuilderCreds: {
+				key: config.builderApiKey,
+				secret: config.builderApiSecret,
+				passphrase: config.builderApiPassphrase,
+			},
+		});
+
+		this.signer = new Wallet(
+			config.privateKey,
+			new ethers.providers.JsonRpcProvider(config.polygonRpcUrl),
+		);
 		const creds = await new ClobClient(
 			config.clobHost,
 			config.chainId,
@@ -102,7 +116,7 @@ class PolymarketService {
 			config.funderAddress,
 			undefined, // geoBlockToken
 			undefined, // useServerTime
-			undefined, // builderConfig
+			this.builderConfig,
 			undefined, // getSigner
 			undefined, // retryOnError
 			undefined, // tickSizeTtlMs
@@ -509,7 +523,7 @@ class PolymarketService {
 	async cancelOrder(orderId: string): Promise<void> {
 		if (config.isDemo || !this.clobClient) return;
 		try {
-			await this.clobClient.cancelOrder({ orderID: orderId } as any);
+			await this.clobClient.cancelOrder({ orderID: orderId });
 			logger.trade('ORDER CANCELLED', { orderId });
 		} catch (error) {
 			const message =
@@ -552,42 +566,102 @@ class PolymarketService {
 	async redeemWinnings(conditionId: string): Promise<void> {
 		if (config.isDemo || !this.signer) return;
 
-		const CTF_ADDRESS = '0x4D97DCd97eC945f40cF65F87097ACe5EA0476045';
-		const USDC_ADDRESS = '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174';
+		const CTF_ADDRESS = '0x4d97dcd97ec945f40cf65f87097ace5ea0476045';
+		const USDC_ADDRESS = '0x2791bca1f2de4661ed88a30c99a7a9449aa84174';
 		const CTF_ABI = [
 			'function redeemPositions(address collateralToken, bytes32 parentCollectionId, bytes32 conditionId, uint256[] indexSets) external',
 		];
 
 		try {
-			const provider = new ethers.providers.JsonRpcProvider(
-				config.polygonRpcUrl,
-			);
-			const connectedWallet = this.signer.connect(provider);
-			const ctf = new ethers.Contract(
-				CTF_ADDRESS,
-				CTF_ABI,
-				connectedWallet,
-			);
+			const ctf = new ethers.Contract(CTF_ADDRESS, CTF_ABI, this.signer);
 
 			logger.info(
-				`💰 Redeeming winning position on-chain for conditionId: ${conditionId}`,
+				`💰 Submitting gasless redemption for conditionId: ${conditionId}`,
 			);
 
-			const tx = await ctf.redeemPositions(
-				USDC_ADDRESS,
-				ethers.constants.HashZero,
-				conditionId,
-				[1, 2],
+			const relayClient = new RelayClient(
+				'https://relayer-v2.polymarket.com/',
+				config.chainId,
+				this.signer,
+				this.builderConfig ||
+					new BuilderConfig({
+						localBuilderCreds: {
+							key: config.builderApiKey,
+							secret: config.builderApiSecret,
+							passphrase: config.builderApiPassphrase,
+						},
+					}),
+				RelayerTxType.PROXY,
 			);
-			await tx.wait();
 
-			logger.info(`✅ On-chain redemption confirmed. tx: ${tx.hash}`);
+			const ctfInterface = new ethers.utils.Interface([
+				'function redeemPositions(address collateralToken, bytes32 parentCollectionId, bytes32 conditionId, uint256[] indexSets)',
+			]);
+
+			const indexSets = [1, 2];
+			for (const index of indexSets) {
+				const txData = ctfInterface.encodeFunctionData('redeemPositions', [
+					USDC_ADDRESS,
+					'0x0000000000000000000000000000000000000000000000000000000000000000', // parentId
+					conditionId,
+					[index],
+				]);
+
+				try {
+					const response = await relayClient.execute([
+						{
+							to: ethers.utils.getAddress(CTF_ADDRESS),
+							data: txData,
+							value: '0',
+						},
+					]);
+					logger.info(
+						`✅ Gasless redemption submitted via Relayer for index ${index}. ID: ${
+							response?.transactionID || 'Pending'
+						}`,
+					);
+				} catch (innerError) {
+					logger.warn(
+						`⚠️ Failed to redeem index ${index} for ${conditionId}: ${
+							innerError instanceof Error
+								? innerError.message
+								: String(innerError)
+						}`,
+					);
+				}
+			}
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : String(error);
 			logger.error(
-				`⚠️ Failed to redeem winning position on-chain for ${conditionId}: ${message}. Manual redemption may be required.`,
+				`⚠️ Failed to submit gasless redemption for ${conditionId}: ${message}. Manual redemption or MATIC funding may be required.`,
 			);
+		}
+	}
+
+	/**
+	 * Fetches the on-chain balance of a specific outcome token (ERC1155)
+	 * for the configured funder address.
+	 */
+	async getTokenBalance(tokenId: string): Promise<number> {
+		if (config.isDemo) return 0;
+		if (!this.signer) throw new Error('Signer not initialized');
+
+		const CTF_ADDRESS = '0x4d97dcd97ec945f40cf65f87097ace5ea0476045';
+		const CTF_ABI = [
+			'function balanceOf(address account, uint256 id) view returns (uint256)',
+		];
+
+		try {
+			const ctf = new ethers.Contract(CTF_ADDRESS, CTF_ABI, this.signer);
+			const balance = await ctf.balanceOf(config.funderAddress, tokenId);
+			// Polymarket outcome tokens (ERC1155) use 6 decimals
+			return parseFloat(ethers.utils.formatUnits(balance, 6));
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			logger.error(`Error checking balance for ${tokenId}: ${message}`);
+			return 0;
 		}
 	}
 }

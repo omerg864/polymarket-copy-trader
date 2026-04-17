@@ -14,12 +14,12 @@ export const REDIS_KEYS = {
 	STRATEGY_CONFIG: `${REDIS_PREFIX}strategy_config`,
 	NOTIFICATION_CONFIG: `${REDIS_PREFIX}notification_config`,
 	BOT_VERSION: `${REDIS_PREFIX}bot_version`,
-	THROTTLE: (type: string, hash: string) => `${REDIS_PREFIX}throttle:${type}:${hash}`,
+	THROTTLE: (type: string, hash: string) =>
+		`${REDIS_PREFIX}throttle:${type}:${hash}`,
 
 	// Mode-specific (demo/live)
 	BALANCE: (mode: string) => `${REDIS_PREFIX}${mode}:balance`,
 	STATS: (mode: string) => `${REDIS_PREFIX}${mode}:stats`,
-	HISTORY: (mode: string) => `${REDIS_PREFIX}${mode}:history`,
 	HISTORY_IDS: (mode: string) => `${REDIS_PREFIX}${mode}:history_ids`,
 	START_TIME: (mode: string) => `${REDIS_PREFIX}${mode}:start_time`,
 	STOP_REQUESTED: (mode: string) => `${REDIS_PREFIX}${mode}:stop_requested`,

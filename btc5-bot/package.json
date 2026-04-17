@@ -1,6 +1,6 @@
 {
 	"name": "polymarket-btc5-bot",
-	"version": "3.2.6",
+	"version": "3.3.0",
 	"description": "Trading engine for Polymarket BTC 5-minute up/down markets",
 	"main": "dist/index.js",
 	"scripts": {
@@ -10,6 +10,8 @@
 		"build": "tsc && tsc-alias"
 	},
 	"dependencies": {
+		"@polymarket/builder-relayer-client": "^0.0.8",
+		"@polymarket/builder-signing-sdk": "^0.0.8",
 		"@polymarket/clob-client": "^5.1.0",
 		"async": "^3.2.6",
 		"axios": "^1.7.0",

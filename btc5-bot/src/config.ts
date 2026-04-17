@@ -37,6 +37,11 @@ const config = {
 
 	// Polygon RPC for on-chain CTF redemption (live mode only)
 	polygonRpcUrl: process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com',
+
+	// Polymarket Builder/Relayer (for gasless redemptions)
+	builderApiKey: process.env.POLYMARKET_BUILDER_API_KEY || '',
+	builderApiSecret: process.env.POLYMARKET_BUILDER_SECRET || '',
+	builderApiPassphrase: process.env.POLYMARKET_BUILDER_PASSPHRASE || '',
 };
 
 export function validateLiveConfig(): void {
@@ -53,6 +58,18 @@ export function validateLiveConfig(): void {
 	) {
 		errors.push('FUNDER_ADDRESS is required for live trading');
 	}
+
+	// Validate Builder API keys for gasless redemptions if in live mode
+	if (!config.builderApiKey) {
+		errors.push('POLYMARKET_BUILDER_API_KEY is required for gasless redemptions');
+	}
+	if (!config.builderApiSecret) {
+		errors.push('POLYMARKET_BUILDER_SECRET is required for gasless redemptions');
+	}
+	if (!config.builderApiPassphrase) {
+		errors.push('POLYMARKET_BUILDER_PASSPHRASE is required for gasless redemptions');
+	}
+
 	if (errors.length > 0) {
 		throw new Error(`Live mode config errors:\n${errors.join('\n')}`);
 	}

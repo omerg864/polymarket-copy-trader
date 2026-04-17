@@ -11,12 +11,7 @@ Automated trading bot for [Polymarket's BTC 5-minute up/down markets](https://po
 - ⏯️ **Pause/Resume** — gracefully pause new trade entries while continuing to manage open positions
 - 👨‍💻 **Web Dashboard** — real-time monitoring of trades, P&L, balance, and bot status
 - 🔒 **Two-Tier Auth** — admin (full control) and read-only (view only) access
-- ⚙️ **Live Strategy Config** — all strategy parameters stored in MongoDB, editable from the dashboard, cached in Redis, and picked up by the bot automatically
-- 📈 **Fixed Trade Cost** — Uses a fixed $100 (configurable) per trade for simplicity and predictability
-- 🛡️ **Dual Take-Profit & Stop-Loss** — Configurable exits based on either percentage gains/losses OR specific market price targets (e.g., SL at 0.4, TP at 0.98)
-- 🛡️ **Entry Guards** — configurable thresholds for minimum entry price and market age to filter trades
-- 🗄️ Redis for persistent state, active trades, and fast historical ID lookups
-- 🍃 MongoDB for durable strategy configuration and complete trade history
+- 🍃 **Durable MongoDB History** — complete trade history and strategy configuration persisted in MongoDB
 - 🔄 Auto-aligns to 5-minute market intervals
 
 ---
@@ -37,14 +32,14 @@ Automated trading bot for [Polymarket's BTC 5-minute up/down markets](https://po
           │                 │               │
       ┌────▼─────────────────▼───────────────▼───┐
       │                 Redis                     │
-      │ Active trades, History ID Set, Balance,   │
-      │ Cache, Strategy Config Cache              │
+      │ Active trades, Balance, Cache,            │
+      │ Strategy Cache, History ID Set (lookup)   │
       └──────────────────┬───────────────────────┘
                          │
       ┌──────────────────▼───────────────────────┐
       │              API Server                   │
       │ Express + Mongoose — REST endpoints,      │
-      │ strategy config CRUD, two-tier auth       │
+      │ strategy management, trade history access │
       └──────────────────┬───────────────────────┘
                          │
       ┌──────────────────▼───────────────────────┐
@@ -182,14 +177,14 @@ The project uses three `.env` files — one per package. Only infrastructure and
 
 All trading strategy parameters are stored in MongoDB and cached in Redis. They can be edited live from the dashboard by admin users. The bot picks up changes automatically (within ~10 seconds).
 
-| `fixedOrderSizeUsd`     | `100`   | Fixed USDC per trade                              |
-| `minConfidence`         | `70`    | Min signal confidence (0–100%) to enter a trade   |
-| `takeProfitType`        | `percent`| `percent` or `market` (TP by % or market price)    |
-| `takeProfitPct`         | `30`    | Sell when price rises 30% from entry (percent TP) |
-| `marketPriceTakeProfit` | `0.98`  | Sell when market price reaches this (market TP)   |
-| `stopLossType`          | `market`| `percent` or `market` (SL by % or market price)    |
-| `marketPriceStopLoss`   | `0.40`  | Sell when market price reaches this (market SL)   |
-| `stopLossPct`           | `25`    | Sell when price drops 25% from entry (percent SL) |
+| `fixedOrderSizeUsd` | `100` | Fixed USDC per trade |
+| `minConfidence` | `70` | Min signal confidence (0–100%) to enter a trade |
+| `takeProfitType` | `percent`| `percent` or `market` (TP by % or market price) |
+| `takeProfitPct` | `30` | Sell when price rises 30% from entry (percent TP) |
+| `marketPriceTakeProfit` | `0.98` | Sell when market price reaches this (market TP) |
+| `stopLossType` | `market`| `percent` or `market` (SL by % or market price) |
+| `marketPriceStopLoss` | `0.40` | Sell when market price reaches this (market SL) |
+| `stopLossPct` | `25` | Sell when price drops 25% from entry (percent SL) |
 
 ## How the Strategy Works
 
@@ -212,8 +207,8 @@ Once a position is entered:
 
 - The **risk manager** monitors the position every few seconds
 - Supports **Dual TP/SL**:
-  - **Percentage-based**: Exits when price moves ±X% from entry
-  - **Market-price-based**: Exits when the Polymarket token price hits a specific target (e.g., SL at $0.40)
+    - **Percentage-based**: Exits when price moves ±X% from entry
+    - **Market-price-based**: Exits when the Polymarket token price hits a specific target (e.g., SL at $0.40)
 - If neither threshold is hit, the position rides to market resolution (5-minute window end)
 
 ### Market Timing

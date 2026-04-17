@@ -97,7 +97,6 @@ export async function setBotStartTime(startTime: number): Promise<void> {
 	);
 }
 
-
 export async function getStopRequested(): Promise<boolean> {
 	const isDemo = config.isDemo;
 	const val = await redis.get(
@@ -127,7 +126,6 @@ export async function clearModeData(mode: 'demo' | 'live'): Promise<void> {
 		REDIS_KEYS.ACTIVE_TRADES(mode),
 		REDIS_KEYS.BALANCE(mode),
 		REDIS_KEYS.STATS(mode),
-		REDIS_KEYS.HISTORY(mode),
 		REDIS_KEYS.HISTORY_IDS(mode),
 		REDIS_KEYS.DAILY_STOP(mode),
 		REDIS_KEYS.STOP_REQUESTED(mode),

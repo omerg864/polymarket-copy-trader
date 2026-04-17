@@ -168,6 +168,18 @@ class QueueService {
 			logger.info(
 				`⏰ Resolving trade via market resolution: ${trade.title}`,
 			);
+			if (!config.isDemo) {
+				const actualBalance = await polymarketService.getTokenBalance(
+					trade.tokenId,
+				);
+				if (actualBalance < trade.size) {
+					logger.warn(
+						`⚠️ Partial fill detected for RESOLVE trade ${trade.id}. Adjusting size: ${trade.size} -> ${actualBalance}`,
+					);
+					trade.size = actualBalance;
+				}
+			}
+
 			const winner = await polymarketService.getMarketOutcome(
 				trade.eventTicker,
 			);
@@ -176,7 +188,7 @@ class QueueService {
 			}
 			won = trade.direction === winner;
 
-			// Resolve with partial fill awareness
+			// Resolve with partial fill awareness (from previous sell attempts)
 			if (trade.partialFill) {
 				const remainingShares = trade.size - trade.partialFill.size;
 				const resolutionPrice = won ? 1.0 : 0.0;
@@ -213,10 +225,31 @@ class QueueService {
 					negRisk: config.negRisk,
 				};
 
+				// Verify actual balance before selling to handle partial fills
+				const actualBalance = await polymarketService.getTokenBalance(
+					trade.tokenId,
+				);
+
+				let sellSize = trade.size;
+				if (actualBalance < trade.size) {
+					logger.warn(
+						`⚠️ Partial fill detected for trade ${trade.id}. Adjusting sell size: ${trade.size} -> ${actualBalance}`,
+					);
+					sellSize = actualBalance;
+					trade.size = sellSize; // Update trade object to reflect actual holdings
+				}
+
+				if (sellSize <= 0) {
+					logger.error(
+						`❌ Cannot place sell order for trade ${trade.id}: Zero balance found.`,
+					);
+					throw new Error('Zero balance for sell order');
+				}
+
 				const order = await polymarketService.placeSellOrder(
 					trade.tokenId,
 					finalPrice,
-					trade.size,
+					sellSize,
 					market,
 				);
 
