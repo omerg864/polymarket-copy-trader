@@ -160,6 +160,9 @@ class QueueService {
 		let finalPrice = exitPrice ?? 0;
 		let sellFee = 0;
 		let status: TradeStatus = TradeStatus.OPEN;
+		let revenue = 0;
+
+		const endTime = trade.endTime ? new Date(trade.endTime) : null;
 
 		if (type === 'RESOLVE') {
 			logger.info(
@@ -172,10 +175,29 @@ class QueueService {
 				throw new Error('Market not yet resolved on Polymarket');
 			}
 			won = trade.direction === winner;
-			finalPrice = won ? 1.0 : 0.0;
+
+			// Resolve with partial fill awareness
+			if (trade.partialFill) {
+				const remainingShares = trade.size - trade.partialFill.size;
+				const resolutionPrice = won ? 1.0 : 0.0;
+				revenue =
+					trade.partialFill.size * trade.partialFill.price +
+					remainingShares * resolutionPrice;
+				sellFee = trade.partialFill.fee;
+				finalPrice =
+					trade.size > 0 ? revenue / trade.size : resolutionPrice;
+				logger.info(
+					`🎯 Resolved partial fill trade ${trade.id}. Result: ${winner}. Partial: ${trade.partialFill.size}@${trade.partialFill.price}, Resolution: ${remainingShares}@${resolutionPrice}. Total Revenue: $${revenue.toFixed(2)}`,
+				);
+			} else {
+				finalPrice = won ? 1.0 : 0.0;
+				revenue = finalPrice * trade.size;
+				sellFee = 0;
+			}
+
 			status = won ? TradeStatus.WON : TradeStatus.LOST;
 
-			if (won) {
+			if (won && !config.isDemo) {
 				await polymarketService.redeemWinnings(trade.conditionId);
 			}
 		} else {
@@ -183,21 +205,122 @@ class QueueService {
 			logger.info(
 				`🟢 Executing ${reason || 'sell'} order for ${trade.title}`,
 			);
+
 			if (!config.isDemo) {
 				const market = {
 					conditionId: trade.conditionId,
 					tickSize: config.tickSize,
 					negRisk: config.negRisk,
 				};
-				await polymarketService.placeSellOrder(
+
+				const order = await polymarketService.placeSellOrder(
 					trade.tokenId,
 					finalPrice,
 					trade.size,
 					market,
 				);
-				sellFee = calculateFee(trade.size, finalPrice);
+
+				if (order && order.orderID) {
+					const orderId = order.orderID;
+					let filledSize = 0;
+					let isClosed = false;
+
+					// Monitor loop until filled or market closes
+					logger.info(
+						`⏳ Monitoring sell order ${orderId} for trade ${trade.id} until market close...`,
+					);
+
+					while (true) {
+						const now = new Date();
+						const orderStatus =
+							await polymarketService.getOrder(orderId);
+
+						if (orderStatus) {
+							filledSize = parseFloat(
+								orderStatus.size_matched || '0',
+							);
+							if (orderStatus.status === 'FILLED') {
+								logger.info(
+									`✅ Sell order ${orderId} fully filled.`,
+								);
+								break;
+							}
+							if (
+								orderStatus.status === 'CANCELED' ||
+								orderStatus.status === 'EXPIRED'
+							) {
+								logger.warn(
+									`⚠️ Sell order ${orderId} was ${orderStatus.status}.`,
+								);
+								isClosed = true;
+								break;
+							}
+						}
+
+						// Check if market has ended
+						if (endTime && now >= endTime) {
+							logger.info(
+								`⏰ Market ended for ${trade.title}. Cancelling remaining sell order.`,
+							);
+							await polymarketService.cancelOrder(orderId);
+							isClosed = true;
+							break;
+						}
+
+						// Poll every 5 seconds
+						await new Promise((resolve) =>
+							setTimeout(resolve, 5000),
+						);
+					}
+
+					const partialFillFee = calculateFee(filledSize, finalPrice);
+
+					// Handle partial fill: save data and re-queue for resolution
+					if (isClosed && filledSize < trade.size) {
+						const remainingShares = trade.size - filledSize;
+						logger.info(
+							`📋 Trade ${trade.id} partially filled (${filledSize}/${trade.size}). Queuing RESOLVE job for remaining ${remainingShares} shares.`,
+						);
+
+						// Record partial fill info
+						trade.partialFill = {
+							size: filledSize,
+							price: finalPrice,
+							fee: partialFillFee,
+						};
+
+						// Save to Redis so it's persisted for the next job
+						await redisService.saveTrade(trade);
+
+						// Queue standard RESOLVE job (jobId with suffix to avoid conflict with current running job)
+						await this.addSellJob({
+							trade,
+							type: 'RESOLVE',
+							reason: reason || 'partial_fill_resolution',
+						});
+
+						return; // EXIT early, do not complete trade yet
+					}
+
+					// Full fill case
+					revenue = filledSize * finalPrice;
+					sellFee = partialFillFee;
+					finalPrice =
+						trade.size > 0 ? revenue / trade.size : finalPrice;
+				} else {
+					// User requested: throw error if placeSellOrder fails or missing orderID
+					logger.error(
+						`❌ placeSellOrder failed for trade ${trade.id}. Throwing error for worker retry.`,
+					);
+					throw new Error(
+						`Failed to place sell order for ${trade.id} (no orderID returned)`,
+					);
+				}
+			} else {
+				// Demo mode: assume full fill at limit price
+				revenue = finalPrice * trade.size;
 			}
-			// In both demo and live, we let the completion worker handle the final state and stats
+
 			won = finalPrice > trade.entryPrice;
 			status =
 				reason === 'tp'
@@ -214,7 +337,7 @@ class QueueService {
 			`complete-${trade.id}`,
 			{
 				trade,
-				revenue: finalPrice * trade.size,
+				revenue,
 				sellFee,
 				won,
 				status,
@@ -295,7 +418,11 @@ class QueueService {
 
 		// Increment daily PnL counter (Optimized)
 		if (trade.pnl !== undefined) {
-			await redisService.incrementDailyPnl(todayStr, trade.pnl, trade.pnl >= 0);
+			await redisService.incrementDailyPnl(
+				todayStr,
+				trade.pnl,
+				trade.pnl >= 0,
+			);
 		}
 
 		const stats = await redisService.getBotStats();

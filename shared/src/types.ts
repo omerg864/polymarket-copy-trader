@@ -84,6 +84,11 @@ export interface Trade {
 		timeRemaining?: string;
 	};
 	actualOutcome?: 'UP' | 'DOWN' | 'UNKNOWN';
+	partialFill?: {
+		size: number;
+		price: number;
+		fee: number;
+	};
 }
 
 export interface StrategyConfig {

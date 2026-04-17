@@ -7,11 +7,14 @@ import type { Trade } from './types';
  * Crypto: feeRate = 0.0175, exponent = 1
  */
 export function calculateFee(shares: number, price: number): number {
-	const FEE_RATE = 0.0175;
-	const EXPONENT = 1;
-	const raw =
-		shares * price * FEE_RATE * Math.pow(price * (1 - price), EXPONENT);
-	return Math.round(raw * 10000) / 10000; // 4 decimal precision
+	// Prices at absolute extremes (0 or 1) have no uncertainty, hence no fee
+	if (price <= 0 || price >= 1) return 0;
+
+	// 0.072 is the static category rate for Crypto markets
+	const fee = shares * 0.072 * price * (1 - price);
+
+	// Polymarket rounds fractions below 0.00001 down to zero
+	return fee < 0.00001 ? 0 : fee;
 }
 
 /**

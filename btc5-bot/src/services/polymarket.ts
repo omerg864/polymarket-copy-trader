@@ -16,6 +16,11 @@ interface OrderBook {
 	asks?: Array<{ price: string; size: string }>;
 }
 
+interface OrderResponse {
+	orderID: string;
+	success: boolean;
+}
+
 interface GammaMarket {
 	id: string;
 	question: string;
@@ -95,6 +100,13 @@ class PolymarketService {
 			creds,
 			config.signatureType,
 			config.funderAddress,
+			undefined, // geoBlockToken
+			undefined, // useServerTime
+			undefined, // builderConfig
+			undefined, // getSigner
+			undefined, // retryOnError
+			undefined, // tickSizeTtlMs
+			true,
 		);
 
 		await polymarketWsService.start();
@@ -411,32 +423,33 @@ class PolymarketService {
 		price: number,
 		size: number,
 		market: Market,
-	): Promise<unknown> {
+	): Promise<OrderResponse> {
 		if (config.isDemo) {
 			throw new Error('Cannot place real orders in demo mode');
 		}
 		if (!this.clobClient) throw new Error('CLOB client not initialized');
 
 		try {
-			const order = await this.clobClient.createAndPostOrder(
-				{
-					tokenID: tokenId,
-					price,
-					side: Side.BUY,
-					size,
-				},
-				{
-					tickSize: market.tickSize as any,
-					negRisk: market.negRisk,
-				},
-				OrderType.GTC,
-			);
+			const order: OrderResponse =
+				await this.clobClient.createAndPostOrder(
+					{
+						tokenID: tokenId,
+						price,
+						side: Side.BUY,
+						size,
+					},
+					{
+						tickSize: market.tickSize as any,
+						negRisk: market.negRisk,
+					},
+					OrderType.GTC,
+				);
 
 			logger.trade('BUY ORDER PLACED', {
 				tokenId: tokenId.substring(0, 12) + '...',
 				price,
 				size,
-				orderId: (order as Record<string, unknown>)?.orderID,
+				orderId: order?.orderID,
 			});
 			return order;
 		} catch (error) {
@@ -454,32 +467,33 @@ class PolymarketService {
 		price: number,
 		size: number,
 		market: Pick<Market, 'tickSize' | 'negRisk'>,
-	): Promise<unknown> {
+	): Promise<OrderResponse> {
 		if (config.isDemo) {
 			throw new Error('Cannot place real orders in demo mode');
 		}
 		if (!this.clobClient) throw new Error('CLOB client not initialized');
 
 		try {
-			const order = await this.clobClient.createAndPostOrder(
-				{
-					tokenID: tokenId,
-					price,
-					side: Side.SELL,
-					size,
-				},
-				{
-					tickSize: market.tickSize as any,
-					negRisk: market.negRisk,
-				},
-				OrderType.GTC,
-			);
+			const order: OrderResponse =
+				await this.clobClient.createAndPostOrder(
+					{
+						tokenID: tokenId,
+						price,
+						side: Side.SELL,
+						size,
+					},
+					{
+						tickSize: market.tickSize as any,
+						negRisk: market.negRisk,
+					},
+					OrderType.GTC,
+				);
 
 			logger.trade('SELL ORDER PLACED', {
 				tokenId: tokenId.substring(0, 12) + '...',
 				price,
 				size,
-				orderId: (order as Record<string, unknown>)?.orderID,
+				orderId: order?.orderID,
 			});
 			return order;
 		} catch (error) {
@@ -514,6 +528,18 @@ class PolymarketService {
 				error instanceof Error ? error.message : String(error);
 			logger.error(`Error fetching open orders: ${message}`);
 			return [];
+		}
+	}
+
+	async getOrder(orderId: string): Promise<any> {
+		if (config.isDemo || !this.clobClient) return null;
+		try {
+			return await this.clobClient.getOrder(orderId);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			logger.error(`Error fetching order ${orderId}: ${message}`);
+			return null;
 		}
 	}
 

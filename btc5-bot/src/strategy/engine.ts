@@ -40,11 +40,15 @@ class StrategyEngine {
 		logger.info(
 			`  Order Size: $${sc.fixedOrderSizeUsd} (fixed) | Min Confidence: ${sc.minConfidence}%`,
 		);
-		const tpDisplay = sc.takeProfitType === 'market' ? `$${sc.marketPriceTakeProfit}` : `${sc.takeProfitPct}%`;
-		const slDisplay = sc.stopLossType === 'market' ? `$${sc.marketPriceStopLoss}` : `${sc.stopLossPct}%`;
-		logger.info(
-			`  TP: ${tpDisplay} | SL: ${slDisplay}`,
-		);
+		const tpDisplay =
+			sc.takeProfitType === 'market'
+				? `$${sc.marketPriceTakeProfit}`
+				: `${sc.takeProfitPct}%`;
+		const slDisplay =
+			sc.stopLossType === 'market'
+				? `$${sc.marketPriceStopLoss}`
+				: `${sc.stopLossPct}%`;
+		logger.info(`  TP: ${tpDisplay} | SL: ${slDisplay}`);
 		logger.info('═══════════════════════════════════════════════');
 		logger.info('');
 
@@ -167,7 +171,10 @@ class StrategyEngine {
 
 			// Also calculate and store the signal indicators/confidence for the dashboard
 			try {
-				const signal = await priceAnalysisService.getSignal(refPrice, market);
+				const signal = await priceAnalysisService.getSignal(
+					refPrice,
+					market,
+				);
 				signal.updatedAt = Date.now();
 				await redisService.setLastSignal(signal);
 			} catch (err) {
@@ -458,12 +465,10 @@ class StrategyEngine {
 					market,
 				);
 				if (order) {
-					const orderRecord = order as Record<string, unknown>;
+					const orderRecord = order;
 					const fee = calculateFee(size, price);
 					const trade: Trade = {
-						id:
-							(orderRecord.orderID as string) ||
-							`live-${Date.now()}`,
+						id: orderRecord.orderID || `live-${Date.now()}`,
 						type: TradeType.LIVE,
 						direction,
 						tokenId,
@@ -483,6 +488,7 @@ class StrategyEngine {
 						enteredAt: new Date().toISOString(),
 						priceToBeat: market.priceToBeat ?? 0,
 						pnl: 0,
+						confidence: signal.confidence,
 						indicators: signal.indicators,
 					};
 					await redisService.saveTrade(trade);
