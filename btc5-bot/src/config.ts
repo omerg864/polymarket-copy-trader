@@ -36,12 +36,19 @@ const config = {
 	apiPassword: process.env.API_PASSWORD || '',
 
 	// Polygon RPC for on-chain CTF redemption (live mode only)
-	polygonRpcUrl: process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com',
+	polygonRpcUrl: process.env.POLYGON_RPC_URL || 'https://polygon-public.nodies.app',
 
 	// Polymarket Builder/Relayer (for gasless redemptions)
 	builderApiKey: process.env.POLYMARKET_BUILDER_API_KEY || '',
 	builderApiSecret: process.env.POLYMARKET_BUILDER_SECRET || '',
 	builderApiPassphrase: process.env.POLYMARKET_BUILDER_PASSPHRASE || '',
+
+	// Polygon Smart Contracts
+	addresses: {
+		ctf: '0x4d97dcd97ec945f40cf65f87097ace5ea0476045',
+		usdc: '0x2791bca1f2de4661ed88a30c99a7a9449aa84174',
+		negRiskAdapter: '0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296',
+	},
 };
 
 export function validateLiveConfig(): void {
@@ -61,13 +68,19 @@ export function validateLiveConfig(): void {
 
 	// Validate Builder API keys for gasless redemptions if in live mode
 	if (!config.builderApiKey) {
-		errors.push('POLYMARKET_BUILDER_API_KEY is required for gasless redemptions');
+		errors.push(
+			'POLYMARKET_BUILDER_API_KEY is required for gasless redemptions',
+		);
 	}
 	if (!config.builderApiSecret) {
-		errors.push('POLYMARKET_BUILDER_SECRET is required for gasless redemptions');
+		errors.push(
+			'POLYMARKET_BUILDER_SECRET is required for gasless redemptions',
+		);
 	}
 	if (!config.builderApiPassphrase) {
-		errors.push('POLYMARKET_BUILDER_PASSPHRASE is required for gasless redemptions');
+		errors.push(
+			'POLYMARKET_BUILDER_PASSPHRASE is required for gasless redemptions',
+		);
 	}
 
 	if (errors.length > 0) {

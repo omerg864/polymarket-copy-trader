@@ -3,7 +3,7 @@ import polymarketService from '../src/services/polymarket';
 import logger from '../src/utils/logger';
 
 async function main() {
-    const conditionId = '0xe6cbd6ead6d63fb36ad189c928e1988fad4a41b7e324a404a40a703b29018236';
+    const conditionId = process.argv[2] || '0x3fb5d81122ceee181ffc9f769c16ec1e97c747114daf937c8ee518cc7897aed1';
     
     logger.info(`🚀 Starting redemption script for conditionId: ${conditionId}`);
     

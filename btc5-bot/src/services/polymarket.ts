@@ -11,6 +11,17 @@ import NotificationManager from './notificationManager';
 import { getStrategyConfig } from './strategyConfig';
 import polymarketWsService from './polymarketWs';
 import * as async from 'async';
+import {
+	createWalletClient,
+	encodeFunctionData,
+	Hex,
+	http,
+	prepareEncodeFunctionData,
+	zeroHash,
+} from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { polygon } from 'viem/chains';
+import { Transaction } from '@polymarket/builder-relayer-client';
 
 interface OrderBook {
 	midpoint?: string;
@@ -564,25 +575,42 @@ class PolymarketService {
 	 * still recorded in Redis even if the on-chain redemption fails.
 	 */
 	async redeemWinnings(conditionId: string): Promise<void> {
-		if (config.isDemo || !this.signer) return;
-
-		const CTF_ADDRESS = '0x4d97dcd97ec945f40cf65f87097ace5ea0476045';
-		const USDC_ADDRESS = '0x2791bca1f2de4661ed88a30c99a7a9449aa84174';
-		const CTF_ABI = [
-			'function redeemPositions(address collateralToken, bytes32 parentCollectionId, bytes32 conditionId, uint256[] indexSets) external',
-		];
+		if (config.isDemo) return;
 
 		try {
-			const ctf = new ethers.Contract(CTF_ADDRESS, CTF_ABI, this.signer);
+			const ctfRedeemAbi = [
+				{
+					constant: false,
+					inputs: [
+						{ name: 'collateralToken', type: 'address' },
+						{ name: 'parentCollectionId', type: 'bytes32' },
+						{ name: 'conditionId', type: 'bytes32' },
+						{ name: 'indexSets', type: 'uint256[]' },
+					],
+					name: 'redeemPositions',
+					outputs: [],
+					payable: false,
+					stateMutability: 'nonpayable',
+					type: 'function',
+				},
+			];
 
-			logger.info(
-				`💰 Submitting gasless redemption for conditionId: ${conditionId}`,
-			);
+			const ctfPrepared = prepareEncodeFunctionData({
+				abi: ctfRedeemAbi,
+				functionName: 'redeemPositions',
+			});
 
-			const relayClient = new RelayClient(
+			const account = privateKeyToAccount(config.privateKey as Hex);
+			const wallet = createWalletClient({
+				account,
+				chain: polygon,
+				transport: http(config.polygonRpcUrl),
+			});
+
+			const proxyClient = new RelayClient(
 				'https://relayer-v2.polymarket.com/',
-				config.chainId,
-				this.signer,
+				137,
+				wallet,
 				this.builderConfig ||
 					new BuilderConfig({
 						localBuilderCreds: {
@@ -594,41 +622,35 @@ class PolymarketService {
 				RelayerTxType.PROXY,
 			);
 
-			const ctfInterface = new ethers.utils.Interface([
-				'function redeemPositions(address collateralToken, bytes32 parentCollectionId, bytes32 conditionId, uint256[] indexSets)',
-			]);
+			const calldata = encodeFunctionData({
+				...ctfPrepared,
+				args: [config.addresses.usdc, zeroHash, conditionId, [1, 2]],
+			});
 
-			const indexSets = [1, 2];
-			for (const index of indexSets) {
-				const txData = ctfInterface.encodeFunctionData('redeemPositions', [
-					USDC_ADDRESS,
-					'0x0000000000000000000000000000000000000000000000000000000000000000', // parentId
-					conditionId,
-					[index],
-				]);
+			const redeemTx: Transaction = {
+				to: config.addresses.ctf,
+				data: calldata,
+				value: '0',
+			};
 
-				try {
-					const response = await relayClient.execute([
-						{
-							to: ethers.utils.getAddress(CTF_ADDRESS),
-							data: txData,
-							value: '0',
-						},
-					]);
-					logger.info(
-						`✅ Gasless redemption submitted via Relayer for index ${index}. ID: ${
-							response?.transactionID || 'Pending'
-						}`,
-					);
-				} catch (innerError) {
-					logger.warn(
-						`⚠️ Failed to redeem index ${index} for ${conditionId}: ${
-							innerError instanceof Error
-								? innerError.message
-								: String(innerError)
-						}`,
-					);
-				}
+			logger.info(
+				`💰 Submitting gasless redemption for conditionId: ${conditionId}`,
+			);
+
+			const response = await proxyClient.execute(
+				[redeemTx],
+				'redeem positions',
+			);
+
+			logger.info(
+				`⏳ Gasless redemption submitted via Relayer for ${conditionId}. Waiting for confirmation...`,
+			);
+
+			const result = await response.wait();
+			if (result) {
+				logger.info(
+					`✅ Proxy redeem completed: ${result.transactionHash}`,
+				);
 			}
 		} catch (error) {
 			const message =

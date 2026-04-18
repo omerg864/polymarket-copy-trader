@@ -29,6 +29,7 @@ export function TradeDetailsDialog({
 	const { data: config } = useConfig();
 	const timezone = config?.timezone || 'Asia/Jerusalem';
 	const [copied, setCopied] = useState(false);
+	const [conditionCopied, setConditionCopied] = useState(false);
 
 	if (!trade) return null;
 
@@ -39,6 +40,13 @@ export function TradeDetailsDialog({
 		navigator.clipboard.writeText(trade.id);
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
+	};
+	const copyConditionId = () => {
+		if (trade.conditionId) {
+			navigator.clipboard.writeText(trade.conditionId);
+			setConditionCopied(true);
+			setTimeout(() => setConditionCopied(false), 2000);
+		}
 	};
 
 	const formatWithTimezone = (iso: string | undefined) => {
@@ -79,6 +87,24 @@ export function TradeDetailsDialog({
 									title="Copy Trade ID"
 								>
 									{copied ? (
+										<Check className="w-3 h-3 text-emerald-500" />
+									) : (
+										<Copy className="w-3 h-3" />
+									)}
+								</button>
+							</div>
+
+							<span className="text-zinc-500">Condition ID</span>
+							<div className="flex items-center justify-end gap-2">
+								<span className="font-mono text-[10px] text-zinc-500 truncate max-w-[120px]">
+									{trade.conditionId}
+								</span>
+								<button
+									onClick={copyConditionId}
+									className="p-1 hover:bg-zinc-800 rounded transition-colors text-zinc-400 hover:text-zinc-100"
+									title="Copy Condition ID"
+								>
+									{conditionCopied ? (
 										<Check className="w-3 h-3 text-emerald-500" />
 									) : (
 										<Copy className="w-3 h-3" />
