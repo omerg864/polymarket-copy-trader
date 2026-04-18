@@ -18,6 +18,8 @@ class RiskManager {
 	private checking = false;
 	private checkingFct = false;
 	private sellingTrades = new Set<string>();
+	private SL_SEC_LEFT = 5;
+	private DEMO_FCT_SEC_LEFT = 5;
 
 	async startMonitoring(): Promise<void> {
 		if (this.monitoring) return;
@@ -115,12 +117,14 @@ class RiskManager {
 
 					if (!wouldLose) continue;
 
-					if (secUntilEnd < 2) {
-						logger.info(
-							`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.id} ${trade.direction} but BTC $${btcPrice.toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. CANNOT SELL WHEN LESS THAN 2S LEFT`,
-						);
-						continue;
-					} // Skip if less than 2s left
+					if (trade.type === 'demo') {
+						if (secUntilEnd < this.DEMO_FCT_SEC_LEFT) {
+							logger.info(
+								`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(1)}s left) | ${trade.id} ${trade.direction} but BTC $${(btcPrice || 0).toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. CANNOT SELL WHEN LESS THAN ${this.DEMO_FCT_SEC_LEFT}S LEFT`,
+							);
+							continue;
+						}
+					}
 
 					const currentPrice = await polymarketService.getTokenPrice(
 						trade.tokenId,
@@ -130,7 +134,7 @@ class RiskManager {
 					if (currentPrice === null || currentPrice <= 0) continue;
 
 					logger.info(
-						`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.id} ${trade.direction} but BTC $${btcPrice.toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. Selling to avoid resolution loss.`,
+						`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(0)}s left) | ${trade.id} ${trade.direction} but BTC $${(btcPrice || 0).toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. Selling to avoid resolution loss.`,
 					);
 					await this.executeSell(
 						trade,
@@ -250,6 +254,20 @@ class RiskManager {
 			isStopLoss = currentPrice <= slPrice;
 		}
 
+		// NEW: Additional Late Stop-loss check (Last 5 seconds, more than 5% loss)
+		const secUntilEnd = endTime.diff(now).as('seconds');
+		if (secUntilEnd <= this.SL_SEC_LEFT) {
+			const lossPct =
+				(trade.entryPrice - currentPrice) / trade.entryPrice;
+			if (lossPct > 0.05 && !isStopLoss) {
+				logger.info(
+					`🚨 LATE SL Triggered for ${trade.id} (${secUntilEnd.toFixed(1)}s left) | Loss: ${(lossPct * 100).toFixed(1)}% > 5%`,
+				);
+				isStopLoss = true;
+				slPrice = currentPrice;
+			}
+		}
+
 		if (isStopLoss) {
 			if (!btcPrice) {
 				logger.error(
@@ -292,6 +310,18 @@ class RiskManager {
 		if (this.sellingTrades.has(trade.id)) {
 			logger.warn(
 				`⚠️  Skip executeSell for ${trade.id} - already in progress`,
+			);
+			return;
+		}
+
+		// Block selling if less than 5s left for demo trades
+		const endTime = DateTime.fromISO(trade.endTime);
+		const now = DateTime.now();
+		const secUntilEnd = endTime.diff(now).as('seconds');
+
+		if (trade.type === 'demo' && secUntilEnd < this.DEMO_FCT_SEC_LEFT - 1) {
+			logger.warn(
+				`🛑 DEMO SAFETY: Cannot sell ${trade.id} with only ${secUntilEnd.toFixed(1)}s left (simulating illiquidity)`,
 			);
 			return;
 		}
