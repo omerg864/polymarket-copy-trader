@@ -9,6 +9,8 @@ import type {
 	BotVersions,
 	MongoInfo,
 	VerificationResult,
+	SimulationResult,
+	SimulationParams,
 } from '@shared/types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
@@ -247,7 +249,6 @@ export function useVerifyStats() {
 	});
 }
 
-
 export function useNotificationConfig() {
 	return useQuery<NotificationConfig>({
 		queryKey: ['notification-config'],
@@ -308,5 +309,33 @@ export function useVersions(options: { enabled?: boolean } = {}) {
 		queryFn: () => fetchJson('/versions'),
 		refetchInterval: 30000,
 		...options,
+	});
+}
+
+export function useAvailableSimulations() {
+	return useQuery<any[]>({
+		queryKey: ['available-simulations'],
+		queryFn: () => fetchJson('/simulation/available'),
+		staleTime: Infinity,
+	});
+}
+
+export function useRunSimulation() {
+	return useMutation({
+		mutationFn: async (params: SimulationParams) => {
+			const res = await fetch(`${API_BASE}/simulation/run`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					...getAuthHeaders(),
+				},
+				body: JSON.stringify(params),
+			});
+			if (!res.ok) {
+				const error = await res.json();
+				throw new Error(error.error || `API error: ${res.statusText}`);
+			}
+			return res.json() as Promise<SimulationResult>;
+		},
 	});
 }

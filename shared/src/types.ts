@@ -354,3 +354,44 @@ export interface VerificationResult {
 	needsFix: boolean;
 	logs: string[];
 }
+
+export enum SimulationType {
+	TIME_WINDOWS = 'time_windows',
+	DAILY_TP = 'daily_tp',
+}
+
+export interface SimulationParams {
+	type: SimulationType;
+	mode: TradeType;
+	params: Record<string, any>;
+}
+
+export interface SimulationDailyStat {
+	date: string;
+	actPnL: number;
+	simPnL: number;
+	actWins: number;
+	simWins: number;
+	actTrades: number;
+	simTrades: number;
+	tpHit?: boolean;
+}
+
+export interface SimulationResult {
+	type: SimulationType;
+	mode: TradeType;
+	overall: {
+		totalActPnL: number;
+		totalSimPnL: number;
+		totalActTrades: number;
+		totalSimTrades: number;
+		totalActWins: number;
+		totalSimWins: number;
+		actWR: number;
+		simWR: number;
+		avgDailyActPnL: number;
+		avgDailySimPnL: number;
+		impact: number;
+	};
+	daily: SimulationDailyStat[];
+}

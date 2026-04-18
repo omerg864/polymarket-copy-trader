@@ -1,6 +1,7 @@
 import { AnalysisDashboard } from '@/components/AnalysisDashboard';
 import { Dashboard } from '@/components/Dashboard';
 import { LoginPage } from '@/components/LoginPage';
+import { Simulations } from '@/components/Simulations';
 import { Badge } from '@/components/ui/badge';
 import { VersionBadge } from '@/components/shared/VersionBadge';
 import {
@@ -17,7 +18,7 @@ const queryClient = new QueryClient();
 function AuthenticatedApp() {
 	const { data: isAuthenticated, isLoading, refetch } = useCheckAuth();
 	const { data: config } = useConfig({ enabled: !!isAuthenticated });
-	const [activeTab, setActiveTab] = useState<'live' | 'analysis'>('live');
+	const [activeTab, setActiveTab] = useState<'live' | 'analysis' | 'simulations'>('live');
 
 	if (isLoading) {
 		return (
@@ -72,6 +73,16 @@ function AuthenticatedApp() {
 								}`}
 							>
 								📊 Trade Analysis
+							</button>
+							<button
+								onClick={() => setActiveTab('simulations')}
+								className={`px-3 py-1.5 rounded-md transition-colors ${
+									activeTab === 'simulations'
+										? 'bg-zinc-800 text-zinc-100 font-medium'
+										: 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+								}`}
+							>
+								🧪 Simulations
 							</button>
 						</nav>
 
@@ -137,6 +148,16 @@ function AuthenticatedApp() {
 							>
 								📊 Analysis
 							</button>
+							<button
+								onClick={() => setActiveTab('simulations')}
+								className={`px-2 py-1 rounded transition-colors ${
+									activeTab === 'simulations'
+										? 'bg-zinc-800 text-zinc-100 font-medium'
+										: 'text-zinc-400'
+								}`}
+							>
+								🧪 Sims
+							</button>
 						</nav>
 
 						<div className="flex sm:hidden items-center gap-1.5">
@@ -171,6 +192,13 @@ function AuthenticatedApp() {
 			<main className="flex-1">
 				{activeTab === 'live' && <Dashboard />}
 				{activeTab === 'analysis' && <AnalysisDashboard />}
+				{activeTab === 'simulations' && (
+					<div className="min-h-[calc(100vh-3.5rem)] bg-zinc-950 text-zinc-100 p-3 sm:p-6">
+						<div className="max-w-7xl mx-auto">
+							<Simulations />
+						</div>
+					</div>
+				)}
 			</main>
 		</div>
 	);
