@@ -172,7 +172,7 @@ class QueueService {
 				const actualBalance = await polymarketService.getTokenBalance(
 					trade.tokenId,
 				);
-				if (actualBalance < trade.size) {
+				if (Math.floor(actualBalance * 100) < Math.floor(trade.size * 100)) {
 					logger.warn(
 						`⚠️ Partial fill detected for RESOLVE trade ${trade.id}. Adjusting size: ${trade.size} -> ${actualBalance}`,
 					);
@@ -231,7 +231,7 @@ class QueueService {
 				);
 
 				let sellSize = trade.size;
-				if (actualBalance < trade.size) {
+				if (Math.floor(actualBalance * 100) < Math.floor(trade.size * 100)) {
 					logger.warn(
 						`⚠️ Partial fill detected for trade ${trade.id}. Adjusting sell size: ${trade.size} -> ${actualBalance}`,
 					);
