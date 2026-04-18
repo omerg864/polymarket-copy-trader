@@ -5,8 +5,8 @@ import path from 'path';
 // Script is in src/scripts/, .env is in btc5-bot/ root (2 levels up)
 dotenv.config({ path: path.resolve(__dirname, '../../.env.production.local') });
 import Redis from 'ioredis';
-import config from '../config';
-import { REDIS_KEYS } from '../../../shared/src/redisKeys';
+import config from '../src/config';
+import { REDIS_KEYS } from '../../shared/src/redisKeys';
 
 /**
  * Migration script: Convert HISTORY_IDS from Set to Sorted Set (ZSET).

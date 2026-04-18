@@ -230,6 +230,25 @@ export function AnalysisGrid({ trades }: AnalysisGridProps) {
 					formatWithTimezone(params.value),
 			},
 			{
+				headerName: 'Secs Before Close',
+				width: 150,
+				type: 'numericColumn',
+				aggFunc: 'avg',
+				filter: 'agNumberColumnFilter',
+				sortable: true,
+				valueGetter: (params: any) => {
+					if (!params.data?.endTime || !params.data?.closedAt)
+						return null;
+					const end = DateTime.fromISO(params.data.endTime);
+					const closed = DateTime.fromISO(params.data.closedAt);
+					return Math.floor(end.diff(closed, 'seconds').seconds);
+				},
+				valueFormatter: (params: any) => {
+					if (params.value == null) return '';
+					return `${params.value}s`;
+				},
+			},
+			{
 				field: 'size',
 				headerName: 'Shares',
 				width: 100,

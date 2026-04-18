@@ -10,7 +10,7 @@ dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
 
 async function main() {
 	const conditionId =
-		'0x7a14de70cfb6db2d71dca93c0e818f651faed2781e2aa2345b00a485870dc4d2';
+		'0xe6cbd6ead6d63fb36ad189c928e1988fad4a41b7e324a404a40a703b29018236';
 
 	console.log(
 		`🚀 Attempting SPLIT gasless redemption for condition: ${conditionId}...`,

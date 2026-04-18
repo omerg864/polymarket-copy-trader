@@ -11,5 +11,13 @@
 			"@shared/*": ["shared/src/*"]
 		}
 	},
-	"include": ["scripts/**/*.ts", "btc5-bot/src/**/*.ts", "shared/src/**/*.ts"]
+	"include": [
+		"scripts/**/*.ts",
+		"btc5-bot/src/**/*.ts",
+		"shared/src/**/*.ts",
+		"btc5-bot/scripts/fix-duplicates.ts",
+		"btc5-bot/scripts/migrate-history-zset.ts",
+		"btc5-bot/scripts/test-fallback.ts",
+		"btc5-bot/scripts/test-sell-logic.ts"
+	]
 }
