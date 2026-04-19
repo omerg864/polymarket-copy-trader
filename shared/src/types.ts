@@ -31,6 +31,24 @@ export enum TradeStatus {
 	CLOSED_SELL = 'closed_sell',
 }
 
+export interface ClobOrder {
+	id: string;
+	status: string;
+	owner: string;
+	maker_address: string;
+	market: string;
+	asset_id: string;
+	side: string;
+	original_size: string;
+	size_matched: string;
+	price: string;
+	outcome: string;
+	expiration: string;
+	order_type: string;
+	associate_trades: any[];
+	created_at: number;
+}
+
 export interface Trade {
 	id: string;
 	type: TradeType;

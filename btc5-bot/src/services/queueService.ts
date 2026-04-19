@@ -172,7 +172,10 @@ class QueueService {
 				const actualBalance = await polymarketService.getTokenBalance(
 					trade.tokenId,
 				);
-				if (Math.floor(actualBalance * 100) < Math.floor(trade.size * 100)) {
+				if (
+					Math.floor(actualBalance * 100) <
+					Math.floor(trade.size * 100)
+				) {
 					logger.warn(
 						`⚠️ Partial fill detected for RESOLVE trade ${trade.id}. Adjusting size: ${trade.size} -> ${actualBalance}`,
 					);
@@ -231,7 +234,10 @@ class QueueService {
 				);
 
 				let sellSize = trade.size;
-				if (Math.floor(actualBalance * 100) < Math.floor(trade.size * 100)) {
+				if (
+					Math.floor(actualBalance * 100) <
+					Math.floor(trade.size * 100)
+				) {
 					logger.warn(
 						`⚠️ Partial fill detected for trade ${trade.id}. Adjusting sell size: ${trade.size} -> ${actualBalance}`,
 					);
@@ -267,6 +273,10 @@ class QueueService {
 						const now = new Date();
 						const orderStatus =
 							await polymarketService.getOrder(orderId);
+
+						logger.info(
+							`Order status: ${JSON.stringify(orderStatus)} for trade ${trade.id}`,
+						);
 
 						if (orderStatus) {
 							filledSize = parseFloat(
@@ -418,7 +428,10 @@ class QueueService {
 			: DateTime.now();
 		const todayStr = baseDate.setZone(sc.timezone).toISODate() || '';
 
-		const totalFee = (trade.fee || 0) + sellFee;
+		let totalFee = trade.fee || 0;
+		if (trade.type === 'demo') {
+			totalFee += sellFee;
+		}
 		trade.pnl = revenue - trade.cost - totalFee;
 		trade.fee = totalFee;
 		trade.status = status;

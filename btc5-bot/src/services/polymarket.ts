@@ -2,7 +2,7 @@ import { Wallet } from '@ethersproject/wallet';
 import { RelayClient, RelayerTxType } from '@polymarket/builder-relayer-client';
 import { BuilderConfig } from '@polymarket/builder-signing-sdk';
 import { ClobClient, OrderType, Side } from '@polymarket/clob-client';
-import type { Market, MarketPrices } from '@shared/types';
+import type { ClobOrder, Market, MarketPrices } from '@shared/types';
 import axios, { AxiosInstance } from 'axios';
 import { ethers } from 'ethers';
 import config, { validateLiveConfig } from '../config';
@@ -556,7 +556,7 @@ class PolymarketService {
 		}
 	}
 
-	async getOrder(orderId: string): Promise<any> {
+	async getOrder(orderId: string): Promise<ClobOrder | null> {
 		if (config.isDemo || !this.clobClient) return null;
 		try {
 			return await this.clobClient.getOrder(orderId);

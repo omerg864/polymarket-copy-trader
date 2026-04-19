@@ -457,50 +457,169 @@ class StrategyEngine {
 				return;
 			}
 
-			try {
-				const order = await polymarketService.placeBuyOrder(
-					tokenId,
-					price,
-					size,
-					market,
-				);
-				if (order) {
-					const orderRecord = order;
-					const fee = calculateFee(size, price);
-					const trade: Trade = {
-						id: orderRecord.orderID || `live-${Date.now()}`,
-						type: TradeType.LIVE,
-						direction,
-						tokenId,
-						conditionId: market.conditionId,
-						slug: market.slug,
-						eventTicker: market.eventTicker,
-						title: market.title,
-						side: 'BUY',
-						entryPrice: price,
-						currentPrice: price,
-						size,
-						cost: price * size,
-						fee,
-						status: TradeStatus.OPEN,
-						startTime: market.startTime.toISOString(),
-						endTime: market.endTime.toISOString(),
-						enteredAt: new Date().toISOString(),
-						priceToBeat: market.priceToBeat ?? 0,
-						pnl: 0,
-						confidence: signal.confidence,
-						indicators: signal.indicators,
-					};
-					await redisService.saveTrade(trade);
-					notificationManager.handleTradeOpened(trade);
-					await redisService.setBotBalance(
-						botBalance - trade.cost - fee,
-					);
+			let retryCount = 0;
+			const maxRetries = 3;
+			let buySuccessful = false;
+
+			while (retryCount < maxRetries && !buySuccessful) {
+				// Re-check market end time
+				const nowCheck = new Date();
+				if (nowCheck >= market.endTime) {
+					if (retryCount > 0) {
+						logger.info(
+							`⏰ Market ended for ${market.title}. Stopping retries.`,
+						);
+					}
+					break;
 				}
-			} catch (error) {
-				const message =
-					error instanceof Error ? error.message : String(error);
-				logger.error(`Failed to place live order: ${message}`);
+
+				try {
+					const order = await polymarketService.placeBuyOrder(
+						tokenId,
+						price,
+						size,
+						market,
+					);
+					if (order && order.orderID) {
+						const orderId = order.orderID;
+						let filledSize = 0;
+						let isFilled = false;
+						const maxWaitSeconds = 15;
+						const loopStartTime = Date.now();
+
+						logger.info(
+							`⏳ Monitoring buy order ${orderId} for filled size (targeted: ${size})...`,
+						);
+
+						while (
+							Date.now() - loopStartTime <
+							maxWaitSeconds * 1000
+						) {
+							const orderStatus =
+								await polymarketService.getOrder(orderId);
+							logger.info(
+								`Order status: ${JSON.stringify(orderStatus)} | ${new Date().toISOString()}`,
+							);
+							if (orderStatus) {
+								filledSize = parseFloat(
+									orderStatus.size_matched || '0',
+								);
+								if (orderStatus.status === 'FILLED') {
+									isFilled = true;
+									logger.info(
+										`✅ Buy order ${orderId} fully filled: ${filledSize} shares.`,
+									);
+									break;
+								}
+								if (
+									orderStatus.status === 'CANCELED' ||
+									orderStatus.status === 'EXPIRED'
+								) {
+									logger.warn(
+										`⚠️ Buy order ${orderId} was ${orderStatus.status}. Partial fill: ${filledSize} shares.`,
+									);
+									break;
+								}
+							}
+
+							// Check if market has ended
+							const now = new Date();
+							if (now >= market.endTime) {
+								logger.info(
+									`⏰ Market ended for ${market.title}. Stopping buy monitoring.`,
+								);
+								break;
+							}
+
+							await new Promise((resolve) =>
+								setTimeout(resolve, 2000),
+							);
+						}
+
+						if (!isFilled) {
+							logger.info(
+								`⏳ Timeout reached or market ended. Cancelling remaining buy order ${orderId}.`,
+							);
+							await polymarketService.cancelOrder(orderId);
+							// One last check for final size_matched and fill data
+							const finalStatus =
+								await polymarketService.getOrder(orderId);
+							if (finalStatus) {
+								filledSize = parseFloat(
+									finalStatus.size_matched || '0',
+								);
+							}
+						}
+
+						if (filledSize <= 0) {
+							logger.warn(
+								`❌ Buy order ${orderId} resulted in 0 filled shares.`,
+							);
+							// Increment retry count and continue loop
+							retryCount++;
+							if (retryCount < maxRetries) {
+								logger.info(
+									`🔄 Retrying buy (Attempt ${retryCount + 1}/${maxRetries})...`,
+								);
+								continue;
+							}
+							return;
+						}
+
+						// If we got here, we have at least a partial fill
+						buySuccessful = true;
+
+						// Use data from the order status for cost/price
+						const finalOrderStatus =
+							await polymarketService.getOrder(orderId);
+						const finalPrice = finalOrderStatus
+							? parseFloat(finalOrderStatus.price)
+							: price;
+						const finalSize = filledSize;
+						const filledFee = calculateFee(finalSize, finalPrice);
+						const filledCost = finalSize * finalPrice;
+
+						const trade: Trade = {
+							id: orderId,
+							type: TradeType.LIVE,
+							direction,
+							tokenId,
+							conditionId: market.conditionId,
+							slug: market.slug,
+							eventTicker: market.eventTicker,
+							title: market.title,
+							side: 'BUY',
+							entryPrice: finalPrice,
+							currentPrice: finalPrice,
+							size: finalSize,
+							cost: filledCost,
+							fee: filledFee,
+							status: TradeStatus.OPEN,
+							startTime: market.startTime.toISOString(),
+							endTime: market.endTime.toISOString(),
+							enteredAt: new Date().toISOString(),
+							priceToBeat: market.priceToBeat ?? 0,
+							pnl: 0,
+							confidence: signal.confidence,
+							indicators: signal.indicators,
+						};
+						await redisService.saveTrade(trade);
+						notificationManager.handleTradeOpened(trade);
+						await redisService.setBotBalance(
+							botBalance - filledCost - filledFee,
+						);
+					}
+				} catch (error) {
+					const message =
+						error instanceof Error ? error.message : String(error);
+					logger.error(`Failed to place live order: ${message}`);
+					retryCount++;
+					if (retryCount < maxRetries) {
+						logger.info(
+							`🔄 Retrying buy after error (Attempt ${retryCount + 1}/${maxRetries})...`,
+						);
+					}
+				}
 			}
 		}
 
