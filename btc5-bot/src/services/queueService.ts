@@ -245,11 +245,13 @@ class QueueService {
 					trade.size = sellSize; // Update trade object to reflect actual holdings
 				}
 
-				if (sellSize <= 0) {
-					logger.error(
-						`❌ Cannot place sell order for trade ${trade.id}: Zero balance found.`,
+				// Polymarket CLOB only allows prices between 0.01 and 0.99
+				const clampedPrice = Math.max(0.01, Math.min(0.99, finalPrice));
+				if (clampedPrice !== finalPrice) {
+					logger.info(
+						`⚖️  Clamping sell price for ${trade.id}: ${finalPrice.toFixed(4)} -> ${clampedPrice.toFixed(2)}`,
 					);
-					throw new Error('Zero balance for sell order');
+					finalPrice = clampedPrice;
 				}
 
 				const order = await polymarketService.placeSellOrder(

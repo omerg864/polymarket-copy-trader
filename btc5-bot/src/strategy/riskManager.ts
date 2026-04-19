@@ -54,7 +54,9 @@ class RiskManager {
 		this.checking = true;
 
 		try {
-			const trades = await redisService.getActiveTrades();
+			const trades = (await redisService.getActiveTrades()).filter(
+				(trade) => new Date(trade.endTime).getTime() > Date.now(),
+			);
 			if (trades.length === 0) return;
 
 			for (const trade of trades) {
@@ -77,7 +79,9 @@ class RiskManager {
 		this.checkingFct = true;
 
 		try {
-			const trades = await redisService.getActiveTrades();
+			const trades = (await redisService.getActiveTrades()).filter(
+				(trade) => new Date(trade.endTime).getTime() > Date.now(),
+			);
 			if (trades.length === 0) return;
 
 			const sc = await getStrategyConfig();

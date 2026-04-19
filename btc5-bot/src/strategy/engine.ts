@@ -566,6 +566,8 @@ class StrategyEngine {
 							return;
 						}
 
+						const enteredAt = new Date().toISOString();
+
 						// If we got here, we have at least a partial fill
 						buySuccessful = true;
 
@@ -597,7 +599,7 @@ class StrategyEngine {
 							status: TradeStatus.OPEN,
 							startTime: market.startTime.toISOString(),
 							endTime: market.endTime.toISOString(),
-							enteredAt: new Date().toISOString(),
+							enteredAt,
 							priceToBeat: market.priceToBeat ?? 0,
 							pnl: 0,
 							confidence: signal.confidence,
