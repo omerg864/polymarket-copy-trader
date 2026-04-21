@@ -448,7 +448,7 @@ class PolymarketService {
 		price: number,
 		size: number,
 		market: Market,
-	): Promise<OrderResponse> {
+	): Promise<ClobOrder | null> {
 		if (config.isDemo) {
 			throw new Error('Cannot place real orders in demo mode');
 		}
@@ -470,20 +470,25 @@ class PolymarketService {
 					OrderType.GTC,
 				);
 
+			if (!order || !order.orderID) {
+				return null;
+			}
+
 			logger.trade('BUY ORDER PLACED', {
 				tokenId: tokenId.substring(0, 12) + '...',
 				price,
 				size,
-				orderId: order?.orderID,
+				orderId: order.orderID,
 			});
-			return order;
+
+			return this._monitorOrder(order.orderID, market.endTime);
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : String(error);
 			logger.error(
 				`Failed to place BUY order for ${tokenId}: ${message}`,
 			);
-			throw error;
+			return null;
 		}
 	}
 
@@ -491,8 +496,8 @@ class PolymarketService {
 		tokenId: string,
 		price: number,
 		size: number,
-		market: Pick<Market, 'tickSize' | 'negRisk'>,
-	): Promise<OrderResponse> {
+		market: Pick<Market, 'tickSize' | 'negRisk' | 'endTime'>,
+	): Promise<ClobOrder | null> {
 		if (config.isDemo) {
 			throw new Error('Cannot place real orders in demo mode');
 		}
@@ -514,20 +519,25 @@ class PolymarketService {
 					OrderType.GTC,
 				);
 
+			if (!order || !order.orderID) {
+				return null;
+			}
+
 			logger.trade('SELL ORDER PLACED', {
 				tokenId: tokenId.substring(0, 12) + '...',
 				price,
 				size,
-				orderId: order?.orderID,
+				orderId: order.orderID,
 			});
-			return order;
+
+			return this._monitorOrder(order.orderID, market.endTime);
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : String(error);
 			logger.error(
 				`Failed to place SELL order for ${tokenId}: ${message}`,
 			);
-			throw error;
+			return null;
 		}
 	}
 
@@ -560,19 +570,50 @@ class PolymarketService {
 		if (config.isDemo || !this.clobClient) return null;
 		try {
 			const order = await this.clobClient.getOrder(orderId);
-			logger.info(`Order fetched: ${JSON.stringify(order)}`);
 			return { ...order, status: order.status as OrderStatus };
 		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : String(error);
-			logger.error(`Error fetching order ${orderId}: ${message}`);
+			// Silently fail for individual order fetches during monitoring if needed,
+			// but we'll log it if it's a real error.
 			return null;
 		}
 	}
 
-	// Logic check example
-	isOrderStatusFinal(orderStatus: string): boolean {
-		return status !== OrderStatus.LIVE;
+	private async _monitorOrder(
+		orderId: string,
+		endTime: Date,
+	): Promise<ClobOrder | null> {
+		logger.info(
+			`⏳ Internal monitoring for order ${orderId} until match or market close...`,
+		);
+
+		while (true) {
+			const orderStatus = await this.getOrder(orderId);
+			if (orderStatus && orderStatus.status !== OrderStatus.LIVE) {
+				const matchedSize = parseFloat(orderStatus.size_matched || '0');
+				if (orderStatus.status === OrderStatus.MATCHED || matchedSize > 0) {
+					return orderStatus;
+				}
+				return null;
+			}
+
+			if (new Date() >= endTime) {
+				logger.info(
+					`⏰ Market ended. Returning last known state for order ${orderId}`,
+				);
+				const matchedSize = parseFloat(orderStatus?.size_matched || '0');
+				if (orderStatus?.status === OrderStatus.MATCHED || matchedSize > 0) {
+					return orderStatus;
+				}
+				return null;
+			}
+
+			// Poll every 1 second as requested
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+		}
+	}
+
+	isOrderStatusFinal(orderStatus: OrderStatus): boolean {
+		return orderStatus !== OrderStatus.LIVE;
 	}
 
 	/**

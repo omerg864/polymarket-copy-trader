@@ -49,6 +49,8 @@ const config = {
 		usdc: '0x2791bca1f2de4661ed88a30c99a7a9449aa84174',
 		negRiskAdapter: '0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296',
 	},
+	// Auto-redeem toggle (Polymarket now has native auto-redeem)
+	enableLiveRedeem: process.env.ENABLE_LIVE_REDEEM === 'true',
 };
 
 export function validateLiveConfig(): void {
