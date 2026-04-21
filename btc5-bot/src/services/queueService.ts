@@ -1,6 +1,6 @@
 import { Queue, Worker, type Job } from 'bullmq';
 import Redis from 'ioredis';
-import { type Trade, TradeStatus } from '@shared/types';
+import { OrderStatus, type Trade, TradeStatus } from '@shared/types';
 import { calculateFee } from '@shared/utils';
 import config from '../config';
 import logger from '../utils/logger';
@@ -172,14 +172,24 @@ class QueueService {
 				const actualBalance = await polymarketService.getTokenBalance(
 					trade.tokenId,
 				);
-				if (
-					Math.floor(actualBalance * 100) <
-					Math.floor(trade.size * 100)
-				) {
+				// Account for previously recorded partial fills when checking the wallet
+				const expectedBalance = trade.partialFill
+					? trade.size - trade.partialFill.size
+					: trade.size;
+
+				// Compare using 2-decimal rounding to ignore dust and prevent floating point discrepancies
+				const roundedActual = Math.round(actualBalance * 100) / 100;
+				const roundedExpected = Math.round(expectedBalance * 100) / 100;
+
+				if (roundedActual < roundedExpected) {
 					logger.warn(
-						`⚠️ Partial fill detected for RESOLVE trade ${trade.id}. Adjusting size: ${trade.size} -> ${actualBalance}`,
+						`⚠️ Partial fill detected for RESOLVE trade ${trade.id}. Adjusting expected size: ${expectedBalance.toFixed(4)} -> ${actualBalance.toFixed(4)}`,
 					);
-					trade.size = actualBalance;
+					// Adjust the size to what we actually have in the wallet + what we already sold
+					const alreadySold = trade.partialFill
+						? trade.partialFill.size
+						: 0;
+					trade.size = actualBalance + alreadySold;
 				}
 			}
 
@@ -276,23 +286,20 @@ class QueueService {
 						const orderStatus =
 							await polymarketService.getOrder(orderId);
 
-						logger.info(
-							`Order status: ${JSON.stringify(orderStatus)} for trade ${trade.id}`,
-						);
-
 						if (orderStatus) {
 							filledSize = parseFloat(
 								orderStatus.size_matched || '0',
 							);
-							if (orderStatus.status === 'FILLED') {
+							if (orderStatus.status === OrderStatus.MATCHED) {
 								logger.info(
 									`✅ Sell order ${orderId} fully filled.`,
 								);
 								break;
 							}
 							if (
-								orderStatus.status === 'CANCELED' ||
-								orderStatus.status === 'EXPIRED'
+								polymarketService.isOrderStatusFinal(
+									orderStatus.status,
+								)
 							) {
 								logger.warn(
 									`⚠️ Sell order ${orderId} was ${orderStatus.status}.`,
@@ -305,9 +312,10 @@ class QueueService {
 						// Check if market has ended
 						if (endTime && now >= endTime) {
 							logger.info(
-								`⏰ Market ended for ${trade.title}. Cancelling remaining sell order.`,
+								`⏰ Market ended for ${trade.title}. Stopping sell order monitoring.`,
 							);
-							await polymarketService.cancelOrder(orderId);
+							// User requested: Let orders expire/cancel naturally on market end
+							// await polymarketService.cancelOrder(orderId);
 							isClosed = true;
 							break;
 						}

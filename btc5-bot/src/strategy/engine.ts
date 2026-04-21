@@ -1,4 +1,10 @@
-import { Market, TradeStatus, TradeType, type Trade } from '@shared/types';
+import {
+	Market,
+	OrderStatus,
+	TradeStatus,
+	TradeType,
+	type Trade,
+} from '@shared/types';
 import { DateTime } from 'luxon';
 import { calculateFee, calculateTodayPnl } from '@shared/utils';
 import config from '../config';
@@ -497,14 +503,14 @@ class StrategyEngine {
 						) {
 							const orderStatus =
 								await polymarketService.getOrder(orderId);
-							logger.info(
-								`Order status: ${JSON.stringify(orderStatus)} | ${new Date().toISOString()}`,
-							);
+
 							if (orderStatus) {
 								filledSize = parseFloat(
 									orderStatus.size_matched || '0',
 								);
-								if (orderStatus.status === 'FILLED') {
+								if (
+									orderStatus.status === OrderStatus.MATCHED
+								) {
 									isFilled = true;
 									logger.info(
 										`✅ Buy order ${orderId} fully filled: ${filledSize} shares.`,
@@ -512,8 +518,9 @@ class StrategyEngine {
 									break;
 								}
 								if (
-									orderStatus.status === 'CANCELED' ||
-									orderStatus.status === 'EXPIRED'
+									polymarketService.isOrderStatusFinal(
+										orderStatus.status,
+									)
 								) {
 									logger.warn(
 										`⚠️ Buy order ${orderId} was ${orderStatus.status}. Partial fill: ${filledSize} shares.`,
@@ -538,9 +545,10 @@ class StrategyEngine {
 
 						if (!isFilled) {
 							logger.info(
-								`⏳ Timeout reached or market ended. Cancelling remaining buy order ${orderId}.`,
+								`⏳ Timeout reached or market ended. Monitoring loop stopping for buy order ${orderId}.`,
 							);
-							await polymarketService.cancelOrder(orderId);
+							// User requested: Let orders expire/cancel naturally on market end
+							// await polymarketService.cancelOrder(orderId);
 							// One last check for final size_matched and fill data
 							const finalStatus =
 								await polymarketService.getOrder(orderId);
@@ -577,7 +585,8 @@ class StrategyEngine {
 						const finalPrice = finalOrderStatus
 							? parseFloat(finalOrderStatus.price)
 							: price;
-						const finalSize = filledSize;
+						// User requested size to be rounded to the "x.yy" format
+						const finalSize = Math.round(filledSize * 100) / 100;
 						const filledFee = calculateFee(finalSize, finalPrice);
 						const filledCost = finalSize * finalPrice;
 

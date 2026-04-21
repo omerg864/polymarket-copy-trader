@@ -81,20 +81,20 @@ export async function setBotBalance(balance: number): Promise<void> {
 	await redis.set(key, balance.toString());
 }
 
-export async function getBotStartTime(): Promise<number | null> {
-	const isDemo = config.isDemo;
-	const raw = await redis.get(
-		REDIS_KEYS.START_TIME(isDemo ? 'demo' : 'live'),
-	);
+export async function getBotStartTime(
+	mode?: 'demo' | 'live',
+): Promise<number | null> {
+	const activeMode = mode || (config.isDemo ? 'demo' : 'live');
+	const raw = await redis.get(REDIS_KEYS.START_TIME(activeMode));
 	return raw ? parseInt(raw, 10) : null;
 }
 
-export async function setBotStartTime(startTime: number): Promise<void> {
-	const isDemo = config.isDemo;
-	await redis.set(
-		REDIS_KEYS.START_TIME(isDemo ? 'demo' : 'live'),
-		startTime.toString(),
-	);
+export async function setBotStartTime(
+	startTime: number,
+	mode?: 'demo' | 'live',
+): Promise<void> {
+	const activeMode = mode || (config.isDemo ? 'demo' : 'live');
+	await redis.set(REDIS_KEYS.START_TIME(activeMode), startTime.toString());
 }
 
 export async function getStopRequested(): Promise<boolean> {
@@ -146,8 +146,8 @@ export async function clearModeData(mode: 'demo' | 'live'): Promise<void> {
 		await redis.del(...keysToDelete);
 	}
 
-	// Reset start time to now
-	await setBotStartTime(Math.floor(Date.now() / 1000));
+	// Reset start time to now (using milliseconds for consistency)
+	await setBotStartTime(Date.now(), mode);
 
 	console.log(`Cleared all ${mode} state from Redis`);
 }

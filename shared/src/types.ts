@@ -31,9 +31,17 @@ export enum TradeStatus {
 	CLOSED_SELL = 'closed_sell',
 }
 
+export enum OrderStatus {
+	LIVE = 'LIVE',
+	INVALID = 'INVALID',
+	CANCELED_MARKET_RESOLVED = 'CANCELED_MARKET_RESOLVED',
+	CANCELED = 'CANCELED',
+	MATCHED = 'MATCHED',
+}
+
 export interface ClobOrder {
 	id: string;
-	status: string;
+	status: OrderStatus;
 	owner: string;
 	maker_address: string;
 	market: string;
