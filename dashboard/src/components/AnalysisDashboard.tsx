@@ -267,9 +267,16 @@ export function AnalysisDashboard() {
 
 		// Helper to extract VWAP sentiment (BTC Price minus VWAP)
 		const getVwapDist = (t: Trade) => {
-			if (!t.indicators?.vwap || !t.indicators?.currentPrice)
+			if (
+				!t.indicators?.vwap ||
+				(!t.indicators?.analysisBtcPrice && !t.indicators?.currentPrice)
+			)
 				return undefined;
-			const btcPrice = parseFloat(t.indicators.currentPrice.toString());
+			const btcPrice = parseFloat(
+				(
+					t.indicators.analysisBtcPrice || t.indicators.currentPrice
+				).toString(),
+			);
 			const vwap = parseFloat(t.indicators.vwap);
 			if (isNaN(btcPrice) || isNaN(vwap)) return undefined;
 			// Returns % distance of BTC above/below VWAP
@@ -314,18 +321,34 @@ export function AnalysisDashboard() {
 		};
 
 		const getEma3 = (t: Trade) => {
-			if (!t.indicators?.ema3 || !t.indicators?.currentPrice)
+			if (
+				(!t.indicators?.analysisBtcPrice &&
+					!t.indicators?.currentPrice) ||
+				!t.indicators?.ema3
+			)
 				return undefined;
-			const price = parseFloat(t.indicators.currentPrice.toString());
+			const price = parseFloat(
+				(
+					t.indicators.analysisBtcPrice || t.indicators.currentPrice
+				).toString(),
+			);
 			const ema = parseFloat(t.indicators.ema3);
 			if (isNaN(price) || isNaN(ema)) return undefined;
 			return ((price - ema) / ema) * 100;
 		};
 
 		const getEma8 = (t: Trade) => {
-			if (!t.indicators?.ema8 || !t.indicators?.currentPrice)
+			if (
+				(!t.indicators?.analysisBtcPrice &&
+					!t.indicators?.currentPrice) ||
+				!t.indicators?.ema8
+			)
 				return undefined;
-			const price = parseFloat(t.indicators.currentPrice.toString());
+			const price = parseFloat(
+				(
+					t.indicators.analysisBtcPrice || t.indicators.currentPrice
+				).toString(),
+			);
 			const ema = parseFloat(t.indicators.ema8);
 			if (isNaN(price) || isNaN(ema)) return undefined;
 			return ((price - ema) / ema) * 100;
@@ -335,10 +358,14 @@ export function AnalysisDashboard() {
 			if (
 				!t.indicators?.bbLower ||
 				!t.indicators?.bbUpper ||
-				!t.indicators?.currentPrice
+				(!t.indicators?.analysisBtcPrice && !t.indicators?.currentPrice)
 			)
 				return undefined;
-			const price = parseFloat(t.indicators.currentPrice.toString());
+			const price = parseFloat(
+				(
+					t.indicators.analysisBtcPrice || t.indicators.currentPrice
+				).toString(),
+			);
 			const lower = parseFloat(t.indicators.bbLower);
 			const upper = parseFloat(t.indicators.bbUpper);
 			if (isNaN(price) || isNaN(lower) || isNaN(upper) || upper === lower)
