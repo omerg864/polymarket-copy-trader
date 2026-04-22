@@ -47,12 +47,42 @@ class QueueService {
 	constructor() {
 		this.sellQueue = new Queue('sell-trades', {
 			connection: connection as any,
+			defaultJobOptions: {
+				removeOnComplete: {
+					age: 10_800, // 3 hours (10,800 seconds)
+					count: 1000,
+				},
+				// Keep failed jobs for 48 hours (172,800 seconds)
+				removeOnFail: {
+					age: 172_800,
+				},
+			},
 		});
 		this.resolveQueue = new Queue('resolve-trades', {
 			connection: connection as any,
+			defaultJobOptions: {
+				removeOnComplete: {
+					age: 10_800, // 3 hours (10,800 seconds)
+					count: 1000,
+				},
+				// Keep failed jobs for 48 hours (172,800 seconds)
+				removeOnFail: {
+					age: 172_800,
+				},
+			},
 		});
 		this.completionQueue = new Queue('trade-completion', {
 			connection: connection as any,
+			defaultJobOptions: {
+				removeOnComplete: {
+					age: 10_800, // 3 hours (10,800 seconds)
+					count: 1000,
+				},
+				// Keep failed jobs for 48 hours (172,800 seconds)
+				removeOnFail: {
+					age: 172_800,
+				},
+			},
 		});
 	}
 
@@ -219,89 +249,85 @@ class QueueService {
 			return;
 		}
 
-			// Polymarket CLOB only allows prices between 0.01 and 0.99
-			const clampedPrice = Math.max(0.01, Math.min(0.99, finalPrice));
-			if (clampedPrice !== finalPrice) {
+		// Polymarket CLOB only allows prices between 0.01 and 0.99
+		const clampedPrice = Math.max(0.01, Math.min(0.99, finalPrice));
+		if (clampedPrice !== finalPrice) {
+			logger.info(
+				`⚖️  Clamping sell price for ${trade.id}: ${finalPrice.toFixed(4)} -> ${clampedPrice.toFixed(2)}`,
+			);
+			finalPrice = clampedPrice;
+		}
+
+		if (!config.isDemo) {
+			const order = await polymarketService.placeSellOrder(
+				trade.tokenId,
+				finalPrice,
+				trade.size,
+				market,
+			);
+
+			if (!order) {
+				logger.error(
+					`❌ placeSellOrder failed for trade ${trade.id}. Throwing error for worker retry.`,
+				);
+				throw new Error(`Failed to place sell order for ${trade.id}`);
+			}
+
+			const filledSize = parseFloat(order.size_matched || '0');
+			const isFinal = polymarketService.isOrderStatusFinal(
+				order.status as OrderStatus,
+			);
+			const partialFillFee = calculateFee(
+				filledSize,
+				parseFloat(order.price),
+			);
+
+			// Handle partial fill: save data and re-queue for resolution
+			if (isFinal && filledSize < trade.size) {
+				const remainingShares = trade.size - filledSize;
 				logger.info(
-					`⚖️  Clamping sell price for ${trade.id}: ${finalPrice.toFixed(4)} -> ${clampedPrice.toFixed(2)}`,
+					`📋 Trade ${trade.id} partially filled (${filledSize}/${trade.size}). Queuing RESOLVE job for remaining ${remainingShares} shares.`,
 				);
-				finalPrice = clampedPrice;
+
+				// Record partial fill info
+				trade.partialFill = {
+					size: filledSize,
+					price: parseFloat(order.price),
+					fee: partialFillFee,
+				};
+
+				// Save to Redis so it's persisted for the next job
+				await redisService.saveTrade(trade);
+				await redisService.moveToAwaitingResolve(trade.id);
+
+				// Queue standard RESOLVE job
+				await this.addResolveJob({
+					trade,
+					type: 'RESOLVE',
+					reason: reason || 'partial_fill_resolution',
+				});
+
+				return; // EXIT early, do not complete trade yet
 			}
 
-			if (!config.isDemo) {
-				const order = await polymarketService.placeSellOrder(
-					trade.tokenId,
-					finalPrice,
-					trade.size,
-					market,
-				);
+			// Full fill case (or reached final state with full matching)
+			revenue = filledSize * parseFloat(order.price);
+			sellFee = partialFillFee;
+			finalPrice =
+				trade.size > 0 ? revenue / trade.size : parseFloat(order.price);
+		} else {
+			// Demo mode: assume full fill at limit price
+			revenue = finalPrice * trade.size;
+		}
 
-				if (!order) {
-					logger.error(
-						`❌ placeSellOrder failed for trade ${trade.id}. Throwing error for worker retry.`,
-					);
-					throw new Error(
-						`Failed to place sell order for ${trade.id}`,
-					);
-				}
-
-				const filledSize = parseFloat(order.size_matched || '0');
-				const isFinal = polymarketService.isOrderStatusFinal(
-					order.status as OrderStatus,
-				);
-				const partialFillFee = calculateFee(
-					filledSize,
-					parseFloat(order.price),
-				);
-
-				// Handle partial fill: save data and re-queue for resolution
-				if (isFinal && filledSize < trade.size) {
-					const remainingShares = trade.size - filledSize;
-					logger.info(
-						`📋 Trade ${trade.id} partially filled (${filledSize}/${trade.size}). Queuing RESOLVE job for remaining ${remainingShares} shares.`,
-					);
-
-					// Record partial fill info
-					trade.partialFill = {
-						size: filledSize,
-						price: parseFloat(order.price),
-						fee: partialFillFee,
-					};
-
-					// Save to Redis so it's persisted for the next job
-					await redisService.saveTrade(trade);
-					await redisService.moveToAwaitingResolve(trade.id);
-
-					// Queue standard RESOLVE job
-					await this.addResolveJob({
-						trade,
-						type: 'RESOLVE',
-						reason: reason || 'partial_fill_resolution',
-					});
-
-					return; // EXIT early, do not complete trade yet
-				}
-
-				// Full fill case (or reached final state with full matching)
-				revenue = filledSize * parseFloat(order.price);
-				sellFee = partialFillFee;
-				finalPrice =
-					trade.size > 0
-						? revenue / trade.size
-						: parseFloat(order.price);
-			} else {
-				// Demo mode: assume full fill at limit price
-				revenue = finalPrice * trade.size;
-			}
-
-			status =
-				reason === 'tp'
-					? TradeStatus.CLOSED_TP
-					: reason === 'sl'
-						? TradeStatus.CLOSED_SL
-						: reason === 'fct'
-							? TradeStatus.CLOSED_FCT
-							: TradeStatus.CLOSED_SELL;
+		status =
+			reason === 'tp'
+				? TradeStatus.CLOSED_TP
+				: reason === 'sl'
+					? TradeStatus.CLOSED_SL
+					: reason === 'fct'
+						? TradeStatus.CLOSED_FCT
+						: TradeStatus.CLOSED_SELL;
 
 		// Prepare data for sequential completion
 		await this.completionQueue.add(
