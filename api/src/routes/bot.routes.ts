@@ -16,6 +16,7 @@ import {
 	updateConfig,
 	verifyAuth,
 	verifyStats,
+	addBankingTransaction,
 } from '../controllers/bot.controller';
 import { adminGuard, authGuard } from '../middleware/auth';
 
@@ -46,6 +47,12 @@ router.post(
 	authGuard,
 	adminGuard,
 	asyncHandler(verifyStats),
+);
+router.post(
+	'/banking/transaction',
+	authGuard,
+	adminGuard,
+	asyncHandler(addBankingTransaction),
 );
 
 export default router;

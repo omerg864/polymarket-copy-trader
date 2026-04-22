@@ -23,6 +23,7 @@ import {
 	MoreVertical,
 	Pause,
 	Play,
+	PlusCircle,
 	RotateCcw,
 	Settings2,
 	ShieldCheck,
@@ -42,6 +43,7 @@ interface ActionsDropdownProps {
 	onOpenConfig: () => void;
 	onOpenStartTime: () => void;
 	onOpenVerifyStats: () => void;
+	onOpenAddBalance: () => void;
 	onExport: () => void;
 	isTogglePending: boolean;
 	isResetPending: boolean;
@@ -59,6 +61,7 @@ export function ActionsDropdown({
 	onOpenConfig,
 	onOpenStartTime,
 	onOpenVerifyStats,
+	onOpenAddBalance,
 	onExport,
 	isTogglePending,
 	isResetPending,
@@ -173,6 +176,14 @@ export function ActionsDropdown({
 					>
 						<ShieldCheck className="h-3.5 w-3.5 mr-2" />
 						Verify Bot Stats
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						onClick={onOpenAddBalance}
+						disabled={!isAdmin}
+						className="cursor-pointer focus:bg-zinc-900"
+					>
+						<PlusCircle className="h-3.5 w-3.5 mr-2" />
+						Add to Balance
 					</DropdownMenuItem>
 					<DropdownMenuSeparator className="bg-zinc-800" />
 

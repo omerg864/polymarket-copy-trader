@@ -19,6 +19,7 @@ import { StartTimeDialog } from './StartTimeDialog';
 import RedisStats from './RedisStats';
 import MongoStats from './MongoStats';
 import { VerificationStatsDialog } from './VerificationStatsDialog';
+import { AddBalanceDialog } from './AddBalanceDialog';
 import { formatBtcPrice, formatGlobalDateTime } from '@/lib/utils';
 
 export function Header() {
@@ -37,6 +38,7 @@ export function Header() {
 	const [notificationOpen, setNotificationOpen] = useState(false);
 	const [startTimeOpen, setStartTimeOpen] = useState(false);
 	const [verifyStatsOpen, setVerifyStatsOpen] = useState(false);
+	const [addBalanceOpen, setAddBalanceOpen] = useState(false);
 
 	const handleExport = useMemoizedFn(() => {
 		if (!history || !summary || !config) return;
@@ -156,6 +158,7 @@ export function Header() {
 					onOpenConfig={() => setConfigOpen(true)}
 					onOpenStartTime={() => setStartTimeOpen(true)}
 					onOpenVerifyStats={() => setVerifyStatsOpen(true)}
+					onOpenAddBalance={() => setAddBalanceOpen(true)}
 					onOpenReset={() =>
 						resetBot.mutate(undefined, {
 							onSuccess: () => {
@@ -195,6 +198,14 @@ export function Header() {
 					open={startTimeOpen}
 					onOpenChange={setStartTimeOpen}
 					currentStartTime={summary?.botStartTime}
+					onSuccess={() => {
+						refetchSummary();
+					}}
+				/>
+
+				<AddBalanceDialog
+					open={addBalanceOpen}
+					onOpenChange={setAddBalanceOpen}
 					onSuccess={() => {
 						refetchSummary();
 					}}

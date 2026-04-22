@@ -354,6 +354,7 @@ export interface VerificationResult {
 		todayPnl: number;
 		todayWins: number;
 		todayLosses: number;
+		sumBanking: number;
 	};
 	redis: {
 		totalFees: number;
@@ -421,4 +422,13 @@ export interface SimulationResult {
 		impact: number;
 	};
 	daily: SimulationDailyStat[];
+}
+
+export interface BankingTransaction {
+	id?: string;
+	amount: number;
+	type: 'deposit' | 'withdrawal';
+	mode: TradeType;
+	description?: string;
+	createdAt: string;
 }

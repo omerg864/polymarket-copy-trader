@@ -28,6 +28,8 @@ import {
 	updateStrategyConfig,
 } from '../services/strategyConfig';
 import { verificationService } from '../services/verificationService';
+import { BankingTransactionModel } from '../models/BankingTransaction';
+import { setBotBalance } from '../services/redis';
 import pkg from '../../package.json';
 
 export async function getSummary(_req: Request, res: Response): Promise<void> {
@@ -216,5 +218,49 @@ export async function verifyStats(req: Request, res: Response): Promise<void> {
 	} catch (error) {
 		console.error(`Failed to verify stats: ${error}`);
 		res.status(500).json({ error: 'Failed to verify stats' });
+	}
+}
+
+export async function addBankingTransaction(
+	req: Request,
+	res: Response,
+): Promise<void> {
+	const { amount, description } = req.body as {
+		amount: number;
+		description?: string;
+	};
+
+	if (!amount || typeof amount !== 'number') {
+		res.status(400).json({ error: 'amount is required and must be a number' });
+		return;
+	}
+
+	const mode = config.mode;
+	const type = amount > 0 ? 'deposit' : 'withdrawal';
+
+	try {
+		// 1. Save to MongoDB
+		const transaction = new BankingTransactionModel({
+			amount: Math.abs(amount),
+			type,
+			mode,
+			description,
+			createdAt: DateTime.now().toISO(),
+		});
+		await transaction.save();
+
+		// 2. Update Redis balance immediately for better UX
+		const currentBalance = await getBotBalance();
+		const newBalance = currentBalance + amount;
+		await setBotBalance(newBalance);
+
+		res.json({
+			success: true,
+			transaction: transaction.toObject(),
+			newBalance,
+		});
+	} catch (error) {
+		console.error(`Failed to add banking transaction: ${error}`);
+		res.status(500).json({ error: 'Failed to add banking transaction' });
 	}
 }

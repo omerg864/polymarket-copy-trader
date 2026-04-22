@@ -339,3 +339,21 @@ export function useRunSimulation() {
 		},
 	});
 }
+
+export function useAddBankingTransaction() {
+	return useMutation({
+		mutationFn: async (params: { amount: number; description?: string }) => {
+			const res = await fetch(`${API_BASE}/banking/transaction`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					...getAuthHeaders(),
+				},
+				body: JSON.stringify(params),
+			});
+			if (res.status === 403) throw new Error('Admin access required');
+			if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+			return res.json();
+		},
+	});
+}

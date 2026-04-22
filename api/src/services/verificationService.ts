@@ -12,6 +12,7 @@ import {
 } from './redis';
 import { getStrategyConfig } from './strategyConfig';
 import { calculateFee } from '../../../shared/src/utils';
+import { BankingTransactionModel } from '../models/BankingTransaction';
 
 export class VerificationService {
 	async verifyAndFixStats(fix: boolean): Promise<VerificationResult> {
@@ -145,9 +146,21 @@ export class VerificationService {
 			}
 		}
 
+		// Banking Transactions from MongoDB
+		const bankingTransactions = await BankingTransactionModel.find({ mode });
+		let sumBanking = 0;
+		for (const bt of bankingTransactions) {
+			if (bt.type === 'deposit') {
+				sumBanking += bt.amount;
+			} else {
+				sumBanking -= bt.amount;
+			}
+		}
+		logs.push(`Banking transactions total: $${sumBanking.toFixed(2)}`);
+
 		// Expected balance
 		const expectedBalance =
-			initialBalance + sumPnl - activeCostTotal - activeFeeTotal;
+			initialBalance + sumBanking + sumPnl - activeCostTotal - activeFeeTotal;
 
 		// Current stats in Redis
 		const currentBalance = await redis
@@ -276,6 +289,7 @@ export class VerificationService {
 				todayPnl: sumTodayPnl,
 				todayWins: sumTodayWins,
 				todayLosses: sumTodayLosses,
+				sumBanking,
 			},
 			redis: {
 				totalFees: stats.totalFees,
