@@ -532,11 +532,12 @@ class PolymarketService {
 
 			return this._monitorOrder(order.orderID, market.endTime);
 		} catch (error: any) {
-			const message = error instanceof Error ? error.message : String(error);
+			const message =
+				error instanceof Error ? error.message : String(error);
 			const data = error.response?.data;
 			const errorDetail = data?.error || '';
 
-			// Reactive balance adjustment: If the error is about insufficient balance, 
+			// Reactive balance adjustment: If the error is about insufficient balance,
 			// parse the actual balance from the error message and retry ONCE.
 			if (errorDetail.includes('not enough balance')) {
 				const match = errorDetail.match(/balance: (\d+)/);
@@ -550,41 +551,53 @@ class PolymarketService {
 
 					if (adjustedSize > 0) {
 						try {
-							const retryOrder: OrderResponse = await this.clobClient.createAndPostOrder(
-								{
-									tokenID: tokenId,
-									price,
-									side: Side.SELL,
-									size: adjustedSize,
-								},
-								{
-									tickSize: market.tickSize as any,
-									negRisk: market.negRisk,
-								},
-								OrderType.GTC,
-							);
+							const retryOrder: OrderResponse =
+								await this.clobClient.createAndPostOrder(
+									{
+										tokenID: tokenId,
+										price,
+										side: Side.SELL,
+										size: adjustedSize,
+									},
+									{
+										tickSize: market.tickSize as any,
+										negRisk: market.negRisk,
+									},
+									OrderType.GTC,
+								);
 
 							if (retryOrder && retryOrder.orderID) {
-								logger.info(`✅ Successfully retried SELL order with adjusted size: ${adjustedSize}`);
+								logger.info(
+									`✅ Successfully retried SELL order with adjusted size: ${adjustedSize}`,
+								);
 								logger.trade('SELL ORDER PLACED (ADJUSTED)', {
 									tokenId: tokenId.substring(0, 12) + '...',
 									price,
 									size: adjustedSize,
 									orderId: retryOrder.orderID,
 								});
-								return this._monitorOrder(retryOrder.orderID, market.endTime);
+								return this._monitorOrder(
+									retryOrder.orderID,
+									market.endTime,
+								);
 							}
 						} catch (retryError: any) {
-							logger.error(`Retry attempt failed for ${tokenId}: ${retryError.message}`);
+							logger.error(
+								`Retry attempt failed for ${tokenId}: ${retryError.message}`,
+							);
 						}
 					} else {
-						logger.error(`Cannot retry SELL order for ${tokenId}: Adjusted size is 0.`);
+						logger.error(
+							`Cannot retry SELL order for ${tokenId}: Adjusted size is 0.`,
+						);
 						return null;
 					}
 				}
 			}
 
-			logger.error(`Failed to place SELL order for ${tokenId}: ${errorDetail || message}`);
+			logger.error(
+				`Failed to place SELL order for ${tokenId}: ${errorDetail || message}`,
+			);
 			return null;
 		}
 	}
@@ -638,7 +651,13 @@ class PolymarketService {
 			const orderStatus = await this.getOrder(orderId);
 			if (orderStatus && orderStatus.status !== OrderStatus.LIVE) {
 				const matchedSize = parseFloat(orderStatus.size_matched || '0');
-				if (orderStatus.status === OrderStatus.MATCHED || matchedSize > 0) {
+				if (
+					orderStatus.status === OrderStatus.MATCHED ||
+					matchedSize > 0
+				) {
+					logger.info(
+						`✅ Order ${orderId} matched with size ${matchedSize} and status ${orderStatus.status} and price ${orderStatus.price}`,
+					);
 					return orderStatus;
 				}
 				return null;
@@ -646,10 +665,15 @@ class PolymarketService {
 
 			if (new Date() >= endTime) {
 				logger.info(
-					`⏰ Market ended. Returning last known state for order ${orderId}`,
+					`⏰ Market ended. Returning last known state for order ${orderId}. orderStatus: ${orderStatus}`,
 				);
-				const matchedSize = parseFloat(orderStatus?.size_matched || '0');
-				if (orderStatus?.status === OrderStatus.MATCHED || matchedSize > 0) {
+				const matchedSize = parseFloat(
+					orderStatus?.size_matched || '0',
+				);
+				if (
+					orderStatus?.status === OrderStatus.MATCHED ||
+					matchedSize > 0
+				) {
 					return orderStatus;
 				}
 				return null;
