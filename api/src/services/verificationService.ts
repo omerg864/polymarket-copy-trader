@@ -30,6 +30,8 @@ export class VerificationService {
 		let sumPnl = 0;
 		let activeCostTotal = 0;
 		let activeFeeTotal = 0;
+		let awaitingResolveCostTotal = 0;
+		let awaitingResolveFeeTotal = 0;
 		let computedWins = 0;
 		let computedLosses = 0;
 		let computedTotalTrades = 0;
@@ -45,8 +47,13 @@ export class VerificationService {
 		const timezone = sc.timezone || 'Asia/Jerusalem';
 		const todayStr = DateTime.now().setZone(timezone).toISODate() || '';
 
-		// Active trades from Redis
-		const activeIds = await redis.smembers(REDIS_KEYS.ACTIVE_TRADES(mode));
+		// fetch both active and awaiting resolve trades
+		const [activeIds, awaitingResolveIds] = await Promise.all([
+			redis.smembers(REDIS_KEYS.ACTIVE_TRADES(mode)),
+			redis.smembers(REDIS_KEYS.AWAITING_RESOLVE_TRADES(mode)),
+		]);
+
+		// Process Active Trades
 		for (const id of activeIds) {
 			const raw = await redis.get(getTradeKey(mode, id));
 			if (!raw) continue;
@@ -64,6 +71,26 @@ export class VerificationService {
 			sumFees += t.fee;
 			activeCostTotal += t.cost;
 			activeFeeTotal += t.fee;
+		}
+
+		// Process Awaiting Resolve Trades
+		for (const id of awaitingResolveIds) {
+			const raw = await redis.get(getTradeKey(mode, id));
+			if (!raw) continue;
+			const t = JSON.parse(raw);
+			// Fix fee if missing
+			if (t.fee == null) {
+				t.fee = calculateFee(t.size, t.entryPrice);
+				if (fix) {
+					await redis.set(getTradeKey(mode, id), JSON.stringify(t));
+					logs.push(`  Fixed resolve ${id}: fee=${t.fee}`);
+				} else {
+					logs.push(`  Discrepancy: resolve ${id} missing fee`);
+				}
+			}
+			sumFees += t.fee;
+			awaitingResolveCostTotal += t.cost;
+			awaitingResolveFeeTotal += t.fee;
 		}
 
 		// History trades from MongoDB
@@ -160,7 +187,11 @@ export class VerificationService {
 
 		// Expected balance
 		const expectedBalance =
-			initialBalance + sumBanking + sumPnl - activeCostTotal - activeFeeTotal;
+			initialBalance +
+			sumBanking +
+			sumPnl -
+			(activeCostTotal + awaitingResolveCostTotal) -
+			(activeFeeTotal + awaitingResolveFeeTotal);
 
 		// Current stats in Redis
 		const currentBalance = await redis
@@ -206,6 +237,9 @@ export class VerificationService {
 
 		logs.push(
 			`\nActive trades: ${activeIds.length} (cost: $${activeCostTotal.toFixed(2)}, fee: $${activeFeeTotal.toFixed(4)})`,
+		);
+		logs.push(
+			`Awaiting resolve: ${awaitingResolveIds.length} (cost: $${awaitingResolveCostTotal.toFixed(2)}, fee: $${awaitingResolveFeeTotal.toFixed(4)})`,
 		);
 		logs.push(`History trades: ${historyLen}`);
 		logs.push(`\nComputed vs Redis:`);
@@ -275,6 +309,11 @@ export class VerificationService {
 				count: activeIds.length,
 				cost: activeCostTotal,
 				fee: activeFeeTotal,
+			},
+			awaitingResolveTrades: {
+				count: awaitingResolveIds.length,
+				cost: awaitingResolveCostTotal,
+				fee: awaitingResolveFeeTotal,
 			},
 			historyTrades: {
 				count: historyLen,

@@ -341,6 +341,11 @@ export interface VerificationResult {
 		cost: number;
 		fee: number;
 	};
+	awaitingResolveTrades: {
+		count: number;
+		cost: number;
+		fee: number;
+	};
 	historyTrades: {
 		count: number;
 	};
