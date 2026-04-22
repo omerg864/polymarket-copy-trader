@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import Redis from 'ioredis';
-import { type Trade } from '../shared/src/types';
+import { type Trade, TradeStatus } from '../shared/src/types';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
@@ -36,7 +36,7 @@ async function main() {
             const trade = JSON.parse(tradeStr) as Trade;
 
             // Only look for closed_sell trades
-            if (trade.status !== 'closed_sell') {
+            if (trade.status !== TradeStatus.CLOSED_SELL) {
                 updatedTrades.push(tradeStr);
                 continue;
             }
@@ -48,7 +48,7 @@ async function main() {
             // If closed within 70s of end time and was not won/lost, it's likely an FCT
             if (diffSec < 70 && diffSec > 0) {
                 console.log(`✨ Found FCT candidate: ${trade.id} (${trade.title}). Closed ${diffSec.toFixed(1)}s before end. Updating...`);
-                trade.status = 'closed_fct';
+                trade.status = TradeStatus.CLOSED_FCT;
                 updatedCount++;
             }
 

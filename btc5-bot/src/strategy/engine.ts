@@ -587,10 +587,20 @@ class StrategyEngine {
 		const now = new Date();
 
 		for (const trade of trades) {
-			if (trade.status !== 'open') continue;
+			if (
+				trade.status !== TradeStatus.OPEN &&
+				trade.status !== TradeStatus.AWAITING_RESOLVE
+			)
+				continue;
 
 			const endTime = new Date(trade.endTime);
 			if (now < endTime) continue;
+
+			// If already in AWAITING_RESOLVE, we don't need to re-add it to the queue
+			// unless it was somehow dropped (BullMQ handles persistence, so we usually don't)
+			if (trade.status === TradeStatus.AWAITING_RESOLVE) {
+				continue;
+			}
 
 			const msSinceEnd = now.getTime() - endTime.getTime();
 			if (msSinceEnd < 30000) continue;
@@ -598,8 +608,13 @@ class StrategyEngine {
 			logger.info(`⏰ Resolving expired trade: ${trade.title}`);
 			const btcPrice = await priceAnalysisService.getCurrentPrice();
 
-			// Offload resolution to BullMQ
-			await queueService.addSellJob({
+			// Update state before offloading to BullMQ
+			trade.status = TradeStatus.AWAITING_RESOLVE;
+			await redisService.saveTrade(trade);
+			await redisService.moveToAwaitingResolve(trade.id);
+
+			// Offload resolution to dedicated BullMQ queue
+			await queueService.addResolveJob({
 				trade,
 				type: 'RESOLVE',
 				btcPrice: btcPrice ?? undefined,

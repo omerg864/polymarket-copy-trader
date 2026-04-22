@@ -8,9 +8,22 @@ import outcomeSyncService from './services/outcomeSync';
 import strategyEngine from './strategy/engine';
 import tradeService from './services/tradeService';
 import logger from './utils/logger';
-import pkg from '../package.json';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
-const botVersion = pkg.version || 'unknown';
+// Bot version from package.json
+let botVersion = 'unknown';
+try {
+	const pkgPath = join(__dirname, '..', 'package.json');
+	const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+	botVersion = pkg.version || 'unknown';
+} catch (e) {
+	// Fallback for different execution contexts
+	try {
+		const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
+		botVersion = pkg.version || 'unknown';
+	} catch (e2) {}
+}
 
 // Bot mode is determined by MODE environment variable in config.ts
 

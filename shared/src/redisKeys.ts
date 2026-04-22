@@ -27,6 +27,7 @@ export const REDIS_KEYS = {
 	DAILY_PNL: (mode: string, date: string) =>
 		`${REDIS_PREFIX}${mode}:daily_pnl:${date}`,
 	ACTIVE_TRADES: (mode: string) => `${REDIS_PREFIX}${mode}:active_trades`,
+	AWAITING_RESOLVE_TRADES: (mode: string) => `${REDIS_PREFIX}${mode}:awaiting_resolve_trades`,
 	TRADE_PREFIX: (mode: string) => `${REDIS_PREFIX}${mode}:trade:`, // followed by trade ID
 };
 

@@ -22,15 +22,20 @@ redis.on('connect', () => {
 
 export async function getActiveTrades(): Promise<Trade[]> {
 	const isDemo = config.isDemo;
-	const ids = await redis.smembers(
-		REDIS_KEYS.ACTIVE_TRADES(isDemo ? 'demo' : 'live'),
-	);
+	const mode = isDemo ? 'demo' : 'live';
+	
+	const [activeIds, resolvingIds] = await Promise.all([
+		redis.smembers(REDIS_KEYS.ACTIVE_TRADES(mode)),
+		redis.smembers(REDIS_KEYS.AWAITING_RESOLVE_TRADES(mode)),
+	]);
+
+	const ids = [...activeIds, ...resolvingIds];
 	if (ids.length === 0) return [];
 
 	const trades = await Promise.all(
 		ids.map(async (id) => {
 			const data = await redis.get(
-				`${REDIS_KEYS.TRADE_PREFIX(isDemo ? 'demo' : 'live')}${id}`,
+				`${REDIS_KEYS.TRADE_PREFIX(mode)}${id}`,
 			);
 			return data ? (JSON.parse(data) as Trade) : null;
 		}),
@@ -124,6 +129,7 @@ export async function flushRedis(): Promise<void> {
 export async function clearModeData(mode: 'demo' | 'live'): Promise<void> {
 	const keysToDelete = [
 		REDIS_KEYS.ACTIVE_TRADES(mode),
+		REDIS_KEYS.AWAITING_RESOLVE_TRADES(mode),
 		REDIS_KEYS.BALANCE(mode),
 		REDIS_KEYS.STATS(mode),
 		REDIS_KEYS.HISTORY_IDS(mode),

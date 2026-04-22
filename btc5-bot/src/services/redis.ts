@@ -90,10 +90,28 @@ class RedisService {
 		return trades.filter((t): t is Trade => t !== null);
 	}
 
+	async moveToAwaitingResolve(tradeId: string): Promise<void> {
+		const client = this.getClient();
+		await client.srem(REDIS_KEYS.ACTIVE_TRADES(this.mode), tradeId);
+		await client.sadd(REDIS_KEYS.AWAITING_RESOLVE_TRADES(this.mode), tradeId);
+	}
+
+	async getAwaitingResolveTrades(): Promise<Trade[]> {
+		const client = this.getClient();
+		const ids = await client.smembers(
+			REDIS_KEYS.AWAITING_RESOLVE_TRADES(this.mode),
+		);
+		if (ids.length === 0) return [];
+
+		const trades = await Promise.all(ids.map((id) => this.getTrade(id)));
+		return trades.filter((t): t is Trade => t !== null);
+	}
+
 	async removeTrade(tradeId: string): Promise<void> {
 		const client = this.getClient();
 		await client.del(`${REDIS_KEYS.TRADE_PREFIX(this.mode)}${tradeId}`);
 		await client.srem(REDIS_KEYS.ACTIVE_TRADES(this.mode), tradeId);
+		await client.srem(REDIS_KEYS.AWAITING_RESOLVE_TRADES(this.mode), tradeId);
 	}
 
 	// ---- Trade History (Redis part) ----

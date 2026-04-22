@@ -67,6 +67,10 @@ export function StatusBadge({ status }: { status: string }) {
 			label: '⏱️ Force Close',
 			cls: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
 		},
+		awaiting_resolve: {
+			label: '🤞 Awaiting Resolve',
+			cls: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+		},
 	};
 	const s = map[status];
 	if (s)

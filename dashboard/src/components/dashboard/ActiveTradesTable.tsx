@@ -16,9 +16,10 @@ import {
 import { useActiveTrades, useConfig } from '@/hooks/use-api';
 import type { Trade } from '@/types';
 import { useState } from 'react';
-import { DirectionBadge } from './badges';
+import { DirectionBadge, StatusBadge } from './badges';
 import { TradeDetailsDialog } from './TradeDetailsDialog';
 import { formatGlobalDateTime } from '@/lib/utils';
+import { TradeStatus } from '@shared/types';
 
 export function ActiveTradesTable() {
 	const { data: activeTrades } = useActiveTrades();
@@ -57,6 +58,9 @@ export function ActiveTradesTable() {
 									Direction
 								</TableHead>
 								<TableHead className="text-zinc-500">
+									Status
+								</TableHead>
+								<TableHead className="text-zinc-500">
 									Shares
 								</TableHead>
 								<TableHead className="text-zinc-500">
@@ -78,6 +82,12 @@ export function ActiveTradesTable() {
 						</TableHeader>
 						<TableBody>
 							{activeTrades.map((trade: Trade) => {
+								const isResolving =
+									trade.status ===
+									TradeStatus.AWAITING_RESOLVE;
+
+								// For resolving trades, current price is stagnant or irrelevant
+								// If it's resolving, change might be fixed at 1.0 or 0.0 eventually
 								const pctChg =
 									trade.entryPrice > 0
 										? ((trade.currentPrice -
@@ -85,10 +95,11 @@ export function ActiveTradesTable() {
 												trade.entryPrice) *
 											100
 										: 0;
+
 								return (
 									<TableRow
 										key={trade.id}
-										className="border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors"
+										className={`border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors ${isResolving ? 'opacity-80' : ''}`}
 										onClick={() => setSelectedTrade(trade)}
 									>
 										<TableCell className="font-mono text-xs text-zinc-400 max-w-[140px] truncate">
@@ -103,6 +114,11 @@ export function ActiveTradesTable() {
 										<TableCell>
 											<DirectionBadge
 												direction={trade.direction}
+											/>
+										</TableCell>
+										<TableCell>
+											<StatusBadge
+												status={trade.status}
 											/>
 										</TableCell>
 										<TableCell className="font-mono text-sm">

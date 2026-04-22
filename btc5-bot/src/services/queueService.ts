@@ -38,12 +38,17 @@ export interface TradeCompletionJobData {
 
 class QueueService {
 	private sellQueue: Queue<SellJobData>;
+	private resolveQueue: Queue<SellJobData>;
 	private completionQueue: Queue<TradeCompletionJobData>;
 	private sellWorker: Worker<SellJobData> | null = null;
+	private resolveWorker: Worker<SellJobData> | null = null;
 	private completionWorker: Worker<TradeCompletionJobData> | null = null;
 
 	constructor() {
 		this.sellQueue = new Queue('sell-trades', {
+			connection: connection as any,
+		});
+		this.resolveQueue = new Queue('resolve-trades', {
 			connection: connection as any,
 		});
 		this.completionQueue = new Queue('trade-completion', {
@@ -56,17 +61,24 @@ class QueueService {
 	 * Called during bot initialization.
 	 */
 	async startWorkers(): Promise<void> {
-		if (this.sellWorker || this.completionWorker) {
+		if (this.sellWorker || this.resolveWorker || this.completionWorker) {
 			logger.warn('⚠️ Workers are already running');
 			return;
 		}
 
 		logger.info('🚀 Starting BullMQ workers...');
 
-		// Sell Worker: Handles concurrent trade exits
+		// Sell Worker: Handles concurrent trade exits (TP/SL/FCT)
 		this.sellWorker = new Worker<SellJobData>(
 			'sell-trades',
 			async (job) => this.processSellTrade(job),
+			{ connection: connection as any, concurrency: 5 },
+		);
+
+		// Resolve Worker: Handles market resolution (very high retry, long backoff)
+		this.resolveWorker = new Worker<SellJobData>(
+			'resolve-trades',
+			async (job) => this.processResolveTrade(job),
 			{ connection: connection as any, concurrency: 5 },
 		);
 
@@ -87,17 +99,23 @@ class QueueService {
 	async stopWorkers(): Promise<void> {
 		logger.info('🛑 Stopping BullMQ workers...');
 		if (this.sellWorker) await this.sellWorker.close();
+		if (this.resolveWorker) await this.resolveWorker.close();
 		if (this.completionWorker) await this.completionWorker.close();
 		this.sellWorker = null;
+		this.resolveWorker = null;
 		this.completionWorker = null;
 		logger.info('✅ BullMQ workers stopped');
 	}
 
 	private setupListeners() {
-		if (!this.sellWorker || !this.completionWorker) return;
+		if (!this.sellWorker || !this.resolveWorker || !this.completionWorker)
+			return;
 
 		this.sellWorker.on('failed', (job, err) => {
 			logger.error(`Sell job ${job?.id} failed: ${err.message}`);
+		});
+		this.resolveWorker.on('failed', (job, err) => {
+			logger.error(`Resolve job ${job?.id} failed: ${err.message}`);
 		});
 		this.completionWorker.on('failed', (job, err) => {
 			logger.error(`Completion job ${job?.id} failed: ${err.message}`);
@@ -105,36 +123,45 @@ class QueueService {
 	}
 
 	/**
-	 * Adds a trade to the sell queue.
-	 * Job ID is the trade ID to prevent duplicates in the queue.
+	 * Adds a trade to the sell queue for immediate exit (TP/SL/FCT).
 	 */
 	async addSellJob(data: SellJobData): Promise<void> {
 		try {
-			const isResolve = data.type === 'RESOLVE';
-
-			// Resolve jobs need much longer retry windows because Polymarket
-			// resolution metadata can lag behind market end time.
-			const attempts = isResolve ? 60 : 5;
-			const backoffDelay = isResolve ? 60000 : 2000; // Resolution: 60s | Sell: 2s
-			const backoffType = isResolve ? 'fixed' : 'exponential';
-
 			await this.sellQueue.add(`sell-${data.trade.id}`, data, {
 				jobId: data.trade.id,
 				removeOnComplete: true,
 				removeOnFail: false,
-				attempts,
-				backoff: { type: backoffType, delay: backoffDelay },
+				attempts: 5,
+				backoff: { type: 'exponential', delay: 2000 },
 			});
-			logger.info(`📦 Queued ${data.type} for trade ${data.trade.id}`);
+			logger.info(`📦 Queued SELL_ORDER for trade ${data.trade.id}`);
 		} catch (error) {
 			logger.error(`Failed to queue sell job: ${error}`);
 		}
 	}
 
-	private async processSellTrade(job: Job<SellJobData>): Promise<void> {
-		const { trade, type, exitPrice, btcPrice, reason } = job.data;
+	/**
+	 * Adds a trade to the resolve queue (waiting for market outcome).
+	 */
+	async addResolveJob(data: SellJobData): Promise<void> {
+		try {
+			await this.resolveQueue.add(`resolve-${data.trade.id}`, data, {
+				jobId: data.trade.id,
+				removeOnComplete: true,
+				removeOnFail: false,
+				attempts: 60,
+				backoff: { type: 'fixed', delay: 60000 },
+			});
+			logger.info(`📦 Queued RESOLVE for trade ${data.trade.id}`);
+		} catch (error) {
+			logger.error(`Failed to queue resolve job: ${error}`);
+		}
+	}
 
-		logger.info(`Processing sell job for trade ${trade.id}`);
+	private async processSellTrade(job: Job<SellJobData>): Promise<void> {
+		const { trade, exitPrice, btcPrice, reason } = job.data;
+
+		logger.info(`Processing SELL_ORDER job for trade ${trade.id}`);
 
 		// Defensive check for Redis connection
 		try {
@@ -147,6 +174,12 @@ class QueueService {
 		}
 
 		// 1. Check if already in history
+		if (trade.status === TradeStatus.AWAITING_RESOLVE) {
+			logger.info(
+				`Trade ${trade.id} is already awaiting resolution. Skipping sell job.`,
+			);
+			return;
+		}
 		const isProcessed = await redisService.isTradeInHistory(trade.id);
 		if (isProcessed) {
 			logger.warn(
@@ -162,69 +195,29 @@ class QueueService {
 		let status: TradeStatus = TradeStatus.OPEN;
 		let revenue = 0;
 
-		const endTime = trade.endTime ? new Date(trade.endTime) : null;
+		const market = {
+			conditionId: trade.conditionId,
+			tickSize: config.tickSize,
+			negRisk: config.negRisk,
+			endTime: new Date(trade.endTime),
+		};
 
-		if (type === 'RESOLVE') {
+		if (market.endTime && new Date() >= market.endTime) {
 			logger.info(
-				`⏰ Resolving trade via market resolution: ${trade.title}`,
+				`⏰ Market ended. Skipping sell order for ${trade.title}. moving to awaiting resolution set`,
 			);
 
-			const winner = await polymarketService.getMarketOutcome(
-				trade.eventTicker,
-			);
-			if (!winner) {
-				throw new Error('Market not yet resolved on Polymarket');
-			}
-			won = trade.direction === winner;
+			trade.status = TradeStatus.AWAITING_RESOLVE;
+			await redisService.saveTrade(trade);
+			await redisService.moveToAwaitingResolve(trade.id);
 
-			// Resolve with partial fill awareness (from previous sell attempts)
-			if (trade.partialFill) {
-				const remainingShares = trade.size - trade.partialFill.size;
-				const resolutionPrice = won ? 1.0 : 0.0;
-				revenue =
-					trade.partialFill.size * trade.partialFill.price +
-					remainingShares * resolutionPrice;
-				sellFee = trade.partialFill.fee;
-				finalPrice =
-					trade.size > 0 ? revenue / trade.size : resolutionPrice;
-				logger.info(
-					`🎯 Resolved partial fill trade ${trade.id}. Result: ${winner}. Partial: ${trade.partialFill.size}@${trade.partialFill.price}, Resolution: ${remainingShares}@${resolutionPrice}. Total Revenue: $${revenue.toFixed(2)}`,
-				);
-			} else {
-				finalPrice = won ? 1.0 : 0.0;
-				revenue = finalPrice * trade.size;
-				sellFee = 0;
-			}
-
-			status = won ? TradeStatus.WON : TradeStatus.LOST;
-
-			if (won && !config.isDemo && config.enableLiveRedeem) {
-				await polymarketService.redeemWinnings(trade.conditionId);
-			}
-		} else {
-			// SELL_ORDER (TP/SL/FCT)
-			logger.info(
-				`🟢 Executing ${reason || 'sell'} order for ${trade.title}`,
-			);
-
-			const market = {
-				conditionId: trade.conditionId,
-				tickSize: config.tickSize,
-				negRisk: config.negRisk,
-				endTime: new Date(trade.endTime),
-			};
-
-			if (market.endTime && new Date() >= market.endTime) {
-				logger.info(
-					`⏰ Market ended. Skipping sell order for ${trade.title}. add resolve job`,
-				);
-				await this.addSellJob({
-					trade,
-					type: 'RESOLVE',
-					reason: reason || 'market ended',
-				});
-				return;
-			}
+			await this.addResolveJob({
+				trade,
+				type: 'RESOLVE',
+				reason: reason || 'market ended',
+			});
+			return;
+		}
 
 			// Polymarket CLOB only allows prices between 0.01 and 0.99
 			const clampedPrice = Math.max(0.01, Math.min(0.99, finalPrice));
@@ -277,9 +270,10 @@ class QueueService {
 
 					// Save to Redis so it's persisted for the next job
 					await redisService.saveTrade(trade);
+					await redisService.moveToAwaitingResolve(trade.id);
 
 					// Queue standard RESOLVE job
-					await this.addSellJob({
+					await this.addResolveJob({
 						trade,
 						type: 'RESOLVE',
 						reason: reason || 'partial_fill_resolution',
@@ -300,7 +294,6 @@ class QueueService {
 				revenue = finalPrice * trade.size;
 			}
 
-			won = finalPrice > trade.entryPrice;
 			status =
 				reason === 'tp'
 					? TradeStatus.CLOSED_TP
@@ -309,9 +302,96 @@ class QueueService {
 						: reason === 'fct'
 							? TradeStatus.CLOSED_FCT
 							: TradeStatus.CLOSED_SELL;
-		}
 
 		// Prepare data for sequential completion
+		await this.completionQueue.add(
+			`complete-${trade.id}`,
+			{
+				trade,
+				revenue,
+				sellFee,
+				won,
+				status,
+				exitPrice: finalPrice,
+				exitBtcPrice: btcPrice,
+				reason,
+			},
+			{
+				jobId: `complete-${trade.id}`,
+				removeOnComplete: true,
+				attempts: 5,
+				backoff: { type: 'fixed', delay: 1000 },
+			},
+		);
+	}
+
+	private async processResolveTrade(job: Job<SellJobData>): Promise<void> {
+		const { trade, exitPrice, btcPrice, reason } = job.data;
+
+		logger.info(`Processing RESOLVE job for trade ${trade.id}`);
+
+		// Defensive check for Redis connection
+		try {
+			await redisService.connect();
+		} catch (error) {
+			logger.error(
+				`Failed to ensure Redis connection for job ${job.id}: ${error}`,
+			);
+			throw new Error('Redis connection required');
+		}
+
+		// 1. Check if already in history
+		const isProcessed = await redisService.isTradeInHistory(trade.id);
+		if (isProcessed) {
+			logger.warn(
+				`⚠️ Trade ${trade.id} already processed. Skipping resolve job. Removing from Redis sets.`,
+			);
+			await redisService.removeTrade(trade.id);
+			return;
+		}
+
+		let won = false;
+		let finalPrice = exitPrice ?? 0;
+		let sellFee = 0;
+		let status: TradeStatus = TradeStatus.OPEN;
+		let revenue = 0;
+
+		logger.info(`⏰ Resolving trade via market resolution: ${trade.title}`);
+
+		const winner = await polymarketService.getMarketOutcome(
+			trade.eventTicker,
+		);
+		if (!winner) {
+			throw new Error('Market not yet resolved on Polymarket');
+		}
+		won = trade.direction === winner;
+
+		// Resolve with partial fill awareness (from previous sell attempts)
+		if (trade.partialFill) {
+			const remainingShares = trade.size - trade.partialFill.size;
+			const resolutionPrice = won ? 1.0 : 0.0;
+			revenue =
+				trade.partialFill.size * trade.partialFill.price +
+				remainingShares * resolutionPrice;
+			sellFee = trade.partialFill.fee;
+			finalPrice =
+				trade.size > 0 ? revenue / trade.size : resolutionPrice;
+			logger.info(
+				`🎯 Resolved partial fill trade ${trade.id}. Result: ${winner}. Partial: ${trade.partialFill.size}@${trade.partialFill.price}, Resolution: ${remainingShares}@${resolutionPrice}. Total Revenue: $${revenue.toFixed(2)}`,
+			);
+		} else {
+			finalPrice = won ? 1.0 : 0.0;
+			revenue = finalPrice * trade.size;
+			sellFee = 0;
+		}
+
+		status = won ? TradeStatus.WON : TradeStatus.LOST;
+
+		if (won && !config.isDemo && config.enableLiveRedeem) {
+			await polymarketService.redeemWinnings(trade.conditionId);
+		}
+
+		// 3. Queue sequential completion
 		await this.completionQueue.add(
 			`complete-${trade.id}`,
 			{

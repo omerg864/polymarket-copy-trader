@@ -29,6 +29,7 @@ export enum TradeStatus {
 	CLOSED_SL = 'closed_sl',
 	CLOSED_FCT = 'closed_fct',
 	CLOSED_SELL = 'closed_sell',
+	AWAITING_RESOLVE = 'awaiting_resolve',
 }
 
 export enum OrderStatus {
