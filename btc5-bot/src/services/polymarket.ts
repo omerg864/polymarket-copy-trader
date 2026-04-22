@@ -531,12 +531,60 @@ class PolymarketService {
 			});
 
 			return this._monitorOrder(order.orderID, market.endTime);
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : String(error);
-			logger.error(
-				`Failed to place SELL order for ${tokenId}: ${message}`,
-			);
+		} catch (error: any) {
+			const message = error instanceof Error ? error.message : String(error);
+			const data = error.response?.data;
+			const errorDetail = data?.error || '';
+
+			// Reactive balance adjustment: If the error is about insufficient balance, 
+			// parse the actual balance from the error message and retry ONCE.
+			if (errorDetail.includes('not enough balance')) {
+				const match = errorDetail.match(/balance: (\d+)/);
+				if (match && match[1]) {
+					const rawBalance = parseInt(match[1], 10);
+					const adjustedSize = rawBalance / 1_000_000;
+
+					logger.warn(
+						`⚠️ Insufficient balance for SELL order of ${tokenId}. CLOB Balance: ${rawBalance}. Retrying with adjusted size: ${adjustedSize}`,
+					);
+
+					if (adjustedSize > 0) {
+						try {
+							const retryOrder: OrderResponse = await this.clobClient.createAndPostOrder(
+								{
+									tokenID: tokenId,
+									price,
+									side: Side.SELL,
+									size: adjustedSize,
+								},
+								{
+									tickSize: market.tickSize as any,
+									negRisk: market.negRisk,
+								},
+								OrderType.GTC,
+							);
+
+							if (retryOrder && retryOrder.orderID) {
+								logger.info(`✅ Successfully retried SELL order with adjusted size: ${adjustedSize}`);
+								logger.trade('SELL ORDER PLACED (ADJUSTED)', {
+									tokenId: tokenId.substring(0, 12) + '...',
+									price,
+									size: adjustedSize,
+									orderId: retryOrder.orderID,
+								});
+								return this._monitorOrder(retryOrder.orderID, market.endTime);
+							}
+						} catch (retryError: any) {
+							logger.error(`Retry attempt failed for ${tokenId}: ${retryError.message}`);
+						}
+					} else {
+						logger.error(`Cannot retry SELL order for ${tokenId}: Adjusted size is 0.`);
+						return null;
+					}
+				}
+			}
+
+			logger.error(`Failed to place SELL order for ${tokenId}: ${errorDetail || message}`);
 			return null;
 		}
 	}

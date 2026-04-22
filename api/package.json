@@ -1,6 +1,6 @@
 {
 	"name": "polymarket-5-minutes-bot-api",
-	"version": "3.10.7",
+	"version": "3.10.8",
 	"description": "Dashboard API for Polymarket Bot",
 	"main": "dist/api/src/index.js",
 	"scripts": {
