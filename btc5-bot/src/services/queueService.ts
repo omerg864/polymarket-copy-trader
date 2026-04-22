@@ -159,8 +159,6 @@ class QueueService {
 		try {
 			await this.sellQueue.add(`sell-${data.trade.id}`, data, {
 				jobId: data.trade.id,
-				removeOnComplete: true,
-				removeOnFail: false,
 				attempts: 5,
 				backoff: { type: 'exponential', delay: 2000 },
 			});
@@ -177,8 +175,6 @@ class QueueService {
 		try {
 			await this.resolveQueue.add(`resolve-${data.trade.id}`, data, {
 				jobId: data.trade.id,
-				removeOnComplete: true,
-				removeOnFail: false,
 				attempts: 60,
 				backoff: { type: 'fixed', delay: 60000 },
 			});
@@ -344,7 +340,6 @@ class QueueService {
 			},
 			{
 				jobId: `complete-${trade.id}`,
-				removeOnComplete: true,
 				attempts: 5,
 				backoff: { type: 'fixed', delay: 1000 },
 			},
@@ -432,7 +427,6 @@ class QueueService {
 			},
 			{
 				jobId: `complete-${trade.id}`,
-				removeOnComplete: true,
 				attempts: 5,
 				backoff: { type: 'fixed', delay: 1000 },
 			},
