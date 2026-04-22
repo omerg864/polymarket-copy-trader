@@ -1,4 +1,5 @@
 import { AnalysisDashboard } from '@/components/AnalysisDashboard';
+import { TradeType } from '@shared/types';
 import { Dashboard } from '@/components/Dashboard';
 import { LoginPage } from '@/components/LoginPage';
 import { Simulations } from '@/components/Simulations';
@@ -103,7 +104,7 @@ function AuthenticatedApp() {
 									<Badge
 										variant="outline"
 										className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded-full border ${
-											config.mode === 'prod'
+											config.mode === TradeType.LIVE
 												? 'bg-red-500/10 text-red-400 border-red-500/30'
 												: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/30'
 										}`}
@@ -175,7 +176,7 @@ function AuthenticatedApp() {
 								<Badge
 									variant="outline"
 									className={`text-[8px] uppercase font-bold px-1.5 py-0.5 rounded-full border ${
-										config.mode === 'prod'
+										config.mode === TradeType.LIVE
 											? 'bg-red-500/10 text-red-400 border-red-500/30'
 											: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/30'
 									}`}

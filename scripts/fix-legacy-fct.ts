@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import Redis from 'ioredis';
-import { type Trade, TradeStatus } from '../shared/src/types';
+import { type Trade, TradeStatus, TradeType } from '../shared/src/types';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
@@ -19,7 +19,7 @@ const redis = new Redis(REDIS_URL);
 async function main() {
     console.log('🔗 Connected to Redis');
 
-    for (const mode of ['live', 'demo'] as const) {
+    for (const mode of Object.values(TradeType)) {
         console.log(`\n🚀 Checking ${mode.toUpperCase()} trades...`);
         const historyKey = `${PREFIX}${mode}:history`;
         const tradesRaw = await redis.lrange(historyKey, 0, -1);

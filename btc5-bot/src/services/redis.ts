@@ -3,6 +3,7 @@ import {
 	REDIS_KEYS,
 	REDIS_PREFIX,
 	StrategyConfig,
+	TradeType,
 	type BotStats,
 	type Trade,
 } from '@shared/index';
@@ -12,7 +13,7 @@ import logger from '../utils/logger';
 
 class RedisService {
 	private client: Redis;
-	private readonly mode = config.isDemo ? 'demo' : 'live';
+	private readonly mode: TradeType = config.mode;
 
 	constructor() {
 		this.client = new Redis(config.redisUrl, {

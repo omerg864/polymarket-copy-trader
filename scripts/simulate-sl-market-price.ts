@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import Redis from 'ioredis';
 import { DateTime } from 'luxon';
+import { TradeType } from '../shared/src/types';
 
 // Setup paths
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -12,7 +13,7 @@ dotenv.config({
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const PREFIX = 'pmbot:';
-const MODE = process.env.MODE || 'demo';
+const MODE = process.env.MODE === 'live' ? TradeType.LIVE : TradeType.DEMO;
 const TARGET_SL_PRICE = 0.4;
 
 /**

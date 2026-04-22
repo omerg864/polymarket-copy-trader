@@ -6,7 +6,7 @@ import {
 	type Trade,
 } from '@shared/types';
 import { DateTime } from 'luxon';
-import { calculateFee, calculateTodayPnl } from '@shared/utils';
+import { calculateFee, calculateTodayPnl, isTimeExcluded } from '@shared/utils';
 import config from '../config';
 import demoTradingService from '../services/demoTrading';
 import notificationManager from '../services/notificationManager';
@@ -226,7 +226,7 @@ class StrategyEngine {
 		if (sc.excludedTimeWindows && sc.excludedTimeWindows.length > 0) {
 			const nowTz = DateTime.now().setZone(sc.timezone);
 			for (const window of sc.excludedTimeWindows) {
-				if (this.isTimeExcluded(nowTz, window)) {
+				if (isTimeExcluded(nowTz, window)) {
 					logger.info(
 						`🚫 Current time ${nowTz.toFormat('HH:mm')} is within exclusion window ${window.start}-${window.end}. Skipping new trades.`,
 					);
@@ -657,34 +657,6 @@ class StrategyEngine {
 		} catch (error) {
 			logger.error(`Failed to cleanup WS subscriptions: ${error}`);
 		}
-	}
-	/**
-	 * Check if current time falls within an exclusion window (HH:mm format)
-	 */
-	private isTimeExcluded(
-		now: DateTime,
-		window: { start: string; end: string },
-	): boolean {
-		const [startH, startM] = window.start.split(':').map(Number);
-		const [endH, endM] = window.end.split(':').map(Number);
-
-		const currentTimeInMinutes = now.hour * 60 + now.minute;
-		const startTotalMinutes = startH * 60 + startM;
-		let endTotalMinutes = endH * 60 + endM;
-
-		// Handle midnight wrap-around (e.g., 23:00 to 01:00)
-		if (endTotalMinutes <= startTotalMinutes) {
-			// Window crosses midnight
-			return (
-				currentTimeInMinutes >= startTotalMinutes ||
-				currentTimeInMinutes < endTotalMinutes
-			);
-		}
-
-		return (
-			currentTimeInMinutes >= startTotalMinutes &&
-			currentTimeInMinutes < endTotalMinutes
-		);
 	}
 }
 

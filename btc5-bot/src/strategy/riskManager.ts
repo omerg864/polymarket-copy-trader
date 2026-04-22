@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import { type Trade } from '@shared/types';
+import { TradeType, type Trade } from '@shared/types';
 import polymarketService from '../services/polymarket';
 import priceAnalysisService from '../services/priceAnalysis';
 import redisService from '../services/redis';
@@ -121,7 +121,7 @@ class RiskManager {
 
 					if (!wouldLose) continue;
 
-					if (trade.type === 'demo') {
+					if (trade.type === TradeType.DEMO) {
 						if (secUntilEnd < this.DEMO_FCT_SEC_LEFT) {
 							logger.info(
 								`⏱️  FORCE CLOSE (${secUntilEnd.toFixed(1)}s left) | ${trade.id} ${trade.direction} but BTC $${(btcPrice || 0).toFixed(2)} vs ref $${priceToBeat.toFixed(2)} → resolves ${resolvesUp ? 'UP' : 'DOWN'}. CANNOT SELL WHEN LESS THAN ${this.DEMO_FCT_SEC_LEFT}S LEFT`,
@@ -323,7 +323,7 @@ class RiskManager {
 		const now = DateTime.now();
 		const secUntilEnd = endTime.diff(now).as('seconds');
 
-		if (trade.type === 'demo' && secUntilEnd < this.DEMO_FCT_SEC_LEFT - 1) {
+		if (trade.type === TradeType.DEMO && secUntilEnd < this.DEMO_FCT_SEC_LEFT - 1) {
 			logger.warn(
 				`🛑 DEMO SAFETY: Cannot sell ${trade.id} with only ${secUntilEnd.toFixed(1)}s left (simulating illiquidity)`,
 			);

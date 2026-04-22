@@ -54,7 +54,7 @@ export function Simulations() {
 		runSim({
 			type: selectedId as SimulationType,
 			mode:
-				config.mode === 'live' || config.mode === 'prod'
+				config.mode === TradeType.LIVE
 					? TradeType.LIVE
 					: TradeType.DEMO,
 			params,

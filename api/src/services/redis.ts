@@ -1,12 +1,13 @@
 import {
 	REDIS_KEYS,
 	getTradeKey,
+	TradeType,
 	type MarketDashboardData,
 	type RedisInfo,
 	type StrategyConfig,
 	type Trade,
-} from '../../../shared/src/index';
-import { DEFAULT_STRATEGY_CONFIG } from '../../../shared/src/types';
+} from '@shared/index';
+import { DEFAULT_STRATEGY_CONFIG } from '@shared/types';
 import Redis from 'ioredis';
 import config from '../config';
 
@@ -21,8 +22,7 @@ redis.on('connect', () => {
 });
 
 export async function getActiveTrades(): Promise<Trade[]> {
-	const isDemo = config.isDemo;
-	const mode = isDemo ? 'demo' : 'live';
+	const mode = config.mode;
 	
 	const [activeIds, resolvingIds] = await Promise.all([
 		redis.smembers(REDIS_KEYS.ACTIVE_TRADES(mode)),
@@ -53,7 +53,7 @@ interface BotStats {
 }
 
 export async function getBotStats(): Promise<BotStats> {
-	const key = REDIS_KEYS.STATS(config.isDemo ? 'demo' : 'live');
+	const key = REDIS_KEYS.STATS(config.mode);
 	const raw = await redis.get(key);
 	return raw
 		? (JSON.parse(raw) as BotStats)
@@ -61,14 +61,14 @@ export async function getBotStats(): Promise<BotStats> {
 }
 
 export async function setBotStats(stats: BotStats): Promise<void> {
-	const key = REDIS_KEYS.STATS(config.isDemo ? 'demo' : 'live');
+	const key = REDIS_KEYS.STATS(config.mode);
 	await redis.set(key, JSON.stringify(stats));
 }
 
 export async function getBotBalance(
 	configParams?: StrategyConfig,
 ): Promise<number> {
-	const mode = configParams?.mode || (config.isDemo ? 'demo' : 'live');
+	const mode = configParams?.mode || config.mode;
 	const key = REDIS_KEYS.BALANCE(mode);
 	const raw = await redis.get(key);
 	if (raw) {
@@ -81,39 +81,36 @@ export async function getBotBalance(
 }
 
 export async function setBotBalance(balance: number): Promise<void> {
-	const isDemo = config.isDemo;
-	const key = REDIS_KEYS.BALANCE(isDemo ? 'demo' : 'live');
+	const key = REDIS_KEYS.BALANCE(config.mode);
 	await redis.set(key, balance.toString());
 }
 
 export async function getBotStartTime(
-	mode?: 'demo' | 'live',
+	mode?: TradeType,
 ): Promise<number | null> {
-	const activeMode = mode || (config.isDemo ? 'demo' : 'live');
+	const activeMode = mode || config.mode;
 	const raw = await redis.get(REDIS_KEYS.START_TIME(activeMode));
 	return raw ? parseInt(raw, 10) : null;
 }
 
 export async function setBotStartTime(
 	startTime: number,
-	mode?: 'demo' | 'live',
+	mode?: TradeType,
 ): Promise<void> {
-	const activeMode = mode || (config.isDemo ? 'demo' : 'live');
+	const activeMode = mode || config.mode;
 	await redis.set(REDIS_KEYS.START_TIME(activeMode), startTime.toString());
 }
 
 export async function getStopRequested(): Promise<boolean> {
-	const isDemo = config.isDemo;
 	const val = await redis.get(
-		REDIS_KEYS.STOP_REQUESTED(isDemo ? 'demo' : 'live'),
+		REDIS_KEYS.STOP_REQUESTED(config.mode),
 	);
 	return val === 'true';
 }
 
 export async function setStopRequested(stop: boolean): Promise<void> {
-	const isDemo = config.isDemo;
 	await redis.set(
-		REDIS_KEYS.STOP_REQUESTED(isDemo ? 'demo' : 'live'),
+		REDIS_KEYS.STOP_REQUESTED(config.mode),
 		stop ? 'true' : 'false',
 	);
 }
@@ -126,7 +123,7 @@ export async function flushRedis(): Promise<void> {
  * Clears bot state only for the specified mode (demo or live).
  * Preserves global data like price feeds and config cache.
  */
-export async function clearModeData(mode: 'demo' | 'live'): Promise<void> {
+export async function clearModeData(mode: TradeType): Promise<void> {
 	const keysToDelete = [
 		REDIS_KEYS.ACTIVE_TRADES(mode),
 		REDIS_KEYS.AWAITING_RESOLVE_TRADES(mode),
@@ -220,8 +217,7 @@ export async function getRedisInfo(): Promise<RedisInfo> {
 }
 
 export async function getDailyPnl(date: string): Promise<number> {
-	const isDemo = config.isDemo;
-	const key = REDIS_KEYS.DAILY_PNL(isDemo ? 'demo' : 'live', date);
+	const key = REDIS_KEYS.DAILY_PNL(config.mode, date);
 	const raw = await redis.hget(key, 'pnl');
 	if (raw === null) return 0;
 	return parseFloat(raw) || 0;
@@ -230,8 +226,7 @@ export async function getDailyPnl(date: string): Promise<number> {
 export async function getDailyStats(
 	date: string,
 ): Promise<{ pnl: number; wins: number; losses: number }> {
-	const isDemo = config.isDemo;
-	const key = REDIS_KEYS.DAILY_PNL(isDemo ? 'demo' : 'live', date);
+	const key = REDIS_KEYS.DAILY_PNL(config.mode, date);
 	const data = await redis.hgetall(key);
 	return {
 		pnl: parseFloat(data.pnl) || 0,
@@ -244,8 +239,7 @@ export async function setDailyStats(
 	date: string,
 	stats: { pnl: number; wins: number; losses: number },
 ): Promise<void> {
-	const isDemo = config.isDemo;
-	const key = REDIS_KEYS.DAILY_PNL(isDemo ? 'demo' : 'live', date);
+	const key = REDIS_KEYS.DAILY_PNL(config.mode, date);
 
 	// Clear if it was a string (legacy)
 	const t = await redis.type(key);

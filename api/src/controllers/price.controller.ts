@@ -85,7 +85,7 @@ export async function getCandles(req: Request, res: Response): Promise<void> {
 		const targetEndTime = endTime
 			? parseInt(endTime as string, 10)
 			: Date.now();
-		const maxPages = 3;
+		const maxPages = 10; // Increased from 3 to 10 (covers ~34 days of 5m data)
 
 		for (let i = 0; i < maxPages; i++) {
 			const batch = await fetchBatch(

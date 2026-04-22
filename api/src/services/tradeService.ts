@@ -1,12 +1,11 @@
-import { type Trade } from '../../../shared/src/index';
+import { Trade, TradeType } from '@shared/types';
 import config from '../config';
 import { TradeModel } from '../models/Trade';
 
 class TradeService {
 	async getTradeHistory(limit?: number): Promise<Trade[]> {
 		try {
-			const isDemo = config.isDemo;
-			let query = TradeModel.find({ type: isDemo ? 'demo' : 'live' }).sort({
+			let query = TradeModel.find({ type: config.mode }).sort({
 				closedAt: -1,
 			});
 
@@ -26,7 +25,7 @@ class TradeService {
 		}
 	}
 
-	async clearAllTrades(type: 'demo' | 'live'): Promise<void> {
+	async clearAllTrades(type: TradeType): Promise<void> {
 		try {
 			await TradeModel.deleteMany({ type });
 			console.log(`Cleared all ${type} trades from MongoDB`);

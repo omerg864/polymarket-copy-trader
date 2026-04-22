@@ -1,6 +1,6 @@
 {
 	"name": "polymarket-5-minutes-bot",
-	"version": "3.8.0",
+	"version": "3.9.0",
 	"description": "Automated trading bot for Polymarket BTC 5-minute up/down markets",
 	"type": "module",
 	"main": "src/index.js",
@@ -21,6 +21,7 @@
 		"api": "node src/api.js",
 		"dashboard:dev": "cd dashboard && npm run dev",
 		"dashboard": "node src/api.js & cd dashboard && npm run dev",
+		"build": "npm run build -w shared && npm run build -w btc5-bot && npm run build -w api && npm run build -w dashboard",
 		"stop": "node src/stop.js",
 		"verify-stats": "npx tsx scripts/verify-stats.ts",
 		"fix-duplicates": "npx tsx scripts/fix-duplicates.ts",

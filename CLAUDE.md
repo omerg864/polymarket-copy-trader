@@ -33,6 +33,8 @@ npm run dashboard:dev
 ### Build
 
 ```bash
+npm run build                   # Build all sub-projects in correct order (root)
+
 cd shared && npm run build      # Must build shared first
 cd btc5-bot && npm run build    # tsc + tsc-alias (resolves path aliases in output)
 cd api && npm run build

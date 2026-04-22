@@ -5,12 +5,14 @@ import dotenv from 'dotenv';
 import Redis from 'ioredis';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { TradeType } from '../shared/src/types';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const PREFIX = 'pmbot:';
-const MODE = process.env.MODE || 'demo';
+const MODE = process.env.MODE === 'live' ? TradeType.LIVE : TradeType.DEMO;
 const FEE_RATE = 0.0175;
 
 function calculateFee(shares: number, price: number): number {
@@ -21,7 +23,7 @@ function calculateFee(shares: number, price: number): number {
 async function main() {
 	const redis = new Redis(REDIS_URL);
 
-	const historyKey = `${PREFIX}history`;
+	const historyKey = `${PREFIX}${MODE}:history`;
 	const historyLen = await redis.llen(historyKey);
 
 	// Find and fix all trades with pnl=0 or null
@@ -75,9 +77,9 @@ async function main() {
 		let totalPnl = 0;
 
 		// Active trades fees
-		const activeIds = await redis.smembers(`${PREFIX}active_trades`);
+		const activeIds = await redis.smembers(`${PREFIX}${MODE}:active_trades`);
 		for (const id of activeIds) {
-			const raw = await redis.get(`${PREFIX}trade:${id}`);
+			const raw = await redis.get(`${PREFIX}${MODE}:trade:${id}`);
 			if (!raw) continue;
 			const t = JSON.parse(raw);
 			totalFees += t.fee ?? 0;

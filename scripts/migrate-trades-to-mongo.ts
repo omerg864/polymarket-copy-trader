@@ -14,6 +14,7 @@ dotenv.config({
 
 import Redis from 'ioredis';
 import mongoose, { Schema } from 'mongoose';
+import { TradeType } from '../shared/src/types';
 
 // Constants defined locally for robustness in standalone script
 const REDIS_PREFIX = 'pmbot:';
@@ -29,7 +30,7 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/polymarket
 const tradeSchema = new Schema(
 	{
 		tradeId: { type: String, required: true, unique: true, index: true },
-		type: { type: String, enum: ['demo', 'live'], required: true, index: true },
+		type: { type: String, enum: Object.values(TradeType), required: true, index: true },
 		direction: { type: String, enum: ['UP', 'DOWN'], required: true },
 		tokenId: { type: String, required: true },
 		conditionId: { type: String, required: true },
@@ -61,7 +62,7 @@ const tradeSchema = new Schema(
 
 const TradeModel = mongoose.models.Trade || mongoose.model('Trade', tradeSchema);
 
-async function migrate(mode: 'demo' | 'live', redis: Redis) {
+async function migrate(mode: TradeType, redis: Redis) {
 	console.log(`\n--- Migrating ${mode} trades ---`);
 	const historyKey = REDIS_KEYS.HISTORY(mode);
 	const idsKey = REDIS_KEYS.HISTORY_IDS(mode);
@@ -108,8 +109,9 @@ async function main() {
 		const redis = new Redis(REDIS_URL);
 		console.log('Connected to Redis');
 
-		await migrate('demo', redis);
-		await migrate('live', redis);
+		for (const mode of Object.values(TradeType)) {
+			await migrate(mode, redis);
+		}
 		
 		console.log('\n✅ Migration finished successfully!');
 		await redis.quit();

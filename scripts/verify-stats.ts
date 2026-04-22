@@ -12,12 +12,13 @@ dotenv.config({
 import Redis from 'ioredis';
 import { DateTime } from 'luxon';
 import mongoose, { Schema } from 'mongoose';
+import { TradeType } from '../shared/src/types';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const MONGO_URI =
 	process.env.MONGO_URI || 'mongodb://localhost:27017/polymarket-bot';
 const PREFIX = 'pmbot:';
-const MODE = process.env.MODE || 'demo';
+const MODE = process.env.MODE === 'live' ? TradeType.LIVE : TradeType.DEMO;
 const FEE_RATE = 0.0175;
 
 function calculateFee(shares: number, price: number): number {
@@ -30,7 +31,7 @@ const tradeSchema = new Schema(
 		tradeId: { type: String, required: true, unique: true, index: true },
 		type: {
 			type: String,
-			enum: ['demo', 'live'],
+			enum: Object.values(TradeType),
 			required: true,
 			index: true,
 		},
@@ -116,7 +117,7 @@ async function main() {
 
 	// History trades from MongoDB
 	const historyTrades = await TradeModel.find({
-		type: MODE === 'live' ? 'live' : 'demo',
+		type: MODE,
 	});
 	const historyLen = historyTrades.length;
 

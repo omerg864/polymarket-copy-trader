@@ -7,7 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import Redis from 'ioredis';
 import axios from 'axios';
-import { type Trade } from '../shared/src/types';
+import { TradeType, type Trade } from '../shared/src/types';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
@@ -53,7 +53,7 @@ async function getMarketOutcome(slug: string): Promise<string | null> {
 async function main() {
 	console.log('🔗 Connected to Redis');
 
-	for (const mode of ['live', 'demo'] as const) {
+	for (const mode of Object.values(TradeType)) {
 		console.log(`\n🚀 Syncing ${mode.toUpperCase()} trades...`);
 		const historyKey = `${PREFIX}${mode}:history`;
 		const tradesRaw = await redis.lrange(historyKey, 0, -1);

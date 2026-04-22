@@ -149,9 +149,7 @@ export async function resetBotData(
 	_req: Request,
 	res: Response,
 ): Promise<void> {
-	const isDemo = config.isDemo;
-	const mode = isDemo ? 'demo' : 'live';
-
+	const mode = config.mode;
 	try {
 		await Promise.all([
 			tradeService.clearAllTrades(mode),

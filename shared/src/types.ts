@@ -119,7 +119,7 @@ export interface Trade {
 }
 
 export interface StrategyConfig {
-	mode?: string;
+	mode?: TradeType;
 	fixedOrderSizeUsd: number;
 	minConfidence: number;
 	takeProfitType: 'market' | 'percent';

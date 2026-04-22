@@ -43,3 +43,31 @@ export function calculateTodayPnl(
 	}
 	return total;
 }
+/**
+ * Check if a given time falls within an exclusion window (HH:mm format).
+ */
+export function isTimeExcluded(
+	now: DateTime,
+	window: { start: string; end: string },
+): boolean {
+	const [startH, startM] = window.start.split(':').map(Number);
+	const [endH, endM] = window.end.split(':').map(Number);
+
+	const currentTimeInMinutes = now.hour * 60 + now.minute;
+	const startTotalMinutes = startH * 60 + startM;
+	let endTotalMinutes = endH * 60 + endM;
+
+	// Handle midnight wrap-around (e.g., 23:00 to 01:00)
+	if (endTotalMinutes <= startTotalMinutes) {
+		// Window crosses midnight
+		return (
+			currentTimeInMinutes >= startTotalMinutes ||
+			currentTimeInMinutes < endTotalMinutes
+		);
+	}
+
+	return (
+		currentTimeInMinutes >= startTotalMinutes &&
+		currentTimeInMinutes < endTotalMinutes
+	);
+}

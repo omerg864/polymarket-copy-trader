@@ -7,6 +7,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env.production.local') });
 import Redis from 'ioredis';
 import config from '../src/config';
 import { REDIS_KEYS } from '../../shared/src/redisKeys';
+import { TradeType } from '../../shared/src/types';
 
 /**
  * Migration script: Convert HISTORY_IDS from Set to Sorted Set (ZSET).
@@ -14,7 +15,7 @@ import { REDIS_KEYS } from '../../shared/src/redisKeys';
  */
 async function migrateHistoryToZset() {
 	const redis = new Redis(config.redisUrl);
-	const modes = ['live', 'demo'] as const;
+	const modes = Object.values(TradeType);
 
 	console.log('🚀 Starting Redis history migration (Set -> ZSET)...');
 
