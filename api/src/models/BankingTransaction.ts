@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-import { BankingTransaction, TradeType } from '../../../shared';
+import { BankingTransaction, TradeType } from '../../../shared/src/types';
 
 export interface IBankingTransactionDoc
 	extends Document, Omit<BankingTransaction, 'id'> {}

@@ -1,13 +1,12 @@
 import {
-	REDIS_KEYS,
-	getTradeKey,
 	TradeType,
 	DEFAULT_STRATEGY_CONFIG,
 	type MarketDashboardData,
 	type RedisInfo,
 	type StrategyConfig,
 	type Trade,
-} from '../../../shared';
+} from '../../../shared/src/types';
+import { REDIS_KEYS, getTradeKey } from '../../../shared/src/redisKeys';
 import Redis from 'ioredis';
 import config from '../config';
 

@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-import { Trade, TradeType } from '../../../shared';
+import { Trade, TradeType } from '../../../shared/src/types';
 
 export interface ITradeDoc extends Document, Omit<Trade, 'id'> {
 	tradeId: string; // Map 'id' from Trade interface to 'tradeId' in Mongo to avoid _id conflicts

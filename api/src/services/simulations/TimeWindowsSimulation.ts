@@ -5,8 +5,8 @@ import {
 	SimulationResult,
 	TradeType,
 	Trade,
-	isTimeExcluded,
-} from '../../../../shared';
+} from '../../../../shared/src/types';
+import { isTimeExcluded } from '../../../../shared/src/utils';
 import { BaseSimulation, ISimulation } from './BaseSimulation';
 
 export class TimeWindowsSimulation

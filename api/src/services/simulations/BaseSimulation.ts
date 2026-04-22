@@ -4,7 +4,7 @@ import {
 	SimulationResult,
 	TradeType,
 	Trade,
-} from '../../../../shared';
+} from '../../../../shared/src/types';
 
 export interface ISimulation {
 	run(

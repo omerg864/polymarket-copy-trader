@@ -1,4 +1,4 @@
-import { TradeType } from '../../shared';
+import { TradeType } from '../../shared/src/types';
 import 'dotenv/config';
 
 const config = {

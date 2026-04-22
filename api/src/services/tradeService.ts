@@ -1,4 +1,4 @@
-import { Trade, TradeType } from '../../../shared';
+import { Trade, TradeType } from '../../../shared/src/types';
 import config from '../config';
 import { TradeModel } from '../models/Trade';
 

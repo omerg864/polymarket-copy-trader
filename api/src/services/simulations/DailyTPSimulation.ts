@@ -5,7 +5,7 @@ import {
 	SimulationResult,
 	TradeType,
 	Trade,
-} from '../../../../shared';
+} from '../../../../shared/src/types';
 import { BaseSimulation, ISimulation } from './BaseSimulation';
 
 export class DailyTPSimulation extends BaseSimulation implements ISimulation {

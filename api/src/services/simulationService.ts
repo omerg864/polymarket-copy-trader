@@ -3,7 +3,7 @@ import {
 	SimulationParams,
 	SimulationResult,
 	Trade,
-} from '../../../shared';
+} from '../../../shared/src/types';
 import { TradeModel } from '../models/Trade';
 import { getStrategyConfig } from './strategyConfig';
 import { TimeWindowsSimulation, DailyTPSimulation } from './simulations';
