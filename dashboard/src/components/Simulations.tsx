@@ -31,7 +31,7 @@ import {
 	TableHeader,
 	TableRow,
 } from './ui/table';
-import { Play, TrendingUp, AlertCircle } from 'lucide-react';
+import { Play, TrendingUp, AlertCircle, Plus, Trash2, Clock } from 'lucide-react';
 
 export function Simulations() {
 	const { data: available, isLoading: loadingAvailable } =
@@ -46,6 +46,24 @@ export function Simulations() {
 
 	const [selectedId, setSelectedId] = useState<string>('');
 	const [params, setParams] = useState<Record<string, any>>({});
+	const [newWindow, setNewWindow] = useState({ start: '', end: '' });
+
+	const handleSelectSim = (id: string) => {
+		setSelectedId(id);
+		const sim = available?.find((s) => s.id === id);
+		const newParams: Record<string, any> = {};
+
+		if (sim?.params) {
+			sim.params.forEach((p: any) => {
+				newParams[p.name] = p.default;
+				// Pre-fill from config if matching name exists (e.g. excludedTimeWindows)
+				if (config && (config as any)[p.name] !== undefined) {
+					newParams[p.name] = (config as any)[p.name];
+				}
+			});
+		}
+		setParams(newParams);
+	};
 
 	const selectedSim = available?.find((s) => s.id === selectedId);
 
@@ -63,6 +81,22 @@ export function Simulations() {
 
 	const handleParamChange = (name: string, value: any) => {
 		setParams((prev) => ({ ...prev, [name]: value }));
+	};
+
+	const handleAddWindow = (name: string) => {
+		if (newWindow.start && newWindow.end) {
+			const current = params[name] || [];
+			handleParamChange(name, [...current, newWindow]);
+			setNewWindow({ start: '', end: '' });
+		}
+	};
+
+	const handleRemoveWindow = (name: string, index: number) => {
+		const current = params[name] || [];
+		handleParamChange(
+			name,
+			current.filter((_: any, i: number) => i !== index),
+		);
 	};
 
 	if (loadingAvailable) {
@@ -94,7 +128,7 @@ export function Simulations() {
 								Simulation Type
 							</Label>
 							<Select
-								onValueChange={setSelectedId}
+								onValueChange={handleSelectSim}
 								value={selectedId}
 							>
 								<SelectTrigger className="bg-zinc-950 border-zinc-800 text-zinc-200">
@@ -116,27 +150,121 @@ export function Simulations() {
 						</div>
 
 						{selectedSim?.params?.map((p: any) => (
-							<div key={p.name} className="space-y-2">
+							<div key={p.name} className="space-y-4">
 								<Label
 									htmlFor={p.name}
 									className="text-zinc-400"
 								>
 									{p.label}
 								</Label>
-								<Input
-									type={p.type}
-									id={p.name}
-									className="bg-zinc-950 border-zinc-800 text-zinc-200"
-									defaultValue={p.default}
-									onChange={(e) =>
-										handleParamChange(
-											p.name,
-											p.type === 'number'
-												? Number(e.target.value)
-												: e.target.value,
-										)
-									}
-								/>
+
+								{p.type === 'windows' ? (
+									<div className="space-y-3">
+										<div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+											{(params[p.name] || []).length >
+											0 ? (
+												(params[p.name] || []).map(
+													(w: any, i: number) => (
+														<div
+															key={i}
+															className="flex items-center justify-between p-2 bg-zinc-950 border border-zinc-800 rounded-lg"
+														>
+															<div className="flex items-center gap-2 text-zinc-300 text-xs font-mono">
+																<Clock className="w-3 h-3 text-zinc-500" />
+																{w.start} —{' '}
+																{w.end}
+															</div>
+															<Button
+																variant="ghost"
+																size="icon"
+																className="h-6 w-6 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+																onClick={() =>
+																	handleRemoveWindow(
+																		p.name,
+																		i,
+																	)
+																}
+															>
+																<Trash2 className="h-3.5 w-3.5" />
+															</Button>
+														</div>
+													),
+												)
+											) : (
+												<div className="text-zinc-600 italic text-xs py-2">
+													No windows defined
+												</div>
+											)}
+										</div>
+
+										<div className="pt-2 border-t border-zinc-800 flex items-end gap-2">
+											<div className="grid grid-cols-2 gap-2 flex-grow">
+												<div className="space-y-1">
+													<label className="text-[10px] text-zinc-500 uppercase">
+														Start
+													</label>
+													<Input
+														type="time"
+														value={newWindow.start}
+														onChange={(e) =>
+															setNewWindow({
+																...newWindow,
+																start: e.target
+																	.value,
+															})
+														}
+														className="h-8 bg-zinc-950 border-zinc-800 text-xs text-zinc-200 px-2"
+													/>
+												</div>
+												<div className="space-y-1">
+													<label className="text-[10px] text-zinc-500 uppercase">
+														End
+													</label>
+													<Input
+														type="time"
+														value={newWindow.end}
+														onChange={(e) =>
+															setNewWindow({
+																...newWindow,
+																end: e.target
+																	.value,
+															})
+														}
+														className="h-8 bg-zinc-950 border-zinc-800 text-xs text-zinc-200 px-2"
+													/>
+												</div>
+											</div>
+											<Button
+												size="icon"
+												className="h-8 w-8 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 shrink-0"
+												onClick={() =>
+													handleAddWindow(p.name)
+												}
+												disabled={
+													!newWindow.start ||
+													!newWindow.end
+												}
+											>
+												<Plus className="h-4 w-4" />
+											</Button>
+										</div>
+									</div>
+								) : (
+									<Input
+										type={p.type}
+										id={p.name}
+										className="bg-zinc-950 border-zinc-800 text-zinc-200"
+										value={params[p.name] ?? p.default}
+										onChange={(e) =>
+											handleParamChange(
+												p.name,
+												p.type === 'number'
+													? Number(e.target.value)
+													: e.target.value,
+											)
+										}
+									/>
+								)}
 							</div>
 						))}
 

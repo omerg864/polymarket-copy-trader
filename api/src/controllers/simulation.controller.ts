@@ -39,6 +39,14 @@ export function getAvailableSimulations(_req: Request, res: Response): void {
 			name: 'Time Windows',
 			description:
 				'Simulates trading only during specific high-performance time windows.',
+			params: [
+				{
+					name: 'excludedTimeWindows',
+					label: 'Exclusion Windows',
+					type: 'windows',
+					default: [],
+				},
+			],
 		},
 		{
 			id: 'daily_tp',
