@@ -2,12 +2,12 @@ import {
 	REDIS_KEYS,
 	getTradeKey,
 	TradeType,
+	DEFAULT_STRATEGY_CONFIG,
 	type MarketDashboardData,
 	type RedisInfo,
 	type StrategyConfig,
 	type Trade,
-} from '@shared/index';
-import { DEFAULT_STRATEGY_CONFIG } from '@shared/types';
+} from '../../../shared';
 import Redis from 'ioredis';
 import config from '../config';
 
@@ -23,7 +23,7 @@ redis.on('connect', () => {
 
 export async function getActiveTrades(): Promise<Trade[]> {
 	const mode = config.mode;
-	
+
 	const [activeIds, resolvingIds] = await Promise.all([
 		redis.smembers(REDIS_KEYS.ACTIVE_TRADES(mode)),
 		redis.smembers(REDIS_KEYS.AWAITING_RESOLVE_TRADES(mode)),
@@ -102,9 +102,7 @@ export async function setBotStartTime(
 }
 
 export async function getStopRequested(): Promise<boolean> {
-	const val = await redis.get(
-		REDIS_KEYS.STOP_REQUESTED(config.mode),
-	);
+	const val = await redis.get(REDIS_KEYS.STOP_REQUESTED(config.mode));
 	return val === 'true';
 }
 

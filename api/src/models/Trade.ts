@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Document } from 'mongoose';
-import { Trade, TradeType } from '@shared/types';
+import { Trade, TradeType } from '../../../shared';
 
 export interface ITradeDoc extends Document, Omit<Trade, 'id'> {
 	tradeId: string; // Map 'id' from Trade interface to 'tradeId' in Mongo to avoid _id conflicts
@@ -8,7 +8,12 @@ export interface ITradeDoc extends Document, Omit<Trade, 'id'> {
 const tradeSchema = new Schema(
 	{
 		tradeId: { type: String, required: true, unique: true, index: true },
-		type: { type: String, enum: Object.values(TradeType), required: true, index: true },
+		type: {
+			type: String,
+			enum: Object.values(TradeType),
+			required: true,
+			index: true,
+		},
 		direction: { type: String, enum: ['UP', 'DOWN'], required: true },
 		tokenId: { type: String, required: true },
 		conditionId: { type: String, required: true },
