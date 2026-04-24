@@ -49,7 +49,7 @@ class PolymarketPriceWsService {
 				}
 				if (message === 'PONG') return;
 
-				logger.debug(`Polymarket RTDS WebSocket message: ${message}`);
+				logger.silly(`Polymarket RTDS WebSocket message: ${message}`);
 				const parsed = JSON.parse(message);
 
 				// Support both 'crypto_prices' and 'crypto_prices_chainlink'
@@ -65,7 +65,7 @@ class PolymarketPriceWsService {
 					if (typeof value === 'number') {
 						this.latestBtcPrice = value;
 						this.lastUpdateTimestamp = Date.now();
-						logger.debug(
+						logger.silly(
 							`Polymarket RTDS BTC price: $${value} (${parsed.payload.symbol})`,
 						);
 					}

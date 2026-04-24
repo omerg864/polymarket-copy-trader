@@ -270,45 +270,20 @@ class QueueService {
 			}
 
 			const filledSize = parseFloat(order.size_matched || '0');
-			const isFinal = polymarketService.isOrderStatusFinal(
-				order.status as OrderStatus,
-			);
-			const partialFillFee = calculateFee(
+			const matchedFee = calculateFee(
 				filledSize,
 				parseFloat(order.price),
 			);
 
-			// Handle partial fill: save data and re-queue for resolution
-			if (isFinal && filledSize < trade.size) {
-				const remainingShares = trade.size - filledSize;
-				logger.info(
-					`📋 Trade ${trade.id} partially filled (${filledSize}/${trade.size}). Queuing RESOLVE job for remaining ${remainingShares} shares.`,
+			if (filledSize !== trade.size) {
+				logger.warn(
+					`⚠️ Partial fill detected for trade ${trade.id}: Attempted ${trade.size}, Filled ${filledSize}. Proceeding to completion anyway.`,
 				);
-
-				// Record partial fill info
-				trade.partialFill = {
-					size: filledSize,
-					price: parseFloat(order.price),
-					fee: partialFillFee,
-				};
-
-				// Save to Redis so it's persisted for the next job
-				await redisService.saveTrade(trade);
-				await redisService.moveToAwaitingResolve(trade.id);
-
-				// Queue standard RESOLVE job
-				await this.addResolveJob({
-					trade,
-					type: 'RESOLVE',
-					reason: reason || 'partial_fill_resolution',
-				});
-
-				return; // EXIT early, do not complete trade yet
 			}
 
 			// Full fill case (or reached final state with full matching)
 			revenue = filledSize * parseFloat(order.price);
-			sellFee = partialFillFee;
+			sellFee = matchedFee;
 			finalPrice =
 				trade.size > 0 ? revenue / trade.size : parseFloat(order.price);
 		} else {
@@ -387,24 +362,9 @@ class QueueService {
 		}
 		won = trade.direction === winner;
 
-		// Resolve with partial fill awareness (from previous sell attempts)
-		if (trade.partialFill) {
-			const remainingShares = trade.size - trade.partialFill.size;
-			const resolutionPrice = won ? 1.0 : 0.0;
-			revenue =
-				trade.partialFill.size * trade.partialFill.price +
-				remainingShares * resolutionPrice;
-			sellFee = trade.partialFill.fee;
-			finalPrice =
-				trade.size > 0 ? revenue / trade.size : resolutionPrice;
-			logger.info(
-				`🎯 Resolved partial fill trade ${trade.id}. Result: ${winner}. Partial: ${trade.partialFill.size}@${trade.partialFill.price}, Resolution: ${remainingShares}@${resolutionPrice}. Total Revenue: $${revenue.toFixed(2)}`,
-			);
-		} else {
-			finalPrice = won ? 1.0 : 0.0;
-			revenue = finalPrice * trade.size;
-			sellFee = 0;
-		}
+		finalPrice = won ? 1.0 : 0.0;
+		revenue = finalPrice * trade.size;
+		sellFee = 0;
 
 		status = won ? TradeStatus.WON : TradeStatus.LOST;
 
@@ -464,11 +424,11 @@ class QueueService {
 			: DateTime.now();
 		const todayStr = baseDate.setZone(sc.timezone).toISODate() || '';
 
-		let totalFee = trade.fee || 0;
-		if (trade.type === 'demo') {
-			totalFee += sellFee;
-		}
-		trade.pnl = revenue - trade.cost - totalFee;
+		const buyFee = trade.fee || 0;
+		const totalFee = buyFee + sellFee;
+		
+		// Gross PnL (Request: PnL is minus actual cost when lost, fees reducted from trade itself imply net balance)
+		trade.pnl = revenue - trade.cost;
 		trade.fee = totalFee;
 		trade.status = status;
 		trade.exitPrice = exitPrice;

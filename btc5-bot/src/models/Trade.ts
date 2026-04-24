@@ -34,11 +34,6 @@ const tradeSchema = new Schema(
 		confidence: { type: Number },
 		indicators: { type: Schema.Types.Mixed },
 		actualOutcome: { type: String, enum: ['UP', 'DOWN', 'UNKNOWN'] },
-		partialFill: {
-			size: { type: Number },
-			price: { type: Number },
-			fee: { type: Number },
-		},
 	},
 	{ timestamps: true },
 );

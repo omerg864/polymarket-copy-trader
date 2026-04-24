@@ -475,7 +475,7 @@ class PolymarketService {
 			}
 
 			logger.trade('BUY ORDER PLACED', {
-				tokenId: tokenId.substring(0, 12) + '...',
+				tokenId: tokenId,
 				price,
 				size,
 				orderId: order.orderID,
@@ -524,7 +524,7 @@ class PolymarketService {
 			}
 
 			logger.trade('SELL ORDER PLACED', {
-				tokenId: tokenId.substring(0, 12) + '...',
+				tokenId: tokenId,
 				price,
 				size,
 				orderId: order.orderID,
@@ -532,15 +532,22 @@ class PolymarketService {
 
 			return this._monitorOrder(order.orderID, market.endTime);
 		} catch (error: any) {
-			const message = error instanceof Error ? error.message : String(error);
-			
-			// Detect error detail from various possible structures (axios response vs flattened error)
-			const errorData = error.response?.data || error.data || (typeof error === 'object' ? error : null);
-			const errorDetail = typeof errorData?.error === 'string' 
-				? errorData.error 
-				: (typeof errorData === 'string' ? errorData : message);
+			const message =
+				error instanceof Error ? error.message : String(error);
 
-			// Reactive balance adjustment: If the error is about insufficient balance, 
+			// Detect error detail from various possible structures (axios response vs flattened error)
+			const errorData =
+				error.response?.data ||
+				error.data ||
+				(typeof error === 'object' ? error : null);
+			const errorDetail =
+				typeof errorData?.error === 'string'
+					? errorData.error
+					: typeof errorData === 'string'
+						? errorData
+						: message;
+
+			// Reactive balance adjustment: If the error is about insufficient balance,
 			// parse the actual balance from the error message and retry ONCE.
 			if (errorDetail.toLowerCase().includes('not enough balance')) {
 				const match = errorDetail.match(/balance: (\d+)/);
@@ -554,41 +561,53 @@ class PolymarketService {
 
 					if (adjustedSize > 0) {
 						try {
-							const retryOrder: OrderResponse = await this.clobClient.createAndPostOrder(
-								{
-									tokenID: tokenId,
-									price,
-									side: Side.SELL,
-									size: adjustedSize,
-								},
-								{
-									tickSize: market.tickSize as any,
-									negRisk: market.negRisk,
-								},
-								OrderType.GTC,
-							);
+							const retryOrder: OrderResponse =
+								await this.clobClient.createAndPostOrder(
+									{
+										tokenID: tokenId,
+										price,
+										side: Side.SELL,
+										size: adjustedSize,
+									},
+									{
+										tickSize: market.tickSize as any,
+										negRisk: market.negRisk,
+									},
+									OrderType.GTC,
+								);
 
 							if (retryOrder && retryOrder.orderID) {
-								logger.info(`✅ Successfully retried SELL order with adjusted size: ${adjustedSize}`);
+								logger.info(
+									`✅ Successfully retried SELL order with adjusted size: ${adjustedSize}`,
+								);
 								logger.trade('SELL ORDER PLACED (ADJUSTED)', {
-									tokenId: tokenId.substring(0, 12) + '...',
+									tokenId: tokenId,
 									price,
 									size: adjustedSize,
 									orderId: retryOrder.orderID,
 								});
-								return this._monitorOrder(retryOrder.orderID, market.endTime);
+								return this._monitorOrder(
+									retryOrder.orderID,
+									market.endTime,
+								);
 							}
 						} catch (retryError: any) {
-							logger.error(`Retry attempt failed for ${tokenId}: ${retryError.message}`);
+							logger.error(
+								`Retry attempt failed for ${tokenId}: ${retryError.message}`,
+							);
 						}
 					} else {
-						logger.error(`Cannot retry SELL order for ${tokenId}: Adjusted size is 0.`);
+						logger.error(
+							`Cannot retry SELL order for ${tokenId}: Adjusted size is 0.`,
+						);
 						return null;
 					}
 				}
 			}
 
-			logger.error(`Failed to place SELL order for ${tokenId}: ${errorDetail}`);
+			logger.error(
+				`Failed to place SELL order for ${tokenId}: ${errorDetail}`,
+			);
 			return null;
 		}
 	}
@@ -622,8 +641,10 @@ class PolymarketService {
 		if (config.isDemo || !this.clobClient) return null;
 		try {
 			const order = await this.clobClient.getOrder(orderId);
+			logger.debug(`Order ${orderId}: ${JSON.stringify(order)}`);
 			return { ...order, status: order.status as OrderStatus };
 		} catch (error) {
+			logger.error(`Error fetching order ${orderId}: ${error}`);
 			// Silently fail for individual order fetches during monitoring if needed,
 			// but we'll log it if it's a real error.
 			return null;

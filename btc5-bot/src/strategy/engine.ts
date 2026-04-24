@@ -519,7 +519,7 @@ class StrategyEngine {
 					const finalPrice = parseFloat(order.price);
 					const finalSize = Math.round(filledSize * 100) / 100;
 					const filledFee = calculateFee(finalSize, finalPrice);
-					const filledCost = finalSize * finalPrice;
+					const filledSharesCost = finalSize * finalPrice;
 
 					const trade: Trade = {
 						id: order.id,
@@ -534,7 +534,7 @@ class StrategyEngine {
 						entryPrice: finalPrice,
 						currentPrice: finalPrice,
 						size: finalSize,
-						cost: filledCost,
+						cost: filledSharesCost,
 						fee: filledFee,
 						status: TradeStatus.OPEN,
 						startTime: market.startTime.toISOString(),
@@ -549,7 +549,7 @@ class StrategyEngine {
 					await redisService.saveTrade(trade);
 					notificationManager.handleTradeOpened(trade);
 					await redisService.setBotBalance(
-						botBalance - filledCost - filledFee,
+						botBalance - filledSharesCost - filledFee,
 					);
 					break;
 				} catch (error) {
@@ -603,7 +603,7 @@ class StrategyEngine {
 			}
 
 			const msSinceEnd = now.getTime() - endTime.getTime();
-			if (msSinceEnd < 30000) continue;
+			if (msSinceEnd < 10000) continue;
 
 			logger.info(`⏰ Resolving expired trade: ${trade.title}`);
 			const btcPrice = await priceAnalysisService.getCurrentPrice();

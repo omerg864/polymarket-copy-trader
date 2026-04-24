@@ -94,7 +94,7 @@ class PriceAnalysisService {
 		// 		},
 		// 	);
 		// 	const price = parseFloat(response.data.price);
-		// 	logger.debug(
+		// 	logger.silly(
 		// 		`BTC price fetched via REST fallback: $${price.toFixed(2)}`,
 		// 	);
 		// 	return price;

@@ -72,7 +72,6 @@ class DemoTradingService {
 		const sc = await getStrategyConfig();
 		this.balance = await redisService.getBotBalance(sc);
 		const cost = price * size;
-
 		if (isNaN(cost) || cost > this.balance) {
 			logger.warn(
 				`Insufficient demo balance: $${this.balance.toFixed(2)} < $${cost.toFixed(2)}`,
