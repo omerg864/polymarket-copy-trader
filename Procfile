@@ -1,1 +1,1 @@
-worker: node --max-old-space-size=400 dist/main.js
+worker: NODE_OPTIONS='--max-old-space-size=400' npm start -w btc5-bot
