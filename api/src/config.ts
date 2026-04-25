@@ -1,11 +1,6 @@
-import { TradeType } from '../../shared/src/types';
 import 'dotenv/config';
 
 const config = {
-	// Mode
-	mode: process.env.MODE === 'live' ? TradeType.LIVE : TradeType.DEMO,
-	isDemo: (process.env.MODE || 'demo') === 'demo',
-
 	// Auth
 	adminPassword: process.env.ADMIN_PASSWORD || '',
 	readonlyPassword: process.env.READONLY_PASSWORD || '',

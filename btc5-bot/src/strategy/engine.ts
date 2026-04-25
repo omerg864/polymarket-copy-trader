@@ -40,7 +40,7 @@ class StrategyEngine {
 		logger.info('═══════════════════════════════════════════════');
 		logger.info('  🤖 Polymarket BTC 5-Min Trading Bot Started');
 		logger.info(
-			`  Mode: ${config.isDemo ? '🎮 DEMO (paper trading)' : '💰 LIVE (real money)'}`,
+			`  Mode: ${config.mode.toUpperCase()} (${config.isDemo ? 'paper trading' : 'real money'})`,
 		);
 		logger.info('  Strategy: RSI + EMA + MACD momentum');
 		logger.info(
@@ -523,7 +523,7 @@ class StrategyEngine {
 
 					const trade: Trade = {
 						id: order.id,
-						type: TradeType.LIVE,
+						type: config.mode,
 						direction,
 						tokenId,
 						conditionId: market.conditionId,
@@ -573,8 +573,9 @@ class StrategyEngine {
 				await demoTradingService.printStats();
 			} else {
 				const bal = await redisService.getBotBalance(sc);
+				const modeLabel = config.mode === TradeType.LIVE ? 'LIVE' : 'TEST';
 				logger.info(
-					`📊 LIVE STATS | Bot Allowance Used: $${bal.toFixed(2)} / $${sc.botAllowance.toFixed(2)} | Trades: ${stats.totalTrades} | Win: ${stats.wins} | Loss: ${stats.losses}`,
+					`📊 ${modeLabel} STATS | Bot Allowance Used: $${bal.toFixed(2)} / $${sc.botAllowance.toFixed(2)} | Trades: ${stats.totalTrades} | Win: ${stats.wins} | Loss: ${stats.losses}`,
 				);
 			}
 		}

@@ -1,12 +1,12 @@
 import {
 	DEFAULT_STRATEGY_CONFIG,
+	REDIS_KEYS,
 	resolveStrategyConfig,
 	type StrategyConfig,
-} from '../../../shared/src/types';
+	type TradeType,
+} from '../../../shared/src/index';
 import { StrategyConfigModel } from '../models/StrategyConfig';
 import { redis } from './redis';
-
-const CACHE_KEY = 'pmbot:strategy_config';
 
 const STRATEGY_KEYS = Object.keys(
 	DEFAULT_STRATEGY_CONFIG,
@@ -15,15 +15,17 @@ const STRATEGY_KEYS = Object.keys(
 /**
  * Get the full strategy config. Uses Redis cache first, falls back to MongoDB.
  */
-export async function getStrategyConfig(): Promise<StrategyConfig> {
+export async function getStrategyConfig(mode: TradeType): Promise<StrategyConfig> {
+	const cacheKey = REDIS_KEYS.STRATEGY_CONFIG(mode);
+	
 	// Try cache first
-	const cached = await redis.get(CACHE_KEY);
+	const cached = await redis.get(cacheKey);
 	if (cached) {
 		return JSON.parse(cached) as StrategyConfig;
 	}
 
 	// Read from MongoDB
-	const docs = await StrategyConfigModel.find({});
+	const docs = await StrategyConfigModel.find({ mode });
 	const partial: Partial<StrategyConfig> = {};
 
 	for (const doc of docs) {
@@ -35,7 +37,7 @@ export async function getStrategyConfig(): Promise<StrategyConfig> {
 	const result = resolveStrategyConfig(partial);
 
 	// Write to cache
-	await redis.set(CACHE_KEY, JSON.stringify(result));
+	await redis.set(cacheKey, JSON.stringify(result));
 
 	return result;
 }
@@ -45,13 +47,14 @@ export async function getStrategyConfig(): Promise<StrategyConfig> {
  * Invalidates the Redis cache after updating.
  */
 export async function updateStrategyConfig(
+	mode: TradeType,
 	updates: Partial<StrategyConfig>,
 ): Promise<StrategyConfig> {
 	const ops = Object.entries(updates)
 		.filter(([key]) => STRATEGY_KEYS.includes(key as keyof StrategyConfig))
 		.map(([key, value]) => ({
 			updateOne: {
-				filter: { key },
+				filter: { key, mode },
 				update: { $set: { value } },
 				upsert: true,
 			},
@@ -62,7 +65,7 @@ export async function updateStrategyConfig(
 	}
 
 	// Invalidate cache
-	await redis.del(CACHE_KEY);
+	await redis.del(REDIS_KEYS.STRATEGY_CONFIG(mode));
 
-	return getStrategyConfig();
+	return getStrategyConfig(mode);
 }

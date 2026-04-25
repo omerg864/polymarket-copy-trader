@@ -33,7 +33,7 @@ export class NotificationManager {
 					.createHash('md5')
 					.update(JSON.stringify(data))
 					.digest('hex');
-				const throttleKey = REDIS_KEYS.THROTTLE(type, dataHash);
+				const throttleKey = REDIS_KEYS.THROTTLE(config.mode, type, dataHash);
 				const isNew = await redisService.checkThrottle(
 					throttleKey,
 					180,
@@ -53,6 +53,7 @@ export class NotificationManager {
 						headers: {
 							'Content-Type': 'application/json',
 							'x-api-password': config.apiPassword,
+							'x-mode': config.mode,
 						},
 						body: JSON.stringify({ type, data }),
 					},
@@ -77,7 +78,7 @@ export class NotificationManager {
 	 */
 	private static async getNotificationConfig(): Promise<NotificationConfig | null> {
 		try {
-			const data = await redisService.getRaw('pmbot:notification_config');
+			const data = await redisService.getRaw(REDIS_KEYS.NOTIFICATION_CONFIG(config.mode));
 			return data ? JSON.parse(data) : null;
 		} catch (err) {
 			return null;

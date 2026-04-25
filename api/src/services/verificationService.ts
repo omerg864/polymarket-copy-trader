@@ -1,6 +1,5 @@
 import { DateTime } from 'luxon';
-import type { VerificationResult } from '../../../shared/src/types';
-import config from '../config';
+import type { TradeType, VerificationResult } from '../../../shared/src/types';
 import { TradeModel } from '../models/Trade';
 import {
 	REDIS_KEYS,
@@ -15,14 +14,16 @@ import { calculateFee } from '../../../shared/src/utils';
 import { BankingTransactionModel } from '../models/BankingTransaction';
 
 export class VerificationService {
-	async verifyAndFixStats(fix: boolean): Promise<VerificationResult> {
-		const mode = config.mode;
+	async verifyAndFixStats(
+		mode: TradeType,
+		fix: boolean,
+	): Promise<VerificationResult> {
 		const logs: string[] = [];
 
 		logs.push(`Starting verification for ${mode} mode...`);
 
 		// Get initial balance from strategy config
-		const sc = await getStrategyConfig();
+		const sc = await getStrategyConfig(mode);
 		const initialBalance = sc.botAllowance ?? 100;
 		logs.push(`Initial balance (botAllowance): $${initialBalance}`);
 
@@ -174,7 +175,9 @@ export class VerificationService {
 		}
 
 		// Banking Transactions from MongoDB
-		const bankingTransactions = await BankingTransactionModel.find({ mode });
+		const bankingTransactions = await BankingTransactionModel.find({
+			mode,
+		});
 		let sumBanking = 0;
 		for (const bt of bankingTransactions) {
 			if (bt.type === 'deposit') {
@@ -280,15 +283,16 @@ export class VerificationService {
 					losses: computedLosses,
 					totalTrades: computedTotalTrades,
 				};
-				await setBotStats(fixedStats);
+				await setBotStats(mode, fixedStats);
 
 				await setBotBalance(
+					mode,
 					Math.round(expectedBalance * 10000) / 10000,
 				);
 
 				// Fix all days found in history
 				for (const [date, dStats] of dailyStatsMap.entries()) {
-					await setDailyStats(date, {
+					await setDailyStats(mode, date, {
 						pnl: Math.round(dStats.pnl * 10000) / 10000,
 						wins: dStats.wins,
 						losses: dStats.losses,

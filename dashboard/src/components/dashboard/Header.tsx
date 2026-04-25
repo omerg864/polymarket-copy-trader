@@ -1,5 +1,6 @@
 import {
 	getAuthRole,
+	getMode,
 	useConfig,
 	useResetBot,
 	useRedisStats,
@@ -136,6 +137,17 @@ export function Header() {
 			<div>
 				<h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
 					📊 Polymarket Trading Dashboard
+					<span
+						className={`text-[10px] uppercase px-2 py-0.5 rounded-full border ${
+							getMode() === 'live'
+								? 'bg-red-500/10 text-red-400 border-red-500/30'
+								: getMode() === 'test'
+									? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+									: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/30'
+						}`}
+					>
+						{getMode()}
+					</span>
 				</h1>
 				<p className="text-xs sm:text-sm text-zinc-500 mt-1">
 					BTC 5-Minute Up/Down Markets • Auto-refreshes every 5s •{' '}

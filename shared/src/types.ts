@@ -19,6 +19,7 @@ export interface TradeSummary {
 export enum TradeType {
 	DEMO = 'demo',
 	LIVE = 'live',
+	TEST = 'test',
 }
 
 export enum TradeStatus {

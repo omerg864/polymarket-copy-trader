@@ -1,5 +1,14 @@
 import cors from 'cors';
 import express from 'express';
+import { TradeType } from '../../shared/src/types';
+
+declare global {
+	namespace Express {
+		interface Request {
+			mode: TradeType;
+		}
+	}
+}
 import rateLimit from 'express-rate-limit';
 import mongoose from 'mongoose';
 import config from './config';
@@ -8,6 +17,7 @@ import botRoutes from './routes/bot.routes';
 import notificationRoutes from './routes/notification.routes';
 import priceRoutes from './routes/price.routes';
 import simulationRoutes from './routes/simulation.routes';
+import { modeMiddleware } from './middleware/modeMiddleware';
 
 const app = express();
 
@@ -26,6 +36,7 @@ app.use(
 );
 app.use(express.json());
 app.use(limiter);
+app.use(modeMiddleware);
 
 app.use('/api', botRoutes);
 app.use('/api/notifications', notificationRoutes);

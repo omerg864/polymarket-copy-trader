@@ -32,21 +32,22 @@ import { BankingTransactionModel } from '../models/BankingTransaction';
 import { setBotBalance } from '../services/redis';
 import pkg from '../../package.json';
 
-export async function getSummary(_req: Request, res: Response): Promise<void> {
-	const strategyConfig = await getStrategyConfig();
+export async function getSummary(req: Request, res: Response): Promise<void> {
+	const mode = req.mode;
+	const strategyConfig = await getStrategyConfig(mode);
 	const timezone = strategyConfig.timezone || 'Asia/Jerusalem';
 	const todayStr = DateTime.now().setZone(timezone).toISODate() || '';
 
 	const [stats, activeTrades, botStartTime, isStopping, dailyStats] =
 		await Promise.all([
-			getBotStats(),
-			getActiveTrades(),
-			getBotStartTime(),
-			getStopRequested(),
-			getDailyStats(todayStr),
+			getBotStats(mode),
+			getActiveTrades(mode),
+			getBotStartTime(mode),
+			getStopRequested(mode),
+			getDailyStats(mode, todayStr),
 		]);
 
-	const balance = await getBotBalance(strategyConfig);
+	const balance = await getBotBalance(mode, strategyConfig);
 
 	const summary: TradeSummary = {
 		balance,
@@ -73,10 +74,10 @@ export async function getSummary(_req: Request, res: Response): Promise<void> {
 }
 
 export async function listActiveTrades(
-	_req: Request,
+	req: Request,
 	res: Response,
 ): Promise<void> {
-	const trades = await getActiveTrades();
+	const trades = await getActiveTrades(req.mode);
 	res.json(trades);
 }
 
@@ -86,13 +87,13 @@ export async function listTradeHistory(
 ): Promise<void> {
 	const limitStr = req.query.limit as string;
 	const limit = limitStr ? parseInt(limitStr, 10) : undefined;
-	const trades = await tradeService.getTradeHistory(limit);
+	const trades = await tradeService.getTradeHistory(req.mode, limit);
 	res.json(trades);
 }
 
 export async function stopBot(req: Request, res: Response): Promise<void> {
 	const { stop } = req.body as { stop?: boolean };
-	await setStopRequested(!!stop);
+	await setStopRequested(req.mode, !!stop);
 	res.json({ success: true, isStopping: !!stop });
 }
 
@@ -105,21 +106,21 @@ export async function updateBotStartTime(
 		res.status(400).json({ error: 'startTime is required and must be a number' });
 		return;
 	}
-	await setBotStartTime(startTime);
+	await setBotStartTime(req.mode, startTime);
 	res.json({ success: true, botStartTime: startTime });
 }
 
 export async function getBotConfig(
-	_req: Request,
+	req: Request,
 	res: Response,
 ): Promise<void> {
-	const strategy = await getStrategyConfig();
-	res.json({ mode: config.mode, ...strategy });
+	const strategy = await getStrategyConfig(req.mode);
+	res.json({ mode: req.mode, ...strategy });
 }
 
 export async function updateConfig(req: Request, res: Response): Promise<void> {
 	const updates = req.body as Partial<StrategyConfig>;
-	const updated = await updateStrategyConfig(updates);
+	const updated = await updateStrategyConfig(req.mode, updates);
 	res.json(updated);
 }
 
@@ -140,21 +141,22 @@ export async function getMongoStats(
 }
 
 export async function getMarketPricesData(
-	_req: Request,
+	req: Request,
 	res: Response,
 ): Promise<void> {
-	const data = await getMarketPrices();
+	const data = await getMarketPrices(req.mode);
 	res.json(data);
 }
 
 export async function resetBotData(
-	_req: Request,
+	req: Request,
 	res: Response,
 ): Promise<void> {
-	const mode = config.mode;
+	const mode = req.mode;
 	try {
 		await Promise.all([
 			tradeService.clearAllTrades(mode),
+			BankingTransactionModel.deleteMany({ mode }),
 			clearModeData(mode),
 		]);
 		res.json({ success: true, mode });
@@ -194,13 +196,15 @@ export function getTimezones(_req: Request, res: Response): void {
 			'America/New_York',
 			'UTC',
 			'Europe/London',
+			'Asia/Tokyo',
+			'Australia/Sydney',
 		]);
 	}
 }
 
-export async function getVersions(_req: Request, res: Response): Promise<void> {
+export async function getVersions(req: Request, res: Response): Promise<void> {
 	try {
-		const bot = await getBotVersion();
+		const bot = await getBotVersion(req.mode);
 		res.json({
 			bot: bot ?? null,
 			api: pkg.version,
@@ -213,7 +217,7 @@ export async function getVersions(_req: Request, res: Response): Promise<void> {
 export async function verifyStats(req: Request, res: Response): Promise<void> {
 	const { fix } = req.body as { fix?: boolean };
 	try {
-		const result = await verificationService.verifyAndFixStats(!!fix);
+		const result = await verificationService.verifyAndFixStats(req.mode, !!fix);
 		res.json(result);
 	} catch (error) {
 		console.error(`Failed to verify stats: ${error}`);
@@ -235,7 +239,7 @@ export async function addBankingTransaction(
 		return;
 	}
 
-	const mode = config.mode;
+	const mode = req.mode;
 	const type = amount > 0 ? 'deposit' : 'withdrawal';
 
 	try {
@@ -250,9 +254,9 @@ export async function addBankingTransaction(
 		await transaction.save();
 
 		// 2. Update Redis balance immediately for better UX
-		const currentBalance = await getBotBalance();
+		const currentBalance = await getBotBalance(mode);
 		const newBalance = currentBalance + amount;
-		await setBotBalance(newBalance);
+		await setBotBalance(mode, newBalance);
 
 		res.json({
 			success: true,

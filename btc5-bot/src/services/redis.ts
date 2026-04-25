@@ -127,7 +127,7 @@ class RedisService {
 		// 2. Fetch limit (10 * maxConcurrentTrades)
 		let maxConcurrent = DEFAULT_STRATEGY_CONFIG.maxConcurrentTrades;
 		try {
-			const rawConfig = await client.get(REDIS_KEYS.STRATEGY_CONFIG);
+			const rawConfig = await client.get(REDIS_KEYS.STRATEGY_CONFIG(this.mode));
 			if (rawConfig) {
 				const config = JSON.parse(rawConfig);
 				if (config.maxConcurrentTrades) {
@@ -232,7 +232,7 @@ class RedisService {
 
 	async setBotVersion(version: string): Promise<void> {
 		const client = this.getClient();
-		await client.set(REDIS_KEYS.BOT_VERSION, version);
+		await client.set(REDIS_KEYS.BOT_VERSION(this.mode), version);
 	}
 
 	// ---- Daily PnL ----
@@ -321,7 +321,7 @@ class RedisService {
 	async setBtcPrice(btcPrice: number): Promise<void> {
 		const client = this.getClient();
 		await client.set(
-			REDIS_KEYS.BTC_PRICE,
+			REDIS_KEYS.BTC_PRICE(this.mode),
 			JSON.stringify({ btcPrice, updatedAt: Date.now() }),
 		);
 	}
@@ -334,7 +334,7 @@ class RedisService {
 	): Promise<void> {
 		const client = this.getClient();
 		await client.set(
-			REDIS_KEYS.REF_PRICE,
+			REDIS_KEYS.REF_PRICE(this.mode),
 			JSON.stringify({
 				priceToBeat,
 				marketTitle,
@@ -350,7 +350,7 @@ class RedisService {
 	): Promise<void> {
 		const client = this.getClient();
 		await client.set(
-			REDIS_KEYS.MARKET_PRICES,
+			REDIS_KEYS.MARKET_PRICES(this.mode),
 			JSON.stringify({ upPrice, downPrice, updatedAt: Date.now() }),
 		);
 	}
@@ -376,12 +376,12 @@ class RedisService {
 
 	async setLastSignal(signal: any): Promise<void> {
 		const client = this.getClient();
-		await client.set(REDIS_KEYS.SIGNAL, JSON.stringify(signal), 'EX', 60); // Expire after 60s
+		await client.set(REDIS_KEYS.SIGNAL(this.mode), JSON.stringify(signal), 'EX', 60); // Expire after 60s
 	}
 
 	async getLastSignal(): Promise<any | null> {
 		const client = this.getClient();
-		const data = await client.get(REDIS_KEYS.SIGNAL);
+		const data = await client.get(REDIS_KEYS.SIGNAL(this.mode));
 		return data ? JSON.parse(data) : null;
 	}
 

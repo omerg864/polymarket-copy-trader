@@ -3,9 +3,9 @@ import config from '../config';
 import { TradeModel } from '../models/Trade';
 
 class TradeService {
-	async getTradeHistory(limit?: number): Promise<Trade[]> {
+	async getTradeHistory(type: TradeType, limit?: number): Promise<Trade[]> {
 		try {
-			let query = TradeModel.find({ type: config.mode }).sort({
+			let query = TradeModel.find({ type }).sort({
 				closedAt: -1,
 			});
 

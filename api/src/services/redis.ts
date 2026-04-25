@@ -20,9 +20,7 @@ redis.on('connect', () => {
 	console.log('Connected to Redis');
 });
 
-export async function getActiveTrades(): Promise<Trade[]> {
-	const mode = config.mode;
-
+export async function getActiveTrades(mode: TradeType): Promise<Trade[]> {
 	const [activeIds, resolvingIds] = await Promise.all([
 		redis.smembers(REDIS_KEYS.ACTIVE_TRADES(mode)),
 		redis.smembers(REDIS_KEYS.AWAITING_RESOLVE_TRADES(mode)),
@@ -51,25 +49,25 @@ interface BotStats {
 	totalFees: number;
 }
 
-export async function getBotStats(): Promise<BotStats> {
-	const key = REDIS_KEYS.STATS(config.mode);
-	const raw = await redis.get(key);
+export async function getBotStats(mode: TradeType): Promise<BotStats> {
+	const raw = await redis.get(REDIS_KEYS.STATS(mode));
 	return raw
 		? (JSON.parse(raw) as BotStats)
 		: { totalTrades: 0, wins: 0, losses: 0, totalPnl: 0, totalFees: 0 };
 }
 
-export async function setBotStats(stats: BotStats): Promise<void> {
-	const key = REDIS_KEYS.STATS(config.mode);
-	await redis.set(key, JSON.stringify(stats));
+export async function setBotStats(
+	mode: TradeType,
+	stats: BotStats,
+): Promise<void> {
+	await redis.set(REDIS_KEYS.STATS(mode), JSON.stringify(stats));
 }
 
 export async function getBotBalance(
+	mode: TradeType,
 	configParams?: StrategyConfig,
 ): Promise<number> {
-	const mode = configParams?.mode || config.mode;
-	const key = REDIS_KEYS.BALANCE(mode);
-	const raw = await redis.get(key);
+	const raw = await redis.get(REDIS_KEYS.BALANCE(mode));
 	if (raw) {
 		const balance = parseFloat(raw);
 		if (!isNaN(balance)) return balance;
@@ -79,37 +77,36 @@ export async function getBotBalance(
 	return botAllowance;
 }
 
-export async function setBotBalance(balance: number): Promise<void> {
-	const key = REDIS_KEYS.BALANCE(config.mode);
+export async function setBotBalance(
+	mode: TradeType,
+	balance: number,
+): Promise<void> {
+	const key = REDIS_KEYS.BALANCE(mode);
 	await redis.set(key, balance.toString());
 }
 
-export async function getBotStartTime(
-	mode?: TradeType,
-): Promise<number | null> {
-	const activeMode = mode || config.mode;
-	const raw = await redis.get(REDIS_KEYS.START_TIME(activeMode));
+export async function getBotStartTime(mode: TradeType): Promise<number | null> {
+	const raw = await redis.get(REDIS_KEYS.START_TIME(mode));
 	return raw ? parseInt(raw, 10) : null;
 }
 
 export async function setBotStartTime(
+	mode: TradeType,
 	startTime: number,
-	mode?: TradeType,
 ): Promise<void> {
-	const activeMode = mode || config.mode;
-	await redis.set(REDIS_KEYS.START_TIME(activeMode), startTime.toString());
+	await redis.set(REDIS_KEYS.START_TIME(mode), startTime.toString());
 }
 
-export async function getStopRequested(): Promise<boolean> {
-	const val = await redis.get(REDIS_KEYS.STOP_REQUESTED(config.mode));
+export async function getStopRequested(mode: TradeType): Promise<boolean> {
+	const val = await redis.get(REDIS_KEYS.STOP_REQUESTED(mode));
 	return val === 'true';
 }
 
-export async function setStopRequested(stop: boolean): Promise<void> {
-	await redis.set(
-		REDIS_KEYS.STOP_REQUESTED(config.mode),
-		stop ? 'true' : 'false',
-	);
+export async function setStopRequested(
+	mode: TradeType,
+	stop: boolean,
+): Promise<void> {
+	await redis.set(REDIS_KEYS.STOP_REQUESTED(mode), stop ? 'true' : 'false');
 }
 
 export async function flushRedis(): Promise<void> {
@@ -147,17 +144,19 @@ export async function clearModeData(mode: TradeType): Promise<void> {
 	}
 
 	// Reset start time to now (using milliseconds for consistency)
-	await setBotStartTime(Date.now(), mode);
+	await setBotStartTime(mode, Date.now());
 
 	console.log(`Cleared all ${mode} state from Redis`);
 }
 
-export async function getMarketPrices(): Promise<MarketDashboardData | null> {
+export async function getMarketPrices(
+	mode: TradeType,
+): Promise<MarketDashboardData | null> {
 	const [btcRaw, refRaw, marketPriceRaw, signalRaw] = await Promise.all([
-		redis.get(REDIS_KEYS.BTC_PRICE),
-		redis.get(REDIS_KEYS.REF_PRICE),
-		redis.get(REDIS_KEYS.MARKET_PRICES),
-		redis.get(REDIS_KEYS.SIGNAL),
+		redis.get(REDIS_KEYS.BTC_PRICE(mode)),
+		redis.get(REDIS_KEYS.REF_PRICE(mode)),
+		redis.get(REDIS_KEYS.MARKET_PRICES(mode)),
+		redis.get(REDIS_KEYS.SIGNAL(mode)),
 	]);
 	if (!btcRaw) return null;
 	const btcData = JSON.parse(btcRaw) as {
@@ -213,17 +212,21 @@ export async function getRedisInfo(): Promise<RedisInfo> {
 	return { memoryUsed, memoryUsedBytes, totalKeys };
 }
 
-export async function getDailyPnl(date: string): Promise<number> {
-	const key = REDIS_KEYS.DAILY_PNL(config.mode, date);
+export async function getDailyPnl(
+	mode: TradeType,
+	date: string,
+): Promise<number> {
+	const key = REDIS_KEYS.DAILY_PNL(mode, date);
 	const raw = await redis.hget(key, 'pnl');
 	if (raw === null) return 0;
 	return parseFloat(raw) || 0;
 }
 
 export async function getDailyStats(
+	mode: TradeType,
 	date: string,
 ): Promise<{ pnl: number; wins: number; losses: number }> {
-	const key = REDIS_KEYS.DAILY_PNL(config.mode, date);
+	const key = REDIS_KEYS.DAILY_PNL(mode, date);
 	const data = await redis.hgetall(key);
 	return {
 		pnl: parseFloat(data.pnl) || 0,
@@ -233,10 +236,11 @@ export async function getDailyStats(
 }
 
 export async function setDailyStats(
+	mode: TradeType,
 	date: string,
 	stats: { pnl: number; wins: number; losses: number },
 ): Promise<void> {
-	const key = REDIS_KEYS.DAILY_PNL(config.mode, date);
+	const key = REDIS_KEYS.DAILY_PNL(mode, date);
 
 	// Clear if it was a string (legacy)
 	const t = await redis.type(key);
@@ -251,8 +255,8 @@ export async function setDailyStats(
 	await redis.expire(key, 60 * 60 * 24 * 3);
 }
 
-export async function getBotVersion(): Promise<string | null> {
-	return redis.get(REDIS_KEYS.BOT_VERSION);
+export async function getBotVersion(mode: TradeType): Promise<string | null> {
+	return redis.get(REDIS_KEYS.BOT_VERSION(mode));
 }
 
 export { redis, REDIS_KEYS, getTradeKey };

@@ -11,7 +11,7 @@ import { TimeWindowsSimulation, DailyTPSimulation } from './simulations';
 class SimulationService {
 	async runSimulation(params: SimulationParams): Promise<SimulationResult> {
 		const { type, mode, params: simParams } = params;
-		const sc = await getStrategyConfig();
+		const sc = await getStrategyConfig(mode);
 		const timezone = sc.timezone || 'Asia/Jerusalem';
 
 		const dbTrades = await TradeModel.find({

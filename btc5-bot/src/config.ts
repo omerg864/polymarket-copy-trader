@@ -3,8 +3,8 @@ import 'dotenv/config';
 
 const config = {
 	// Mode
-	mode: process.env.MODE === 'live' ? TradeType.LIVE : TradeType.DEMO,
-	isDemo: process.env.MODE !== 'live',
+	mode: (process.env.MODE as TradeType) || TradeType.DEMO,
+	isDemo: (process.env.MODE as TradeType) === TradeType.DEMO || !process.env.MODE,
 
 	// Polymarket credentials
 	privateKey: process.env.PRIVATE_KEY || '',
@@ -21,7 +21,7 @@ const config = {
 	redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
 
 	// MongoDB
-	mongoUri: process.env.MONGO_URI || '',
+	mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/polymarket-bot',
 
 	// Logging
 	logLevel: process.env.LOG_LEVEL || 'info',
@@ -37,7 +37,8 @@ const config = {
 	apiPassword: process.env.API_PASSWORD || '',
 
 	// Polygon RPC for on-chain CTF redemption (live mode only)
-	polygonRpcUrl: process.env.POLYGON_RPC_URL || 'https://polygon-public.nodies.app',
+	polygonRpcUrl:
+		process.env.POLYGON_RPC_URL || 'https://polygon-public.nodies.app',
 
 	// Polymarket Builder/Relayer (for gasless redemptions)
 	builderApiKey: process.env.POLYMARKET_BUILDER_API_KEY || '',

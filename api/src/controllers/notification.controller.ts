@@ -1,7 +1,8 @@
 import type { Request, Response } from 'express';
-import type {
-	NotificationConfig,
-	NotificationType,
+import {
+	TradeType,
+	type NotificationConfig,
+	type NotificationType,
 } from '../../../shared/src/types';
 import {
 	addTelegramChatId,
@@ -15,7 +16,6 @@ import {
 	getBotBalance,
 	getBotStartTime,
 	getBotStats,
-	getDailyPnl,
 	getDailyStats,
 	getStopRequested,
 } from '../services/redis';
@@ -28,14 +28,14 @@ import {
 	isAuthenticatedChatId,
 } from '../services/notificationConfig';
 
-export async function getConfig(_req: Request, res: Response): Promise<void> {
-	const config = await getNotificationConfig();
+export async function getConfig(req: Request, res: Response): Promise<void> {
+	const config = await getNotificationConfig(req.mode);
 	res.json(config);
 }
 
 export async function updateConfig(req: Request, res: Response): Promise<void> {
 	const updates = req.body as Partial<NotificationConfig>;
-	const updated = await updateNotificationConfig(updates);
+	const updated = await updateNotificationConfig(req.mode, updates);
 	res.json(updated);
 }
 
@@ -44,7 +44,7 @@ export async function handleWebhook(
 	res: Response,
 ): Promise<void> {
 	const { message } = req.body;
-	console.log(req.body);
+	// console.log(req.body);
 	if (!message || !message.text || !message.chat) {
 		res.sendStatus(200);
 		return;
@@ -53,8 +53,13 @@ export async function handleWebhook(
 	const chatId = message.chat.id.toString();
 	const text = message.text.trim();
 
-	const isAuth = await isAuthenticatedChatId(chatId);
-	const isAuthCmd = text.startsWith('/authenticate') || text === '/start';
+	// Parse command and mode (e.g., /active:live -> cmd="/active", mode="live")
+	const [rawCmd, ...rest] = text.split(' ');
+	const [cmd, requestedMode] = rawCmd.split(':');
+	const mode = (requestedMode as TradeType | undefined) || TradeType.DEMO;
+
+	const isAuth = await isAuthenticatedChatId(mode, chatId);
+	const isAuthCmd = cmd === '/authenticate' || cmd === '/start';
 
 	if (!isAuth && !isAuthCmd) {
 		await TelegramService.sendMessage(
@@ -65,32 +70,39 @@ export async function handleWebhook(
 		return;
 	}
 
-	if (text === '/start') {
+	if (cmd === '/start') {
 		const welcomeMessage =
 			`👋 <b>Welcome to Polymarket Trading Bot!</b>\n\n` +
 			`This bot provides real-time notifications and statistics for BTC 5-minute markets.\n\n` +
 			`<b>Commands:</b>\n` +
 			`/start - Show this summary\n` +
-			`/authenticate &lt;password&gt; - Gain access to the bot\n` +
-			`/subscribe - Enable trade notifications\n` +
-			`/unsubscribe - Disable notifications\n` +
-			`/stats - Current performance summary\n` +
-			`/active - View details of open trades\n\n` +
-			`⚠️ <b>Note:</b> You must authenticate first before using most commands.`;
+			`/authenticate &lt;password&gt; - Gain access\n` +
+			`/subscribe[:mode] - Enable notifications (default: demo)\n` +
+			`/unsubscribe[:mode] - Disable notifications\n` +
+			`/stats[:mode] - Current performance (default: demo)\n` +
+			`/active[:mode] - View open trades\n\n` +
+			`<b>Examples:</b>\n` +
+			`<code>/active:live</code> - Show live trades\n` +
+			`<code>/stats:demo</code> - Show demo stats\n\n` +
+			`⚠️ <b>Note:</b> You must authenticate first.`;
 
 		await TelegramService.sendMessage(chatId, welcomeMessage);
-	} else if (text.startsWith('/authenticate')) {
-		const parts = text.split(' ');
-		const password = parts[1];
+	} else if (cmd === '/authenticate') {
+		const password = rest[0];
 
 		if (
 			password === config.adminPassword ||
 			password === config.readonlyPassword
 		) {
-			await addAuthenticatedChatId(chatId);
+			// Authenticate for BOTH modes to make it easier
+			await Promise.all([
+				addAuthenticatedChatId(TradeType.DEMO, chatId),
+				addAuthenticatedChatId(TradeType.LIVE, chatId),
+				addAuthenticatedChatId(TradeType.TEST, chatId),
+			]);
 			await TelegramService.sendMessage(
 				chatId,
-				'✅ <b>Authentication Successful!</b>\nYou now have access to all bot commands.',
+				'✅ <b>Authentication Successful!</b>\nYou now have access to both Demo and Live commands.',
 			);
 		} else {
 			await TelegramService.sendMessage(
@@ -98,33 +110,33 @@ export async function handleWebhook(
 				'❌ <b>Invalid Password</b>\nPlease try again with <code>/authenticate &lt;password&gt;</code>.',
 			);
 		}
-	} else if (text === '/subscribe') {
-		await addTelegramChatId(chatId);
+	} else if (cmd === '/subscribe') {
+		await addTelegramChatId(mode, chatId);
 		await TelegramService.sendMessage(
 			chatId,
-			'✅ You have subscribed to Polymarket bot notifications.',
+			`✅ You have subscribed to ${mode.toUpperCase()} notifications.`,
 		);
-	} else if (text === '/unsubscribe') {
-		await removeTelegramChatId(chatId);
+	} else if (cmd === '/unsubscribe') {
+		await removeTelegramChatId(mode, chatId);
 		await TelegramService.sendMessage(
 			chatId,
-			'❌ You have unsubscribed from Polymarket bot notifications.',
+			`❌ You have unsubscribed from ${mode.toUpperCase()} notifications.`,
 		);
-	} else if (text === '/stats') {
+	} else if (cmd === '/stats') {
 		const [stats, activeTrades, botStartTime, isStopping, strategyConfig] =
 			await Promise.all([
-				getBotStats(),
-				getActiveTrades(),
-				getBotStartTime(),
-				getStopRequested(),
-				getStrategyConfig(),
+				getBotStats(mode),
+				getActiveTrades(mode),
+				getBotStartTime(mode),
+				getStopRequested(mode),
+				getStrategyConfig(mode),
 			]);
 
-		const balance = await getBotBalance(strategyConfig);
+		const balance = await getBotBalance(mode, strategyConfig);
 		const todayStr = DateTime.now()
 			.setZone(strategyConfig.timezone)
 			.toFormat('yyyy-MM-dd');
-		const todayStats = await getDailyStats(todayStr);
+		const todayStats = await getDailyStats(mode, todayStr);
 		const winRate =
 			stats.totalTrades > 0
 				? ((stats.wins / stats.totalTrades) * 100).toFixed(1)
@@ -133,7 +145,8 @@ export async function handleWebhook(
 		const todayWinRate =
 			todayStats.wins + todayStats.losses > 0
 				? (
-						(todayStats.wins / (todayStats.wins + todayStats.losses)) *
+						(todayStats.wins /
+							(todayStats.wins + todayStats.losses)) *
 						100
 					).toFixed(1)
 				: '0.0';
@@ -143,7 +156,7 @@ export async function handleWebhook(
 			: 0;
 
 		const statsMessage =
-			`<b>📊 Bot Statistics</b>\n\n` +
+			`<b>📊 Bot Statistics (${mode.toUpperCase()})</b>\n\n` +
 			`<b>Balance:</b> <code class="text-emerald-400">$${balance.toFixed(2)}</code>\n` +
 			`<b>Initial:</b> $${strategyConfig.botAllowance.toFixed(2)}\n` +
 			`<b>Today's P&L:</b> <code class="${todayStats.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$${todayStats.pnl.toFixed(2)}</code>\n` +
@@ -156,19 +169,19 @@ export async function handleWebhook(
 			`<b>Status:</b> ${isStopping ? '🛑 Stopping' : '🏃 Running'}`;
 
 		await TelegramService.sendMessage(chatId, statsMessage);
-	} else if (text === '/active') {
-		const activeTrades = await getActiveTrades();
+	} else if (cmd === '/active') {
+		const activeTrades = await getActiveTrades(mode);
 
 		if (activeTrades.length === 0) {
 			await TelegramService.sendMessage(
 				chatId,
-				'<b>ℹ️ No active trades at the moment.</b>',
+				`<b>ℹ️ No active ${mode.toUpperCase()} trades at the moment.</b>`,
 			);
 			res.sendStatus(200);
 			return;
 		}
 
-		let activeMessage = `<b>🕒 Active Trades (${activeTrades.length})</b>\n`;
+		let activeMessage = `<b>🕒 Active Trades (${activeTrades.length}) - ${mode.toUpperCase()}</b>\n`;
 		for (const t of activeTrades) {
 			const dirEmoji = t.direction === 'UP' ? '↑' : '↓';
 			const entryTime = t.enteredAt
@@ -202,15 +215,23 @@ export async function triggerNotification(
 	res: Response,
 ): Promise<void> {
 	const { type, data }: { type: NotificationType; data: any } = req.body;
-	const config = await getNotificationConfig();
+	const mode = req.mode;
+	const config = await getNotificationConfig(mode);
 
 	let shouldNotify = false;
 	let message = '';
 
+	const modeLabel =
+		mode === TradeType.LIVE
+			? '🔴 LIVE'
+			: mode === TradeType.TEST
+				? '🔵 TEST'
+				: '🧪 DEMO';
+
 	if (type === 'trade' && config.notificationOnTrade) {
 		shouldNotify = true;
 		message =
-			`<b>🆕 TRADE OPENED</b>\n\n` +
+			`<b>🆕 [${modeLabel}] TRADE OPENED</b>\n\n` +
 			`<b>Market:</b> ${data.title || 'Unknown'}\n` +
 			`<b>Direction:</b> ${data.direction === 'UP' ? '↑ UP' : '↓ DOWN'}\n` +
 			`<b>Size:</b> ${data.size.toLocaleString()} shares\n` +
@@ -230,11 +251,13 @@ export async function triggerNotification(
 			const todayLosses = data.todayLosses ?? 0;
 			const todayTotal = todayWins + todayLosses;
 			const todayWinRate =
-				todayTotal > 0 ? ((todayWins / todayTotal) * 100).toFixed(1) : '0.0';
+				todayTotal > 0
+					? ((todayWins / todayTotal) * 100).toFixed(1)
+					: '0.0';
 
 			shouldNotify = true;
 			message =
-				`<b>🚀 NEW WIN!</b>\n\n` +
+				`<b>🚀 [${modeLabel}] NEW WIN!</b>\n\n` +
 				`<b>Market:</b> ${data.title || 'Unknown'}\n` +
 				`<b>Result:</b> ${statusText}\n` +
 				`<b>Profit:</b> <code class="text-emerald-400">$${data.pnl?.toFixed(2)}</code>\n` +
@@ -264,11 +287,13 @@ export async function triggerNotification(
 			const todayLosses = data.todayLosses ?? 0;
 			const todayTotal = todayWins + todayLosses;
 			const todayWinRate =
-				todayTotal > 0 ? ((todayWins / todayTotal) * 100).toFixed(1) : '0.0';
+				todayTotal > 0
+					? ((todayWins / todayTotal) * 100).toFixed(1)
+					: '0.0';
 
 			shouldNotify = true;
 			message =
-				`<b>📉 Trade Loss</b>\n\n` +
+				`<b>📉 [${modeLabel}] Trade Loss</b>\n\n` +
 				`<b>Market:</b> ${data.title || 'Unknown'}\n` +
 				`<b>Result:</b> ${statusText}\n` +
 				`<b>Loss:</b> <code class="text-red-400">$${Math.abs(data.pnl)?.toFixed(2)}</code>\n` +
@@ -283,11 +308,13 @@ export async function triggerNotification(
 		const todayLosses = data.todayLosses ?? 0;
 		const todayTotal = todayWins + todayLosses;
 		const todayWinRate =
-			todayTotal > 0 ? ((todayWins / todayTotal) * 100).toFixed(1) : '0.0';
+			todayTotal > 0
+				? ((todayWins / todayTotal) * 100).toFixed(1)
+				: '0.0';
 
 		shouldNotify = true;
 		message =
-			`<b>🏆 DAILY GOAL REACHED!</b>\n\n` +
+			`<b>🏆 [${modeLabel}] DAILY GOAL REACHED!</b>\n\n` +
 			`<b>Today's P&L:</b> <code class="text-emerald-400">$${data.todayPnl?.toFixed(2)}</code>\n` +
 			`<b>Today's Stats:</b> ${todayWins}W / ${todayLosses}L (${todayWinRate}%)\n` +
 			`<b>Goal:</b> $${data.goal}\n` +
@@ -297,11 +324,13 @@ export async function triggerNotification(
 		const todayLosses = data.todayLosses ?? 0;
 		const todayTotal = todayWins + todayLosses;
 		const todayWinRate =
-			todayTotal > 0 ? ((todayWins / todayTotal) * 100).toFixed(1) : '0.0';
+			todayTotal > 0
+				? ((todayWins / todayTotal) * 100).toFixed(1)
+				: '0.0';
 
 		shouldNotify = true;
 		message =
-			`<b>⚠️ DAILY LOSS LIMIT REACHED</b>\n\n` +
+			`<b>⚠️ [${modeLabel}] DAILY LOSS LIMIT REACHED</b>\n\n` +
 			`<b>Today's P&L:</b> <code class="text-red-400">$${data.todayPnl?.toFixed(2)}</code>\n` +
 			`<b>Today's Stats:</b> ${todayWins}W / ${todayLosses}L (${todayWinRate}%)\n` +
 			`<b>Limit:</b> $${data.min}\n` +
@@ -311,11 +340,13 @@ export async function triggerNotification(
 		const todayLosses = data.todayLosses ?? 0;
 		const todayTotal = todayWins + todayLosses;
 		const todayWinRate =
-			todayTotal > 0 ? ((todayWins / todayTotal) * 100).toFixed(1) : '0.0';
+			todayTotal > 0
+				? ((todayWins / todayTotal) * 100).toFixed(1)
+				: '0.0';
 
 		shouldNotify = true;
 		message =
-			`<b>💰 DAILY PROFIT TARGET REACHED</b>\n\n` +
+			`<b>💰 [${modeLabel}] DAILY PROFIT TARGET REACHED</b>\n\n` +
 			`<b>Today's P&L:</b> <code class="text-emerald-400">$${data.todayPnl?.toFixed(2)}</code>\n` +
 			`<b>Today's Stats:</b> ${todayWins}W / ${todayLosses}L (${todayWinRate}%)\n` +
 			`<b>Target:</b> $${data.max}\n` +
@@ -323,17 +354,17 @@ export async function triggerNotification(
 	} else if (type === 'error' && config.notificationOnError) {
 		shouldNotify = true;
 		message =
-			`<b>❌ BOT ERROR</b>\n\n` +
+			`<b>❌ [${modeLabel}] BOT ERROR</b>\n\n` +
 			`<b>Service:</b> ${data.service || 'Unknown'}\n` +
 			`<b>Error:</b> <code>${data.message || 'Unknown error'}</code>\n` +
 			`<b>Context:</b> ${data.context || 'N/A'}`;
 	} else if (type === 'manual') {
 		shouldNotify = true;
-		message = data.message || 'Manual notification triggered.';
+		message = `<b>[${modeLabel}]</b> ${data.message || 'Manual notification triggered.'}`;
 	}
 
 	if (shouldNotify && message) {
-		const chatIds = await getTelegramChatIds();
+		const chatIds = await getTelegramChatIds(mode);
 		if (chatIds.length > 0) {
 			await TelegramService.broadcast(chatIds, message);
 		}

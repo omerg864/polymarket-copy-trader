@@ -11,6 +11,7 @@ import type {
 	VerificationResult,
 	SimulationResult,
 	SimulationParams,
+	TradeType,
 } from '@shared/types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
@@ -20,6 +21,18 @@ export type AuthRole = 'admin' | 'readonly';
 
 let authPassword: string | null = null;
 let authRole: AuthRole | null = null;
+let currentMode: TradeType =
+	(localStorage.getItem('trading-mode') as TradeType) || 'demo';
+
+export function setMode(mode: TradeType) {
+	currentMode = mode;
+	localStorage.setItem('trading-mode', mode);
+	// We don't necessarily need to reload, but queryKeys must include mode
+}
+
+export function getMode(): TradeType {
+	return currentMode;
+}
 
 export function setAuthPassword(password: string | null) {
 	authPassword = password;
@@ -39,8 +52,13 @@ export function getAuthRole(): AuthRole | null {
 }
 
 function getAuthHeaders(): Record<string, string> {
-	if (!authPassword) return {};
-	return { Authorization: `Bearer ${authPassword}` };
+	const headers: Record<string, string> = {
+		'x-mode': currentMode,
+	};
+	if (authPassword) {
+		headers['Authorization'] = `Bearer ${authPassword}`;
+	}
+	return headers;
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -61,7 +79,10 @@ export function useLogin() {
 		mutationFn: async (password: string) => {
 			const res = await fetch(`${API_BASE}/auth/verify`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: {
+					'Content-Type': 'application/json',
+					'x-mode': currentMode,
+				},
 				body: JSON.stringify({ password }),
 			});
 			if (!res.ok) throw new Error('Invalid password');
@@ -81,7 +102,10 @@ export function useCheckAuth() {
 				// Check if auth is even required
 				const res = await fetch(`${API_BASE}/auth/verify`, {
 					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
+					headers: {
+						'Content-Type': 'application/json',
+						'x-mode': currentMode,
+					},
 					body: JSON.stringify({}),
 				});
 				if (res.ok) {
@@ -94,7 +118,10 @@ export function useCheckAuth() {
 			}
 			const res = await fetch(`${API_BASE}/auth/verify`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: {
+					'Content-Type': 'application/json',
+					'x-mode': currentMode,
+				},
 				body: JSON.stringify({ password: authPassword }),
 			});
 			if (res.ok) {
@@ -110,7 +137,7 @@ export function useCheckAuth() {
 
 export function useConfig(options: { enabled?: boolean } = {}) {
 	return useQuery<StrategyConfig>({
-		queryKey: ['config'],
+		queryKey: ['config', currentMode],
 		queryFn: () => fetchJson('/config'),
 		refetchInterval: 30000,
 		...options,
@@ -119,7 +146,7 @@ export function useConfig(options: { enabled?: boolean } = {}) {
 
 export function useSummary() {
 	return useQuery<TradeSummary>({
-		queryKey: ['summary'],
+		queryKey: ['summary', currentMode],
 		queryFn: () => fetchJson('/summary'),
 		refetchInterval: 5000,
 	});
@@ -127,7 +154,7 @@ export function useSummary() {
 
 export function useActiveTrades() {
 	return useQuery<Trade[]>({
-		queryKey: ['active-trades'],
+		queryKey: ['active-trades', currentMode],
 		queryFn: () => fetchJson('/active-trades'),
 		refetchInterval: 5000,
 	});
@@ -135,7 +162,7 @@ export function useActiveTrades() {
 
 export function useTradeHistory() {
 	return useQuery<Trade[]>({
-		queryKey: ['trade-history'],
+		queryKey: ['trade-history', currentMode],
 		queryFn: () => fetchJson('/trade-history'),
 		refetchInterval: 10000,
 	});
@@ -160,7 +187,7 @@ export function useToggleStop() {
 
 export function useRedisStats() {
 	return useQuery<RedisInfo>({
-		queryKey: ['redis-stats'],
+		queryKey: ['redis-stats', currentMode],
 		queryFn: () => fetchJson('/redis-stats'),
 		refetchInterval: 10000,
 	});
@@ -176,7 +203,7 @@ export function useMongoStats() {
 
 export function useMarketPrices() {
 	return useQuery<MarketDashboardData | null>({
-		queryKey: ['market-prices'],
+		queryKey: ['market-prices', currentMode],
 		queryFn: () => fetchJson('/market-prices'),
 		refetchInterval: 2000,
 	});
@@ -251,7 +278,7 @@ export function useVerifyStats() {
 
 export function useNotificationConfig() {
 	return useQuery<NotificationConfig>({
-		queryKey: ['notification-config'],
+		queryKey: ['notification-config', currentMode],
 		queryFn: () => fetchJson('/notifications'),
 		refetchInterval: 30000,
 	});
@@ -305,7 +332,7 @@ export function useCandles(params: {
 
 export function useVersions(options: { enabled?: boolean } = {}) {
 	return useQuery<BotVersions>({
-		queryKey: ['versions'],
+		queryKey: ['versions', currentMode],
 		queryFn: () => fetchJson('/versions'),
 		refetchInterval: 30000,
 		...options,
@@ -342,7 +369,10 @@ export function useRunSimulation() {
 
 export function useAddBankingTransaction() {
 	return useMutation({
-		mutationFn: async (params: { amount: number; description?: string }) => {
+		mutationFn: async (params: {
+			amount: number;
+			description?: string;
+		}) => {
 			const res = await fetch(`${API_BASE}/banking/transaction`, {
 				method: 'POST',
 				headers: {

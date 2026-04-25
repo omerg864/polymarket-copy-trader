@@ -5,7 +5,7 @@ import logger from '../utils/logger';
 import redisService from './redis';
 
 class TradeService {
-	private readonly mode = config.isDemo ? 'demo' : 'live';
+	private readonly mode = config.mode;
 
 	async saveTradeHistory(trade: Trade): Promise<Trade> {
 		const record: Trade = {
@@ -73,7 +73,7 @@ class TradeService {
 			// 1. Calculate limit (10 * maxConcurrentTrades)
 			let maxConcurrent = DEFAULT_STRATEGY_CONFIG.maxConcurrentTrades;
 			try {
-				const rawConfig = await redisService.getRaw(REDIS_KEYS.STRATEGY_CONFIG);
+				const rawConfig = await redisService.getRaw(REDIS_KEYS.STRATEGY_CONFIG(this.mode));
 				if (rawConfig) {
 					const config = JSON.parse(rawConfig);
 					if (config && typeof config === 'object' && config.maxConcurrentTrades) {

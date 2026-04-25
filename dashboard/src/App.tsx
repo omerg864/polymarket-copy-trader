@@ -3,23 +3,36 @@ import { TradeType } from '@shared/types';
 import { Dashboard } from '@/components/Dashboard';
 import { LoginPage } from '@/components/LoginPage';
 import { Simulations } from '@/components/Simulations';
-import { Badge } from '@/components/ui/badge';
 import { VersionBadge } from '@/components/shared/VersionBadge';
 import {
 	getAuthRole,
+	getMode,
 	setAuthPassword,
+	setMode,
 	useCheckAuth,
-	useConfig,
 } from '@/hooks/use-api';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+	QueryClient,
+	QueryClientProvider,
+	useQueryClient,
+} from '@tanstack/react-query';
 import { useState } from 'react';
 
 const queryClient = new QueryClient();
 
 function AuthenticatedApp() {
+	const queryClient = useQueryClient();
 	const { data: isAuthenticated, isLoading, refetch } = useCheckAuth();
-	const { data: config } = useConfig({ enabled: !!isAuthenticated });
-	const [activeTab, setActiveTab] = useState<'live' | 'analysis' | 'simulations'>('live');
+	const [activeTab, setActiveTab] = useState<
+		'live' | 'analysis' | 'simulations'
+	>('live');
+	const [mode, setCurrentMode] = useState<TradeType>(getMode());
+
+	const handleModeSwitch = (newMode: TradeType) => {
+		setMode(newMode);
+		setCurrentMode(newMode);
+		queryClient.invalidateQueries();
+	};
 
 	if (isLoading) {
 		return (
@@ -87,8 +100,48 @@ function AuthenticatedApp() {
 							</button>
 						</nav>
 
-						{/* Right side: Indicators & Logout */}
+						{/* Right side: Indicators & Mode Switcher & Logout */}
 						<div className="flex items-center gap-2 sm:gap-3 ml-auto">
+							{/* Mode Switcher */}
+							<div className="flex items-center bg-zinc-950 rounded-lg p-0.5 border border-zinc-800">
+								<button
+									onClick={() =>
+										handleModeSwitch(TradeType.DEMO)
+									}
+									className={`text-[10px] uppercase font-bold px-3 py-1 rounded-md transition-all ${
+										mode === TradeType.DEMO
+											? 'bg-zinc-800 text-zinc-100 shadow-sm'
+											: 'text-zinc-500 hover:text-zinc-300'
+									}`}
+								>
+									Demo
+								</button>
+								<button
+									onClick={() =>
+										handleModeSwitch(TradeType.TEST)
+									}
+									className={`text-[10px] uppercase font-bold px-3 py-1 rounded-md transition-all ${
+										mode === TradeType.TEST
+											? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+											: 'text-zinc-500 hover:text-zinc-300'
+									}`}
+								>
+									Test
+								</button>
+								<button
+									onClick={() =>
+										handleModeSwitch(TradeType.LIVE)
+									}
+									className={`text-[10px] uppercase font-bold px-3 py-1 rounded-md transition-all ${
+										mode === TradeType.LIVE
+											? 'bg-red-500 text-white shadow-sm shadow-red-500/20'
+											: 'text-zinc-500 hover:text-zinc-300'
+									}`}
+								>
+									Live
+								</button>
+							</div>
+
 							<div className="hidden sm:flex items-center gap-2">
 								{getAuthRole() === 'readonly' && (
 									<span className="text-[9px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
@@ -99,18 +152,6 @@ function AuthenticatedApp() {
 									<span className="text-[9px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
 										ADMIN
 									</span>
-								)}
-								{config?.mode && (
-									<Badge
-										variant="outline"
-										className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded-full border ${
-											config.mode === TradeType.LIVE
-												? 'bg-red-500/10 text-red-400 border-red-500/30'
-												: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/30'
-										}`}
-									>
-										{config.mode}
-									</Badge>
 								)}
 							</div>
 							<button
@@ -171,18 +212,6 @@ function AuthenticatedApp() {
 								<span className="text-[8px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
 									AD
 								</span>
-							)}
-							{config?.mode && (
-								<Badge
-									variant="outline"
-									className={`text-[8px] uppercase font-bold px-1.5 py-0.5 rounded-full border ${
-										config.mode === TradeType.LIVE
-											? 'bg-red-500/10 text-red-400 border-red-500/30'
-											: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/30'
-									}`}
-								>
-									{config.mode}
-								</Badge>
 							)}
 						</div>
 					</div>
