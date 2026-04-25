@@ -45,7 +45,7 @@ class QueueService {
 	private completionWorker: Worker<TradeCompletionJobData> | null = null;
 
 	constructor() {
-		this.sellQueue = new Queue(`${config.mode}:sell-trades`, {
+		this.sellQueue = new Queue(`${config.mode}-sell-trades`, {
 			connection: connection as any,
 			defaultJobOptions: {
 				removeOnComplete: {
@@ -58,7 +58,7 @@ class QueueService {
 				},
 			},
 		});
-		this.resolveQueue = new Queue(`${config.mode}:resolve-trades`, {
+		this.resolveQueue = new Queue(`${config.mode}-resolve-trades`, {
 			connection: connection as any,
 			defaultJobOptions: {
 				removeOnComplete: {
@@ -71,7 +71,7 @@ class QueueService {
 				},
 			},
 		});
-		this.completionQueue = new Queue(`${config.mode}:trade-completion`, {
+		this.completionQueue = new Queue(`${config.mode}-trade-completion`, {
 			connection: connection as any,
 			defaultJobOptions: {
 				removeOnComplete: {
@@ -100,21 +100,21 @@ class QueueService {
 
 		// Sell Worker: Handles concurrent trade exits (TP/SL/FCT)
 		this.sellWorker = new Worker<SellJobData>(
-			`${config.mode}:sell-trades`,
+			`${config.mode}-sell-trades`,
 			async (job) => this.processSellTrade(job),
 			{ connection: connection as any, concurrency: 5 },
 		);
 
 		// Resolve Worker: Handles market resolution (very high retry, long backoff)
 		this.resolveWorker = new Worker<SellJobData>(
-			`${config.mode}:resolve-trades`,
+			`${config.mode}-resolve-trades`,
 			async (job) => this.processResolveTrade(job),
 			{ connection: connection as any, concurrency: 5 },
 		);
 
 		// Completion Worker: Handles strictly sequential balance and stats updates
 		this.completionWorker = new Worker<TradeCompletionJobData>(
-			`${config.mode}:trade-completion`,
+			`${config.mode}-trade-completion`,
 			async (job) => this.processTradeCompletion(job),
 			{ connection: connection as any, concurrency: 1 },
 		);

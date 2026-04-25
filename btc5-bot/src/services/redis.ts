@@ -94,7 +94,10 @@ class RedisService {
 	async moveToAwaitingResolve(tradeId: string): Promise<void> {
 		const client = this.getClient();
 		await client.srem(REDIS_KEYS.ACTIVE_TRADES(this.mode), tradeId);
-		await client.sadd(REDIS_KEYS.AWAITING_RESOLVE_TRADES(this.mode), tradeId);
+		await client.sadd(
+			REDIS_KEYS.AWAITING_RESOLVE_TRADES(this.mode),
+			tradeId,
+		);
 	}
 
 	async getAwaitingResolveTrades(): Promise<Trade[]> {
@@ -112,7 +115,10 @@ class RedisService {
 		const client = this.getClient();
 		await client.del(`${REDIS_KEYS.TRADE_PREFIX(this.mode)}${tradeId}`);
 		await client.srem(REDIS_KEYS.ACTIVE_TRADES(this.mode), tradeId);
-		await client.srem(REDIS_KEYS.AWAITING_RESOLVE_TRADES(this.mode), tradeId);
+		await client.srem(
+			REDIS_KEYS.AWAITING_RESOLVE_TRADES(this.mode),
+			tradeId,
+		);
 	}
 
 	// ---- Trade History (Redis part) ----
@@ -120,14 +126,16 @@ class RedisService {
 	async addToHistoryIds(tradeId: string): Promise<void> {
 		const client = this.getClient();
 		const key = REDIS_KEYS.HISTORY_IDS(this.mode);
-		
+
 		// 1. Add with current timestamp as score
 		await client.zadd(key, Date.now(), tradeId);
 
 		// 2. Fetch limit (10 * maxConcurrentTrades)
 		let maxConcurrent = DEFAULT_STRATEGY_CONFIG.maxConcurrentTrades;
 		try {
-			const rawConfig = await client.get(REDIS_KEYS.STRATEGY_CONFIG(this.mode));
+			const rawConfig = await client.get(
+				REDIS_KEYS.STRATEGY_CONFIG(this.mode),
+			);
 			if (rawConfig) {
 				const config = JSON.parse(rawConfig);
 				if (config.maxConcurrentTrades) {
@@ -137,7 +145,7 @@ class RedisService {
 		} catch (err) {
 			// Fallback to default if config read fails
 		}
-		
+
 		const limit = maxConcurrent * 10;
 
 		// 3. Trim to last N elements
@@ -152,38 +160,6 @@ class RedisService {
 			tradeId,
 		);
 		return score !== null;
-	}
-
-	// ---- Market Cache ----
-
-	async saveMarketCache(
-		conditionId: string,
-		marketData: unknown,
-		ttlSeconds: number = 600,
-	): Promise<void> {
-		const client = this.getClient();
-		const key = `${REDIS_PREFIX}market:${conditionId}`;
-		await client.set(key, JSON.stringify(marketData), 'EX', ttlSeconds);
-	}
-
-	async getMarketCache(conditionId: string): Promise<unknown | null> {
-		const client = this.getClient();
-		const key = `${REDIS_PREFIX}market:${conditionId}`;
-		const data = await client.get(key);
-		return data ? JSON.parse(data) : null;
-	}
-
-	// ---- Bot State ----
-
-	async saveBotState(state: Record<string, unknown>): Promise<void> {
-		const client = this.getClient();
-		await client.set(`${REDIS_PREFIX}state:bot`, JSON.stringify(state));
-	}
-
-	async getBotState(): Promise<Record<string, unknown> | null> {
-		const client = this.getClient();
-		const data = await client.get(`${REDIS_PREFIX}state:bot`);
-		return data ? (JSON.parse(data) as Record<string, unknown>) : null;
 	}
 
 	async isStopRequested(): Promise<boolean> {
@@ -376,7 +352,12 @@ class RedisService {
 
 	async setLastSignal(signal: any): Promise<void> {
 		const client = this.getClient();
-		await client.set(REDIS_KEYS.SIGNAL(this.mode), JSON.stringify(signal), 'EX', 60); // Expire after 60s
+		await client.set(
+			REDIS_KEYS.SIGNAL(this.mode),
+			JSON.stringify(signal),
+			'EX',
+			60,
+		); // Expire after 60s
 	}
 
 	async getLastSignal(): Promise<any | null> {
