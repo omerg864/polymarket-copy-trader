@@ -53,9 +53,9 @@ export async function handleWebhook(
 	const chatId = message.chat.id.toString();
 	const text = message.text.trim();
 
-	// Parse command and mode (e.g., /active:live -> cmd="/active", mode="live")
+	// Parse command and mode (e.g., /active_live -> cmd="/active", mode="live")
 	const [rawCmd, ...rest] = text.split(' ');
-	const [cmd, requestedMode] = rawCmd.split(':');
+	const [cmd, requestedMode] = rawCmd.split('_');
 	const mode = (requestedMode as TradeType | undefined) || TradeType.DEMO;
 
 	const isAuth = await isAuthenticatedChatId(mode, chatId);
@@ -77,13 +77,13 @@ export async function handleWebhook(
 			`<b>Commands:</b>\n` +
 			`/start - Show this summary\n` +
 			`/authenticate &lt;password&gt; - Gain access\n` +
-			`/subscribe[:mode] - Enable notifications (default: demo)\n` +
-			`/unsubscribe[:mode] - Disable notifications\n` +
-			`/stats[:mode] - Current performance (default: demo)\n` +
-			`/active[:mode] - View open trades\n\n` +
+			`/subscribe[_mode] - Enable notifications (default: demo)\n` +
+			`/unsubscribe[_mode] - Disable notifications\n` +
+			`/stats[_mode] - Current performance (default: demo)\n` +
+			`/active[_mode] - View open trades\n\n` +
 			`<b>Examples:</b>\n` +
-			`<code>/active:live</code> - Show live trades\n` +
-			`<code>/stats:demo</code> - Show demo stats\n\n` +
+			`<code>/active_live</code> - Show live trades\n` +
+			`<code>/stats_demo</code> - Show demo stats\n\n` +
 			`⚠️ <b>Note:</b> You must authenticate first.`;
 
 		await TelegramService.sendMessage(chatId, welcomeMessage);
