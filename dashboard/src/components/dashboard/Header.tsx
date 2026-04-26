@@ -135,10 +135,10 @@ export function Header() {
 	return (
 		<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 			<div>
-				<h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+				<h1 className="text-lg xs:text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
 					📊 Polymarket Trading Dashboard
 					<span
-						className={`text-[10px] uppercase px-2 py-0.5 rounded-full border ${
+						className={`text-[9px] xs:text-[10px] uppercase px-2 py-0.5 rounded-full border ${
 							getMode() === 'live'
 								? 'bg-red-500/10 text-red-400 border-red-500/30'
 								: getMode() === 'test'
@@ -149,10 +149,13 @@ export function Header() {
 						{getMode()}
 					</span>
 				</h1>
-				<p className="text-xs sm:text-sm text-zinc-500 mt-1">
-					BTC 5-Minute Up/Down Markets • Auto-refreshes every 5s •{' '}
-					<RedisStats /> <MongoStats />
-				</p>
+				<div className="text-[9px] xs:text-xs sm:text-sm text-zinc-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+					<span>BTC 5-Minute Up/Down Markets • Auto-refreshes every 5s</span>
+					<div className="flex items-center gap-1.5">
+						<span className="hidden xs:inline text-zinc-700">•</span>
+						<RedisStats /> <MongoStats />
+					</div>
+				</div>
 			</div>
 			<div className="flex flex-wrap items-center gap-2 sm:gap-4">
 				<ActionsDropdown

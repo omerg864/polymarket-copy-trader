@@ -53,15 +53,12 @@ function AuthenticatedApp() {
 				<div className="max-w-7xl mx-auto px-4 sm:px-6">
 					<div className="flex h-14 items-center justify-between gap-4">
 						{/* Logo Area */}
-						<div className="flex items-center gap-2 flex-shrink-0">
-							<span className="text-xl">📈</span>
-							<span className="font-semibold text-zinc-100 hidden xs:inline">
+						<div className="flex items-center gap-1.5 flex-shrink-0">
+							<span className="text-lg sm:text-xl">📈</span>
+							<span className="font-semibold text-zinc-100 text-sm sm:text-base whitespace-nowrap">
 								Polymarket 5M Bot
 							</span>
-							<span className="font-semibold text-zinc-100 xs:hidden">
-								Polymarket 5M Bot
-							</span>
-							<div className="self-end mb-0.5">
+							<div className="hidden sm:block self-end mb-0.5">
 								<VersionBadge />
 							</div>
 						</div>
@@ -101,14 +98,14 @@ function AuthenticatedApp() {
 						</nav>
 
 						{/* Right side: Indicators & Mode Switcher & Logout */}
-						<div className="flex items-center gap-2 sm:gap-3 ml-auto">
-							{/* Mode Switcher */}
-							<div className="flex items-center bg-zinc-950 rounded-lg p-0.5 border border-zinc-800">
+						<div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 ml-auto">
+							{/* Mode Switcher (Desktop) */}
+							<div className="hidden sm:flex items-center bg-zinc-950 rounded-lg p-0.5 border border-zinc-800">
 								<button
 									onClick={() =>
 										handleModeSwitch(TradeType.DEMO)
 									}
-									className={`text-[10px] uppercase font-bold px-3 py-1 rounded-md transition-all ${
+									className={`text-[9px] xs:text-[10px] uppercase font-bold px-2 xs:px-3 py-1 rounded-md transition-all ${
 										mode === TradeType.DEMO
 											? 'bg-zinc-800 text-zinc-100 shadow-sm'
 											: 'text-zinc-500 hover:text-zinc-300'
@@ -120,7 +117,7 @@ function AuthenticatedApp() {
 									onClick={() =>
 										handleModeSwitch(TradeType.TEST)
 									}
-									className={`text-[10px] uppercase font-bold px-3 py-1 rounded-md transition-all ${
+									className={`text-[9px] xs:text-[10px] uppercase font-bold px-2 xs:px-3 py-1 rounded-md transition-all ${
 										mode === TradeType.TEST
 											? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
 											: 'text-zinc-500 hover:text-zinc-300'
@@ -132,7 +129,7 @@ function AuthenticatedApp() {
 									onClick={() =>
 										handleModeSwitch(TradeType.LIVE)
 									}
-									className={`text-[10px] uppercase font-bold px-3 py-1 rounded-md transition-all ${
+									className={`text-[9px] xs:text-[10px] uppercase font-bold px-2 xs:px-3 py-1 rounded-md transition-all ${
 										mode === TradeType.LIVE
 											? 'bg-red-500 text-white shadow-sm shadow-red-500/20'
 											: 'text-zinc-500 hover:text-zinc-300'
@@ -142,15 +139,17 @@ function AuthenticatedApp() {
 								</button>
 							</div>
 
-							<div className="hidden sm:flex items-center gap-2">
+							<div className="flex items-center gap-2">
 								{getAuthRole() === 'readonly' && (
 									<span className="text-[9px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
-										READ-ONLY
+										<span className="hidden sm:inline">READ-ONLY</span>
+										<span className="sm:hidden">RO</span>
 									</span>
 								)}
 								{getAuthRole() === 'admin' && (
 									<span className="text-[9px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-										ADMIN
+										<span className="hidden sm:inline">ADMIN</span>
+										<span className="sm:hidden">AD</span>
 									</span>
 								)}
 							</div>
@@ -159,7 +158,7 @@ function AuthenticatedApp() {
 									setAuthPassword(null);
 									refetch();
 								}}
-								className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1.5 px-2 py-1 hover:bg-zinc-800/50 rounded"
+								className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1 px-1 xs:gap-1.5 xs:px-2 py-1 hover:bg-zinc-800/50 rounded"
 							>
 								<span className="hidden xs:inline">Logout</span>
 								<span>🔓</span>
@@ -167,52 +166,85 @@ function AuthenticatedApp() {
 						</div>
 					</div>
 
-					{/* Mobile/Tablet Nav & Sub-Header (shown only on smaller screens) */}
-					<div className="flex md:hidden items-center justify-between py-2 border-t border-zinc-800/50 gap-2">
-						<nav className="flex items-center gap-1 text-[11px] xs:text-xs">
+					{/* Mobile/Tablet Nav Area (shown only on smaller screens) */}
+					<div className="md:hidden flex flex-col py-2 border-t border-zinc-800/50 gap-2">
+						{/* Mode Switcher Row (Mobile only) */}
+						<div className="sm:hidden flex items-center justify-center bg-zinc-950 rounded-lg p-0.5 border border-zinc-800 self-start">
 							<button
-								onClick={() => setActiveTab('live')}
-								className={`px-2 py-1 rounded transition-colors ${
-									activeTab === 'live'
-										? 'bg-zinc-800 text-zinc-100 font-medium'
-										: 'text-zinc-400'
+								onClick={() =>
+									handleModeSwitch(TradeType.DEMO)
+								}
+								className={`text-[9px] uppercase font-bold px-3 py-1 rounded transition-all flex-1 text-center min-w-[60px] ${
+									mode === TradeType.DEMO
+										? 'bg-zinc-800 text-zinc-100'
+										: 'text-zinc-500'
 								}`}
 							>
-								🟢 Live
+								Demo
 							</button>
 							<button
-								onClick={() => setActiveTab('analysis')}
-								className={`px-2 py-1 rounded transition-colors ${
-									activeTab === 'analysis'
-										? 'bg-zinc-800 text-zinc-100 font-medium'
-										: 'text-zinc-400'
+								onClick={() =>
+									handleModeSwitch(TradeType.TEST)
+								}
+								className={`text-[9px] uppercase font-bold px-3 py-1 rounded transition-all flex-1 text-center min-w-[60px] ${
+									mode === TradeType.TEST
+										? 'bg-blue-600 text-white'
+										: 'text-zinc-500'
 								}`}
 							>
-								📊 Analysis
+								Test
 							</button>
 							<button
-								onClick={() => setActiveTab('simulations')}
-								className={`px-2 py-1 rounded transition-colors ${
-									activeTab === 'simulations'
-										? 'bg-zinc-800 text-zinc-100 font-medium'
-										: 'text-zinc-400'
+								onClick={() =>
+									handleModeSwitch(TradeType.LIVE)
+								}
+								className={`text-[9px] uppercase font-bold px-3 py-1 rounded transition-all flex-1 text-center min-w-[60px] ${
+									mode === TradeType.LIVE
+										? 'bg-red-500 text-white'
+										: 'text-zinc-500'
 								}`}
 							>
-								🧪 Sims
+								Live
 							</button>
-						</nav>
+						</div>
 
-						<div className="flex sm:hidden items-center gap-1.5">
-							{getAuthRole() === 'readonly' && (
-								<span className="text-[8px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
-									RO
-								</span>
-							)}
-							{getAuthRole() === 'admin' && (
-								<span className="text-[8px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-									AD
-								</span>
-							)}
+						{/* Separator */}
+						<div className="sm:hidden border-t border-zinc-800/50 my-0.5" />
+
+						{/* Tabs Row (Lowest row) */}
+						<div className="flex items-center">
+							<nav className="flex items-center gap-1 text-[11px] xs:text-xs overflow-x-auto pb-1 scrollbar-hide">
+								<button
+									onClick={() => setActiveTab('live')}
+									className={`px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+										activeTab === 'live'
+											? 'bg-zinc-800 text-zinc-100 font-medium'
+											: 'text-zinc-400'
+									}`}
+								>
+									🟢 Live Dashboard
+								</button>
+								<button
+									onClick={() => setActiveTab('analysis')}
+									className={`px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+										activeTab === 'analysis'
+											? 'bg-zinc-800 text-zinc-100 font-medium'
+											: 'text-zinc-400'
+									}`}
+								>
+									📊 Trade Analysis
+								</button>
+								<button
+									onClick={() => setActiveTab('simulations')}
+									className={`px-2 py-1 rounded transition-colors whitespace-nowrap flex-shrink-0 ${
+										activeTab === 'simulations'
+											? 'bg-zinc-800 text-zinc-100 font-medium'
+											: 'text-zinc-400'
+									}`}
+								>
+									🧪 Simulations
+								</button>
+							</nav>
 						</div>
 					</div>
 				</div>
