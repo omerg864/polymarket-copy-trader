@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', 'copy-bot', '.env') });
 
 import Redis from 'ioredis';
 
@@ -32,7 +32,7 @@ async function main() {
 	for (let i = 0; i < historyLen; i++) {
 		const raw = await redis.lindex(historyKey, i);
 		if (!raw) continue;
-		
+
 		try {
 			const trade = JSON.parse(raw);
 			if (trade.id) {
@@ -44,7 +44,9 @@ async function main() {
 		}
 	}
 
-	console.log(`✅ Migration complete. Added ${addedCount} unique IDs to ${historyIdsKey}.`);
+	console.log(
+		`✅ Migration complete. Added ${addedCount} unique IDs to ${historyIdsKey}.`,
+	);
 	await redis.quit();
 }
 

@@ -6,7 +6,7 @@ import { RelayClient, RelayerTxType } from '@polymarket/builder-relayer-client';
 import { BuilderConfig } from '@polymarket/builder-signing-sdk';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', 'copy-bot', '.env') });
 
 async function main() {
 	const conditionId =

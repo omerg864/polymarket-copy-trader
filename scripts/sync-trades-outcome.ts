@@ -10,7 +10,7 @@ import axios from 'axios';
 import { TradeType, type Trade } from '../shared/src/types';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', 'copy-bot', '.env') });
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const GAMMA_API = 'https://gamma-api.polymarket.com';

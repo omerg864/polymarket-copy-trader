@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import { TradeType } from '../shared/src/types';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', 'copy-bot', '.env') });
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const PREFIX = 'pmbot:';
@@ -77,7 +77,9 @@ async function main() {
 		let totalPnl = 0;
 
 		// Active trades fees
-		const activeIds = await redis.smembers(`${PREFIX}${MODE}:active_trades`);
+		const activeIds = await redis.smembers(
+			`${PREFIX}${MODE}:active_trades`,
+		);
 		for (const id of activeIds) {
 			const raw = await redis.get(`${PREFIX}${MODE}:trade:${id}`);
 			if (!raw) continue;

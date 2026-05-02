@@ -1,6 +1,6 @@
 /**
  * Script to find trades where the entry BTC price was "opposite" of the target price.
- * 
+ *
  * Logic:
  * - Direction UP trades should enter ABOVE the priceToBeat.
  * - Direction DOWN trades should enter BELOW the priceToBeat.
@@ -16,7 +16,9 @@ import Redis from 'ioredis';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Load environment from .env.production.local
-dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env.production.local') });
+dotenv.config({
+	path: path.resolve(__dirname, '..', 'copy-bot', '.env.production.local'),
+});
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const PREFIX = 'pmbot:';
@@ -33,7 +35,7 @@ async function main() {
 	// Key: pmbot:demo:active_trades (Set of IDs)
 	const activeIdsKey = `${PREFIX}${MODE}:active_trades`;
 	const activeIds = await redis.smembers(activeIdsKey);
-	
+
 	console.log(`Checking ${activeIds.length} active trades...`);
 	for (const id of activeIds) {
 		// Key: pmbot:demo:trade:ID
@@ -41,7 +43,7 @@ async function main() {
 		const raw = await redis.get(tradeKey);
 		if (!raw) continue;
 		const trade = JSON.parse(raw);
-		
+
 		if (isOpposite(trade)) {
 			oppositeTrades.push({ source: 'active', ...trade });
 		}
@@ -52,7 +54,7 @@ async function main() {
 	const historyKey = `${PREFIX}${MODE}:history`;
 	const historyLen = await redis.llen(historyKey);
 	console.log(`Checking ${historyLen} history trades...`);
-	
+
 	const historyRaw = await redis.lrange(historyKey, 0, -1);
 	for (const raw of historyRaw) {
 		const trade = JSON.parse(raw);
@@ -65,16 +67,20 @@ async function main() {
 		console.log('\n✅ No "opposite" trades found.');
 	} else {
 		console.log(`\n❌ Found ${oppositeTrades.length} "opposite" trades:\n`);
-		
+
 		let totalPnL = 0;
-		const tableData = oppositeTrades.map(t => {
-			const entryBTC = t.indicators?.currentPrice ? parseFloat(t.indicators.currentPrice) : t.entryPrice;
-			const targetBTC = t.indicators?.priceToBeat ? parseFloat(t.indicators.priceToBeat) : t.priceToBeat;
+		const tableData = oppositeTrades.map((t) => {
+			const entryBTC = t.indicators?.currentPrice
+				? parseFloat(t.indicators.currentPrice)
+				: t.entryPrice;
+			const targetBTC = t.indicators?.priceToBeat
+				? parseFloat(t.indicators.priceToBeat)
+				: t.priceToBeat;
 			const diff = entryBTC - targetBTC;
 			const dir = t.direction;
 			const pnl = t.pnl || 0;
 			totalPnL += pnl;
-			
+
 			return {
 				ID: t.id,
 				Dir: dir,
@@ -84,12 +90,16 @@ async function main() {
 				'Dist %': t.indicators?.distFromRef || 'N/A',
 				PnL: pnl != null ? `$${pnl.toFixed(2)}` : 'N/A',
 				Status: t.status,
-				Entered: t.enteredAt ? new Date(t.enteredAt).toLocaleString() : 'N/A'
+				Entered: t.enteredAt
+					? new Date(t.enteredAt).toLocaleString()
+					: 'N/A',
 			};
 		});
 
 		console.table(tableData);
-		console.log(`\n💰 Total PnL for these trades: ${totalPnL >= 0 ? '+' : ''}$${totalPnL.toFixed(2)}`);
+		console.log(
+			`\n💰 Total PnL for these trades: ${totalPnL >= 0 ? '+' : ''}$${totalPnL.toFixed(2)}`,
+		);
 	}
 
 	await redis.quit();
@@ -102,11 +112,21 @@ async function main() {
  */
 function isOpposite(trade: any): boolean {
 	// Prioritize indicator data as it always contains the BTC price at entry
-	let entryPrice = trade.indicators?.currentPrice ? parseFloat(trade.indicators.currentPrice) : trade.entryPrice;
-	let targetPrice = trade.indicators?.priceToBeat ? parseFloat(trade.indicators.priceToBeat) : trade.priceToBeat;
+	let entryPrice = trade.indicators?.currentPrice
+		? parseFloat(trade.indicators.currentPrice)
+		: trade.entryPrice;
+	let targetPrice = trade.indicators?.priceToBeat
+		? parseFloat(trade.indicators.priceToBeat)
+		: trade.priceToBeat;
 
 	// Basic validation
-	if (entryPrice == null || targetPrice == null || isNaN(entryPrice) || isNaN(targetPrice) || targetPrice === 0) {
+	if (
+		entryPrice == null ||
+		targetPrice == null ||
+		isNaN(entryPrice) ||
+		isNaN(targetPrice) ||
+		targetPrice === 0
+	) {
 		return false;
 	}
 
@@ -116,7 +136,7 @@ function isOpposite(trade: any): boolean {
 		return false;
 	}
 
-	// UP trade: Expecting price to go ABOVE target. 
+	// UP trade: Expecting price to go ABOVE target.
 	if (trade.direction === 'UP' && entryPrice < targetPrice) {
 		return true;
 	}
@@ -129,7 +149,7 @@ function isOpposite(trade: any): boolean {
 	return false;
 }
 
-main().catch(err => {
+main().catch((err) => {
 	console.error('Error:', err);
 	process.exit(1);
 });

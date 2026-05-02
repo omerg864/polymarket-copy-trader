@@ -1,10 +1,10 @@
 {
-	"name": "polymarket-btc5-bot",
+	"name": "polymarket-copy-bot",
 	"version": "0.0.1",
 	"description": "Trading engine for Polymarket BTC 5-minute up/down markets",
 	"main": "dist/index.js",
 	"scripts": {
-		"start": "node dist/btc5-bot/src/index.js",
+		"start": "node dist/copy-bot/src/index.js",
 		"start:demo": "npm run start",
 		"dev": "nodemon --watch src --watch ../shared/src --ext ts --exec ts-node -r tsconfig-paths/register src/index.ts",
 		"build": "tsc && tsc-alias"

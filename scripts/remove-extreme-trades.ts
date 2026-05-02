@@ -1,6 +1,6 @@
 /**
  * Script to remove trades with an absolute price difference (Entry BTC vs Target BTC) > 20.
- * 
+ *
  * Logic:
  * 1. Find "opposite" trades.
  * 2. Filter for |Entry BTC - Target BTC| > 20.
@@ -18,7 +18,9 @@ import Redis from 'ioredis';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Load environment from .env.production.local
-dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env.production.local') });
+dotenv.config({
+	path: path.resolve(__dirname, '..', 'copy-bot', '.env.production.local'),
+});
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const PREFIX = 'pmbot:';
@@ -35,13 +37,13 @@ async function main() {
 	// 1. Scan Active Trades
 	const activeIdsKey = `${PREFIX}${MODE}:active_trades`;
 	const activeIds = await redis.smembers(activeIdsKey);
-	
+
 	for (const id of activeIds) {
 		const tradeKey = `${PREFIX}${MODE}:trade:${id}`;
 		const raw = await redis.get(tradeKey);
 		if (!raw) continue;
 		const trade = JSON.parse(raw);
-		
+
 		if (isExtremeOpposite(trade)) {
 			toRemove.push({ id, source: 'active', trade });
 		}
@@ -50,7 +52,7 @@ async function main() {
 	// 2. Scan History Trades
 	const historyKey = `${PREFIX}${MODE}:history`;
 	const historyRaw = await redis.lrange(historyKey, 0, -1);
-	
+
 	for (const raw of historyRaw) {
 		const trade = JSON.parse(raw);
 		if (isExtremeOpposite(trade)) {
@@ -66,36 +68,42 @@ async function main() {
 	}
 
 	console.log(`🚨 Found ${toRemove.length} trades to remove (diff > 20):\n`);
-	console.table(toRemove.map(t => {
-		const entryBTC = t.trade.indicators?.currentPrice ? parseFloat(t.trade.indicators.currentPrice) : t.trade.entryPrice;
-		const targetBTC = t.trade.indicators?.priceToBeat ? parseFloat(t.trade.indicators.priceToBeat) : t.trade.priceToBeat;
-		return {
-			ID: t.id,
-			Source: t.source,
-			'Entry BTC': entryBTC.toFixed(2),
-			'Target BTC': targetBTC.toFixed(2),
-			Diff: (entryBTC - targetBTC).toFixed(2),
-			Status: t.trade.status
-		};
-	}));
+	console.table(
+		toRemove.map((t) => {
+			const entryBTC = t.trade.indicators?.currentPrice
+				? parseFloat(t.trade.indicators.currentPrice)
+				: t.trade.entryPrice;
+			const targetBTC = t.trade.indicators?.priceToBeat
+				? parseFloat(t.trade.indicators.priceToBeat)
+				: t.trade.priceToBeat;
+			return {
+				ID: t.id,
+				Source: t.source,
+				'Entry BTC': entryBTC.toFixed(2),
+				'Target BTC': targetBTC.toFixed(2),
+				Diff: (entryBTC - targetBTC).toFixed(2),
+				Status: t.trade.status,
+			};
+		}),
+	);
 
 	console.log('\nStarting removal process...');
 
 	for (const item of toRemove) {
 		const { id, source } = item;
-		
+
 		// Remove individual trade key
 		const tradeKey = `${PREFIX}${MODE}:trade:${id}`;
 		await redis.del(tradeKey);
-		
+
 		// Remove from active_trades set
 		if (source === 'active') {
 			await redis.srem(`${PREFIX}${MODE}:active_trades`, id);
 		}
-		
+
 		// Remove from history_ids set
 		await redis.srem(`${PREFIX}${MODE}:history_ids`, id);
-		
+
 		console.log(`  🗑️ Removed trade ${id} from keys and sets`);
 	}
 
@@ -113,10 +121,21 @@ async function main() {
 }
 
 function isExtremeOpposite(trade: any): boolean {
-	let entryPrice = trade.indicators?.currentPrice ? parseFloat(trade.indicators.currentPrice) : trade.entryPrice;
-	let targetPrice = trade.indicators?.priceToBeat ? parseFloat(trade.indicators.priceToBeat) : trade.priceToBeat;
+	let entryPrice = trade.indicators?.currentPrice
+		? parseFloat(trade.indicators.currentPrice)
+		: trade.entryPrice;
+	let targetPrice = trade.indicators?.priceToBeat
+		? parseFloat(trade.indicators.priceToBeat)
+		: trade.priceToBeat;
 
-	if (entryPrice == null || targetPrice == null || isNaN(entryPrice) || isNaN(targetPrice) || targetPrice === 0 || entryPrice < 1000) {
+	if (
+		entryPrice == null ||
+		targetPrice == null ||
+		isNaN(entryPrice) ||
+		isNaN(targetPrice) ||
+		targetPrice === 0 ||
+		entryPrice < 1000
+	) {
 		return false;
 	}
 
@@ -124,12 +143,14 @@ function isExtremeOpposite(trade: any): boolean {
 	const absDiff = Math.abs(diff);
 
 	// Condition: Opposite AND abs diff > 20
-	const isOpposite = (trade.direction === 'UP' && diff < 0) || (trade.direction === 'DOWN' && diff > 0);
-	
+	const isOpposite =
+		(trade.direction === 'UP' && diff < 0) ||
+		(trade.direction === 'DOWN' && diff > 0);
+
 	return isOpposite && absDiff > 20;
 }
 
-main().catch(err => {
+main().catch((err) => {
 	console.error('Error:', err);
 	process.exit(1);
 });

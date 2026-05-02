@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Load production environment
 dotenv.config({
-	path: path.resolve(__dirname, '..', 'btc5-bot', '.env.production.local'),
+	path: path.resolve(__dirname, '..', 'copy-bot', '.env.production.local'),
 });
 
 const REDIS_URL = process.env.REDIS_URL;
@@ -33,7 +33,7 @@ async function getHistoricalPrice(endTimeStr: string): Promise<number | null> {
 		const response = await axios.get(url);
 		if (response.data && response.data.length > 0) {
 			// [startTime, open, high, low, close, volume, endTime, ...]
-            // We use the 'open' of the minute starting at endTime as the resolution price
+			// We use the 'open' of the minute starting at endTime as the resolution price
 			return parseFloat(response.data[0][1]);
 		}
 	} catch (err) {
@@ -65,7 +65,9 @@ async function main() {
 
 		const resolutionPrice = await getHistoricalPrice(trade.endTime);
 		if (!resolutionPrice) {
-			console.log(`❌ Could not get resolution price for ${trade.endTime}. Skipping.`);
+			console.log(
+				`❌ Could not get resolution price for ${trade.endTime}. Skipping.`,
+			);
 			continue;
 		}
 
@@ -73,20 +75,24 @@ async function main() {
 		console.log(`  Ref Price (BTC): ${trade.priceToBeat}`);
 		console.log(`  Direction:       ${trade.direction}`);
 
-		const actualOutcome = resolutionPrice > trade.priceToBeat ? 'UP' : 'DOWN';
+		const actualOutcome =
+			resolutionPrice > trade.priceToBeat ? 'UP' : 'DOWN';
 		const isWin = actualOutcome === trade.direction;
 
 		trade.status = isWin ? 'won' : 'lost';
 		trade.exitPrice = isWin ? 1.0 : 0.0;
 		trade.exitBtcPrice = resolutionPrice;
 		trade.closedAt = new Date().toISOString();
-		
-        const revenue = isWin ? (1.0 * trade.size) : 0;
-        const fee = trade.fee || 0;
-		trade.pnl = revenue - trade.cost - fee;
-		trade.pctChange = (trade.exitPrice - trade.entryPrice) / trade.entryPrice;
 
-		console.log(`  Result: ${trade.status.toUpperCase()} (Outcome: ${actualOutcome})`);
+		const revenue = isWin ? 1.0 * trade.size : 0;
+		const fee = trade.fee || 0;
+		trade.pnl = revenue - trade.cost - fee;
+		trade.pctChange =
+			(trade.exitPrice - trade.entryPrice) / trade.entryPrice;
+
+		console.log(
+			`  Result: ${trade.status.toUpperCase()} (Outcome: ${actualOutcome})`,
+		);
 		console.log(`  PnL:    $${trade.pnl.toFixed(2)}`);
 
 		// 1. Remove from active
@@ -121,15 +127,15 @@ async function main() {
 			await redis.set(balKey, newBal.toString());
 			console.log(`  Balance Updated: $${newBal.toFixed(2)}`);
 		}
-        
-        // 5. Update daily stats if possible (standard pattern)
-        const todayStr = new Date().toISOString().split('T')[0];
-        const dailyPnlKey = `${PREFIX}${MODE}:daily_pnl:${todayStr}`;
-        // This is a hash in this project usually
-        await redis.hincrbyfloat(dailyPnlKey, 'pnl', trade.pnl);
-        await redis.hincrby(dailyPnlKey, 'totalTrades', 1);
-        if (isWin) await redis.hincrby(dailyPnlKey, 'wins', 1);
-        else await redis.hincrby(dailyPnlKey, 'losses', 1);
+
+		// 5. Update daily stats if possible (standard pattern)
+		const todayStr = new Date().toISOString().split('T')[0];
+		const dailyPnlKey = `${PREFIX}${MODE}:daily_pnl:${todayStr}`;
+		// This is a hash in this project usually
+		await redis.hincrbyfloat(dailyPnlKey, 'pnl', trade.pnl);
+		await redis.hincrby(dailyPnlKey, 'totalTrades', 1);
+		if (isWin) await redis.hincrby(dailyPnlKey, 'wins', 1);
+		else await redis.hincrby(dailyPnlKey, 'losses', 1);
 
 		console.log(`✅ Trade ${id} resolved.`);
 	}

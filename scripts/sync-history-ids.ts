@@ -7,7 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({
-	path: path.resolve(__dirname, '..', 'btc5-bot', '.env.production.local'),
+	path: path.resolve(__dirname, '..', 'copy-bot', '.env.production.local'),
 });
 
 import Redis from 'ioredis';

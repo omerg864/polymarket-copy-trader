@@ -11,7 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Load production environment
 dotenv.config({
-	path: path.resolve(__dirname, '..', 'btc5-bot', '.env.production.local'),
+	path: path.resolve(__dirname, '..', 'copy-bot', '.env.production.local'),
 });
 
 const REDIS_URL = process.env.REDIS_URL;
@@ -24,7 +24,9 @@ async function main() {
 		process.exit(1);
 	}
 
-	console.log(`\n🔍 Investigating Redis: ${REDIS_URL.split('@')[1] || REDIS_URL}`);
+	console.log(
+		`\n🔍 Investigating Redis: ${REDIS_URL.split('@')[1] || REDIS_URL}`,
+	);
 	const redis = new Redis(REDIS_URL);
 
 	for (const mode of MODES) {
@@ -44,7 +46,9 @@ async function main() {
 			const rawTrade = await redis.get(tradeKey);
 
 			if (!rawTrade) {
-				console.log(`⚠️  Trade ID ${id} exists in active set but trade object is MISSING!`);
+				console.log(
+					`⚠️  Trade ID ${id} exists in active set but trade object is MISSING!`,
+				);
 				continue;
 			}
 
@@ -64,18 +68,24 @@ async function main() {
 			console.log(`  Start Time: ${trade.startTime}`);
 			console.log(`  End Time:   ${trade.endTime}`);
 			console.log(`  Expired:    ${isExpired ? '🚨 YES' : '⏳ NO'}`);
-			
+
 			if (isExpired) {
-				console.log(`  Overdue by: ${Math.floor(diff.minutes || 0)}m ${Math.floor(diff.seconds || 0)}s`);
+				console.log(
+					`  Overdue by: ${Math.floor(diff.minutes || 0)}m ${Math.floor(diff.seconds || 0)}s`,
+				);
 			} else {
-				console.log(`  Time left:  ${Math.floor(Math.abs(diff.minutes || 0))}m ${Math.floor(Math.abs(diff.seconds || 0))}s`);
+				console.log(
+					`  Time left:  ${Math.floor(Math.abs(diff.minutes || 0))}m ${Math.floor(Math.abs(diff.seconds || 0))}s`,
+				);
 			}
 
 			// Check for market cache
 			const marketKey = `${PREFIX}market:${trade.conditionId}`;
 			const marketCache = await redis.get(marketKey);
-			console.log(`  Market Cache: ${marketCache ? '✅ Found' : '❌ Missing'}`);
-			
+			console.log(
+				`  Market Cache: ${marketCache ? '✅ Found' : '❌ Missing'}`,
+			);
+
 			if (isExpired) {
 				console.log(`\n  --- FULL JSON ---`);
 				console.log(JSON.stringify(trade, null, 2));

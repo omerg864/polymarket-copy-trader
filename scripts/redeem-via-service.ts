@@ -3,10 +3,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', 'copy-bot', '.env') });
 
-import polymarketService from '../btc5-bot/src/services/polymarket';
-import logger from '../btc5-bot/src/utils/logger';
+import polymarketService from '../copy-bot/src/services/polymarket';
+import logger from '../copy-bot/src/utils/logger';
 
 async function main() {
 	const conditionId =

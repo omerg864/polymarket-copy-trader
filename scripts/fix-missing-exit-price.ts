@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', 'copy-bot', '.env') });
 
 import Redis from 'ioredis';
 
@@ -27,13 +27,13 @@ async function main() {
 	for (let i = 0; i < historyLen; i++) {
 		const raw = await redis.lindex(historyKey, i);
 		if (!raw) continue;
-		
+
 		try {
 			const trade = JSON.parse(raw);
 			processedCount++;
 
 			let needsFix = false;
-			
+
 			// Check if exitPrice is missing, null, or 0 when it shouldn't be
 			// Note: exitPrice can be 0 if the trade was lost on resolution (lost = 0.0)
 			// But it shouldn't be undefined.
@@ -42,27 +42,41 @@ async function main() {
 			}
 
 			if (needsFix) {
-				console.log(`\nFound trade with missing exit data: ${trade.id} (${trade.title})`);
-				console.log(`Current Status: ${trade.status}, PnL: ${trade.pnl}`);
+				console.log(
+					`\nFound trade with missing exit data: ${trade.id} (${trade.title})`,
+				);
+				console.log(
+					`Current Status: ${trade.status}, PnL: ${trade.pnl}`,
+				);
 
 				// Best effort reconstruction
-				if (trade.status === 'won' || trade.status === 'won_resolution') {
+				if (
+					trade.status === 'won' ||
+					trade.status === 'won_resolution'
+				) {
 					trade.exitPrice = 1.0;
-				} else if (trade.status === 'lost' || trade.status === 'lost_resolution') {
+				} else if (
+					trade.status === 'lost' ||
+					trade.status === 'lost_resolution'
+				) {
 					trade.exitPrice = 0.0;
 				} else if (trade.exitPrice === undefined) {
 					// For closed_tp/closed_sl/closed_sell, if we only have PnL:
 					// PnL = (exitPrice * size) - cost - fee
 					// exitPrice = (PnL + cost + fee) / size
 					if (trade.size > 0) {
-						trade.exitPrice = (trade.pnl + trade.cost + trade.fee) / trade.size;
-						console.log(`Inferred exitPrice from PnL: ${trade.exitPrice}`);
+						trade.exitPrice =
+							(trade.pnl + trade.cost + trade.fee) / trade.size;
+						console.log(
+							`Inferred exitPrice from PnL: ${trade.exitPrice}`,
+						);
 					}
 				}
 
 				// Recalculate pctChange if missing
 				if (trade.pctChange === undefined && trade.entryPrice > 0) {
-					trade.pctChange = (trade.exitPrice - trade.entryPrice) / trade.entryPrice;
+					trade.pctChange =
+						(trade.exitPrice - trade.entryPrice) / trade.entryPrice;
 				}
 
 				// Update the item in the list
@@ -77,7 +91,7 @@ async function main() {
 
 	console.log(`\nTotal trades processed: ${processedCount}`);
 	console.log(`Total trades fixed: ${fixedCount}`);
-	
+
 	await redis.quit();
 }
 

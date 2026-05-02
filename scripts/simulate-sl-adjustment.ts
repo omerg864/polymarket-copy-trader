@@ -7,7 +7,7 @@ import { DateTime } from 'luxon';
 // Setup paths
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({
-	path: path.resolve(__dirname, '..', 'btc5-bot', '.env.production.local'),
+	path: path.resolve(__dirname, '..', 'copy-bot', '.env.production.local'),
 });
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';

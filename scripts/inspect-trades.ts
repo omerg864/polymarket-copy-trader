@@ -8,7 +8,7 @@ import Redis from 'ioredis';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({
-	path: path.resolve(__dirname, '..', 'btc5-bot', '.env.production.local'),
+	path: path.resolve(__dirname, '..', 'copy-bot', '.env.production.local'),
 });
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
@@ -24,9 +24,9 @@ async function main() {
 	const redis = new Redis(REDIS_URL);
 	const historyKey = `${PREFIX}${MODE}:history`;
 	const historyRaw = await redis.lrange(historyKey, 0, -1);
-	
+
 	for (const id of TARGET_TRADE_IDS) {
-		const raw = historyRaw.find(r => JSON.parse(r).id === id);
+		const raw = historyRaw.find((r) => JSON.parse(r).id === id);
 		if (raw) {
 			console.log(`Trade ${id}:`);
 			const t = JSON.parse(raw);

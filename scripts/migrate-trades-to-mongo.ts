@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Load production environment (matching verify-stats.ts pattern)
 dotenv.config({
-	path: path.resolve(__dirname, '..', 'btc5-bot', '.env.production.local'),
+	path: path.resolve(__dirname, '..', 'copy-bot', '.env.production.local'),
 });
 
 import Redis from 'ioredis';
@@ -24,13 +24,19 @@ const REDIS_KEYS = {
 };
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/polymarket-bot';
+const MONGO_URI =
+	process.env.MONGO_URI || 'mongodb://localhost:27017/polymarket-bot';
 
 // Minimal Trade Schema for migration
 const tradeSchema = new Schema(
 	{
 		tradeId: { type: String, required: true, unique: true, index: true },
-		type: { type: String, enum: Object.values(TradeType), required: true, index: true },
+		type: {
+			type: String,
+			enum: Object.values(TradeType),
+			required: true,
+			index: true,
+		},
 		direction: { type: String, enum: ['UP', 'DOWN'], required: true },
 		tokenId: { type: String, required: true },
 		conditionId: { type: String, required: true },
@@ -57,10 +63,11 @@ const tradeSchema = new Schema(
 		indicators: { type: Schema.Types.Mixed },
 		actualOutcome: { type: String, enum: ['UP', 'DOWN', 'UNKNOWN'] },
 	},
-	{ timestamps: true }
+	{ timestamps: true },
 );
 
-const TradeModel = mongoose.models.Trade || mongoose.model('Trade', tradeSchema);
+const TradeModel =
+	mongoose.models.Trade || mongoose.model('Trade', tradeSchema);
 
 async function migrate(mode: TradeType, redis: Redis) {
 	console.log(`\n--- Migrating ${mode} trades ---`);
@@ -76,12 +83,12 @@ async function migrate(mode: TradeType, redis: Redis) {
 	for (const raw of records) {
 		try {
 			const trade = JSON.parse(raw);
-			
+
 			// Upsert into MongoDB
 			await TradeModel.updateOne(
 				{ tradeId: trade.id },
 				{ $set: { ...trade, tradeId: trade.id, type: mode } },
-				{ upsert: true }
+				{ upsert: true },
 			);
 
 			// Add to Redis SET
@@ -95,13 +102,15 @@ async function migrate(mode: TradeType, redis: Redis) {
 			console.error(`\nFailed to migrate trade: ${err}`);
 		}
 	}
-	console.log(`\nMigration completed for ${mode}: ${migratedCount} migrated.`);
+	console.log(
+		`\nMigration completed for ${mode}: ${migratedCount} migrated.`,
+	);
 }
 
 async function main() {
 	console.log('🚀 Starting PRODUCTION migration...');
 	console.log(`MONGO_URI: ${MONGO_URI}`);
-	
+
 	try {
 		await mongoose.connect(MONGO_URI);
 		console.log('Connected to MongoDB');
@@ -112,7 +121,7 @@ async function main() {
 		for (const mode of Object.values(TradeType)) {
 			await migrate(mode, redis);
 		}
-		
+
 		console.log('\n✅ Migration finished successfully!');
 		await redis.quit();
 	} catch (err) {

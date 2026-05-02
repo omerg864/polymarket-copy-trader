@@ -8,7 +8,7 @@ import mongoose, { Schema } from 'mongoose';
 // Setup paths
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({
-	path: path.resolve(__dirname, '..', 'btc5-bot', '.env.production.local'),
+	path: path.resolve(__dirname, '..', 'copy-bot', '.env.production.local'),
 });
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
@@ -85,13 +85,13 @@ async function main() {
 	const isAllowedTime = (iso: string) => {
 		const dt = DateTime.fromISO(iso).setZone(timezone);
 		const hour = dt.hour;
-		
+
 		// Window 1: 00:00 to 01:59 (Hours 0 and 1)
 		if (hour >= 0 && hour <= 1) return true;
-		
+
 		// Window 2: 11:00 to 23:59 (Hours 11 through 23)
 		if (hour >= 11 && hour <= 23) return true;
-		
+
 		return false;
 	};
 
@@ -168,8 +168,10 @@ async function main() {
 	console.log(
 		`${'Total Trades:'.padEnd(20)} | ${totalActTrades.toString().padStart(14)} | ${totalSimTrades.toString().padStart(14)}`,
 	);
-	const actWRTotal = totalActTrades > 0 ? (totalActWins / totalActTrades) * 100 : 0;
-	const simWRTotal = totalSimTrades > 0 ? (totalSimWins / totalSimTrades) * 100 : 0;
+	const actWRTotal =
+		totalActTrades > 0 ? (totalActWins / totalActTrades) * 100 : 0;
+	const simWRTotal =
+		totalSimTrades > 0 ? (totalSimWins / totalSimTrades) * 100 : 0;
 	console.log(
 		`${'Win Rate:'.padEnd(20)} | ${actWRTotal.toFixed(2).padStart(13)}% | ${simWRTotal.toFixed(2).padStart(13)}%`,
 	);

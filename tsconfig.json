@@ -13,11 +13,11 @@
 	},
 	"include": [
 		"scripts/**/*.ts",
-		"btc5-bot/src/**/*.ts",
+		"copy-bot/src/**/*.ts",
 		"shared/src/**/*.ts",
-		"btc5-bot/scripts/fix-duplicates.ts",
-		"btc5-bot/scripts/migrate-history-zset.ts",
-		"btc5-bot/scripts/test-fallback.ts",
-		"btc5-bot/scripts/test-sell-logic.ts"
+		"copy-bot/scripts/fix-duplicates.ts",
+		"copy-bot/scripts/migrate-history-zset.ts",
+		"copy-bot/scripts/test-fallback.ts",
+		"copy-bot/scripts/test-sell-logic.ts"
 	]
 }

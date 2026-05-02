@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', 'copy-bot', '.env') });
 
 import Redis from 'ioredis';
 import { Queue } from 'bullmq';
@@ -29,29 +29,33 @@ async function main() {
 	console.log(`Status: ${trade.status}`);
 
 	const queue = new Queue('sell-trades', { connection: redis as any });
-	
+
 	console.log('Enqueuing RESOLVE job...');
-	await queue.add(`sell-${trade.id}`, {
-		trade,
-		type: 'RESOLVE',
-		btcPrice: 70802 // Current approximate price from my investigation
-	}, {
-		jobId: trade.id,
-		attempts: 30,
-		backoff: { type: 'fixed', delay: 30000 }
-	});
+	await queue.add(
+		`sell-${trade.id}`,
+		{
+			trade,
+			type: 'RESOLVE',
+			btcPrice: 70802, // Current approximate price from my investigation
+		},
+		{
+			jobId: trade.id,
+			attempts: 30,
+			backoff: { type: 'fixed', delay: 30000 },
+		},
+	);
 
 	console.log('✅ Job enqueued successfully');
-	
+
 	// Wait a bit to see if keys appear
-	await new Promise(r => setTimeout(r, 2000));
+	await new Promise((r) => setTimeout(r, 2000));
 	const keys = await redis.keys('*bull:*');
 	console.log('Current BullMQ keys in Redis:', keys);
 
 	await redis.quit();
 }
 
-main().catch(err => {
+main().catch((err) => {
 	console.error('Error:', err);
 	process.exit(1);
 });

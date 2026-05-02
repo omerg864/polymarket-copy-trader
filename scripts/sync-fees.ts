@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 import { TradeType } from '../shared/src/types';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '..', 'btc5-bot', '.env') });
+dotenv.config({ path: path.resolve(__dirname, '..', 'copy-bot', '.env') });
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const PREFIX = 'pmbot:';

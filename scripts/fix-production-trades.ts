@@ -10,7 +10,7 @@ import axios from 'axios';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({
-	path: path.resolve(__dirname, '..', 'btc5-bot', '.env.production.local'),
+	path: path.resolve(__dirname, '..', 'copy-bot', '.env.production.local'),
 });
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
@@ -32,7 +32,9 @@ async function getMarketOutcome(slug: string): Promise<string | null> {
 		const events = response.data;
 		if (!Array.isArray(events) || events.length === 0) return null;
 
-		const event = events.find((e: any) => e.ticker === slug || e.slug === slug);
+		const event = events.find(
+			(e: any) => e.ticker === slug || e.slug === slug,
+		);
 		if (!event) return null;
 
 		const marketData = event.markets?.[0];
@@ -59,18 +61,22 @@ async function main() {
 
 	const historyKey = `${PREFIX}${MODE}:history`;
 	const history = await redis.lrange(historyKey, 0, -1);
-	
+
 	for (const id of TARGET_TRADE_IDS) {
 		console.log(`Checking trade ${id}...`);
-		const tradeIndex = history.findIndex(raw => JSON.parse(raw).id === id);
-		
+		const tradeIndex = history.findIndex(
+			(raw) => JSON.parse(raw).id === id,
+		);
+
 		if (tradeIndex === -1) {
 			console.warn(`  ⚠️  Trade ${id} not found in history.`);
 			continue;
 		}
 
 		const trade = JSON.parse(history[tradeIndex]);
-		console.log(`  Found trade: ${trade.direction} on ${trade.slug} (Status: ${trade.status})`);
+		console.log(
+			`  Found trade: ${trade.direction} on ${trade.slug} (Status: ${trade.status})`,
+		);
 
 		if (trade.status !== 'closed_sl') {
 			console.log(`  Skipping: trade is already ${trade.status}`);
@@ -80,30 +86,44 @@ async function main() {
 		// Verify outcome
 		const outcome = await getMarketOutcome(trade.slug);
 		if (!outcome) {
-			console.warn(`  ⚠️  Could not verify outcome for market ${trade.slug}. Skipping.`);
+			console.warn(
+				`  ⚠️  Could not verify outcome for market ${trade.slug}. Skipping.`,
+			);
 			continue;
 		}
 
 		if (outcome === trade.direction) {
-			console.log(`  ✅ Verified WIN! Outcome ${outcome} matches direction ${trade.direction}.`);
-			
+			console.log(
+				`  ✅ Verified WIN! Outcome ${outcome} matches direction ${trade.direction}.`,
+			);
+
 			// Recover trade
 			const recoveredTrade = {
 				...trade,
 				status: 'closed_resolved',
 				exitPrice: 1.0,
 				pnl: trade.size - trade.cost - (trade.fee || 0),
-				notes: (trade.notes || '') + ' [RECOVERED: Fixed incorrect SL due to price bug]',
+				notes:
+					(trade.notes || '') +
+					' [RECOVERED: Fixed incorrect SL due to price bug]',
 			};
 
-			await redis.lset(historyKey, tradeIndex, JSON.stringify(recoveredTrade));
+			await redis.lset(
+				historyKey,
+				tradeIndex,
+				JSON.stringify(recoveredTrade),
+			);
 			console.log(`  🚀 Trade ${id} RECOVERED in history.`);
 		} else {
-			console.log(`  ❌ Resolution was ${outcome}. Trade was actually a loss. Leaving as is.`);
+			console.log(
+				`  ❌ Resolution was ${outcome}. Trade was actually a loss. Leaving as is.`,
+			);
 		}
 	}
 
-	console.log('\nRecovery complete. Please run verify-stats to update stats and balance.');
+	console.log(
+		'\nRecovery complete. Please run verify-stats to update stats and balance.',
+	);
 	await redis.quit();
 }
 

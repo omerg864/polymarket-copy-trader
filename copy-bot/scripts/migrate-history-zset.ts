@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // Resolve .env path relative to this script's directory in CommonJS
-// Script is in src/scripts/, .env is in btc5-bot/ root (2 levels up)
+// Script is in src/scripts/, .env is in copy-bot/ root (2 levels up)
 dotenv.config({ path: path.resolve(__dirname, '../../.env.production.local') });
 import Redis from 'ioredis';
 import config from '../src/config';

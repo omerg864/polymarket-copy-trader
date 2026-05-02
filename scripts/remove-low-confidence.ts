@@ -22,7 +22,7 @@ import Redis from 'ioredis';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({
-	path: path.resolve(__dirname, '..', 'btc5-bot', '.env.production.local'),
+	path: path.resolve(__dirname, '..', 'copy-bot', '.env.production.local'),
 });
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
@@ -56,7 +56,9 @@ async function main() {
 	const redis = new Redis(REDIS_URL);
 	console.log(`Connected to Redis (MODE: ${MODE})`);
 	console.log(`Minimum confidence: ${minConfidencePct}%`);
-	console.log(`Dry run: ${dryRun ? 'YES – no changes will be made' : 'NO – will delete trades'}\n`);
+	console.log(
+		`Dry run: ${dryRun ? 'YES – no changes will be made' : 'NO – will delete trades'}\n`,
+	);
 
 	const toRemove: { id: string; source: string; trade: any }[] = [];
 	const historyToRemove: string[] = [];
@@ -89,19 +91,26 @@ async function main() {
 	}
 
 	if (toRemove.length === 0) {
-		console.log(`✅ No trades found with confidence below ${minConfidencePct}%.`);
+		console.log(
+			`✅ No trades found with confidence below ${minConfidencePct}%.`,
+		);
 		await redis.quit();
 		return;
 	}
 
 	// Print summary table
-	console.log(`🚨 Found ${toRemove.length} trade(s) with confidence < ${minConfidencePct}%:\n`);
+	console.log(
+		`🚨 Found ${toRemove.length} trade(s) with confidence < ${minConfidencePct}%:\n`,
+	);
 	console.table(
 		toRemove.map((t) => ({
 			ID: t.id.slice(0, 8) + '…',
 			Source: t.source,
 			Direction: t.trade.direction,
-			Confidence: t.trade.confidence != null ? `${(t.trade.confidence * 100).toFixed(1)}%` : 'N/A',
+			Confidence:
+				t.trade.confidence != null
+					? `${(t.trade.confidence * 100).toFixed(1)}%`
+					: 'N/A',
 			PnL: `$${t.trade.pnl?.toFixed(2) ?? '?'}`,
 			Status: t.trade.status,
 			Slug: t.trade.slug?.slice(0, 30),
@@ -110,9 +119,14 @@ async function main() {
 
 	// Summary stats
 	const totalPnl = toRemove.reduce((sum, t) => sum + (t.trade.pnl ?? 0), 0);
-	const wins = toRemove.filter((t) => ['won', 'closed_tp', 'closed_fct'].includes(t.trade.status)).length;
-	const losses = toRemove.filter((t) => ['lost', 'closed_sl'].includes(t.trade.status)).length;
-	const winRate = wins + losses > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : 'N/A';
+	const wins = toRemove.filter((t) =>
+		['won', 'closed_tp', 'closed_fct'].includes(t.trade.status),
+	).length;
+	const losses = toRemove.filter((t) =>
+		['lost', 'closed_sl'].includes(t.trade.status),
+	).length;
+	const winRate =
+		wins + losses > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : 'N/A';
 
 	console.log(`\n📊 Total PnL of matched trades: $${totalPnl.toFixed(2)}`);
 	console.log(`   Wins: ${wins} | Losses: ${losses} | Win Rate: ${winRate}%`);
