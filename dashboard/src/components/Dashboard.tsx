@@ -1,6 +1,5 @@
 import { ActiveTradesTable } from './dashboard/ActiveTradesTable';
 import { Header } from './dashboard/Header';
-import { MarketPricesCards } from './dashboard/MarketPricesCards';
 import { StatsSummary } from './dashboard/StatsSummary';
 import { TimeStatusCards } from './dashboard/TimeStatusCards';
 import { TradeHistoryTable } from './dashboard/TradeHistoryTable';
@@ -29,7 +28,6 @@ export function Dashboard() {
 					serverTimezone={config?.timezone}
 				/>
 				<StatsSummary />
-				<MarketPricesCards />
 				<ActiveTradesTable />
 				<TradeHistoryTable />
 			</div>

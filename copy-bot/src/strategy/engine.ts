@@ -16,7 +16,6 @@ import redisService from '../services/redis';
 import { getStrategyConfig } from '../services/strategyConfig';
 import logger from '../utils/logger';
 import riskManager from './riskManager';
-import polymarketWsService from '../services/polymarketWs';
 import copyTraderService, { ClobTrade } from '../services/copyTrader';
 
 /**
@@ -199,6 +198,17 @@ class StrategyEngine {
 		sc: any,
 	): Promise<void> {
 		const activeTrades = await redisService.getActiveTrades();
+		
+		// Check if we already have an active trade for this specific token from this specific wallet
+		const alreadyIn = activeTrades.find(
+			(t) => t.tokenId === targetTrade.asset && t.copyFrom === nickname
+		);
+
+		if (alreadyIn) {
+			logger.debug(`Already in position for ${targetTrade.title} from ${nickname}. Skipping duplicate buy.`);
+			return;
+		}
+
 		if (activeTrades.length >= sc.maxConcurrentTrades) {
 			logger.warn(
 				`Max concurrent trades reached. Skipping copy for ${nickname}`,
@@ -311,82 +321,85 @@ class StrategyEngine {
 		nickname: string,
 	): Promise<void> {
 		const activeTrades = await redisService.getActiveTrades();
-		// Find the trade that matches the token AND was copied from THIS wallet
-		const ourTrade = activeTrades.find(
+		// Find all trades that match the token AND were copied from THIS wallet
+		const matchingTrades = activeTrades.filter(
 			(t) => t.tokenId === targetTrade.asset && t.copyFrom === nickname,
 		);
 
-		if (ourTrade) {
+		if (matchingTrades.length > 0) {
 			logger.info(
-				`🎯 Copying SELL from ${nickname}: ${ourTrade.title} | Closing our specific copy.`,
+				`🎯 Copying SELL from ${nickname}: Found ${matchingTrades.length} trade(s) to close.`,
 			);
 
-			// Fetch market prices for selling
-			const market = await polymarketService.getMarketByConditionId(
-				ourTrade.conditionId,
-			);
-			if (!market) {
-				logger.warn(
-					`Could not fetch market for closing trade ${ourTrade.id}`,
-				);
-				return;
-			}
+			for (const ourTrade of matchingTrades) {
+				logger.info(`  → Closing trade: ${ourTrade.title} (${ourTrade.id})`);
 
-			const prices = await polymarketService.getMarketPrices(market);
-			if (!prices) {
-				logger.warn(
-					`Could not fetch prices for closing trade ${ourTrade.id}`,
+				// Fetch market details
+				const market = await polymarketService.getMarketByConditionId(
+					ourTrade.conditionId,
 				);
-				return;
-			}
-
-			const sellPrice =
-				ourTrade.direction === 'UP' ? prices.upPrice : prices.downPrice;
-
-			if (config.isDemo) {
-				await demoTradingService.closeTrade(
-					ourTrade.id,
-					sellPrice,
-					TradeStatus.CLOSED_SELL,
-				);
-			} else {
-				try {
-					const order = await polymarketService.placeSellOrder(
-						ourTrade.tokenId,
-						sellPrice,
-						ourTrade.size,
-						market,
+				if (!market) {
+					logger.warn(
+						`Could not fetch market for closing trade ${ourTrade.id}`,
 					);
-					if (order) {
-						// PnL and cleanup will be handled by resolveExpiredTrades or a dedicated monitor
-						// but here we mark it as CLOSED_SELL to trigger immediate action
-						ourTrade.status = TradeStatus.CLOSED_SELL;
-						ourTrade.exitPrice = parseFloat(order.price);
-						ourTrade.closedAt = new Date().toISOString();
+					continue;
+				}
 
-						// Calculate PnL
-						const exitValue = ourTrade.size * ourTrade.exitPrice;
-						const entryValue = ourTrade.cost;
-						const fee = calculateFee(
+				const prices = await polymarketService.getMarketPrices(market);
+				if (!prices) {
+					logger.warn(
+						`Could not fetch prices for closing trade ${ourTrade.id}`,
+					);
+					continue;
+				}
+
+				const sellPrice =
+					ourTrade.direction === 'UP' ? prices.upPrice : prices.downPrice;
+
+				if (config.isDemo) {
+					await demoTradingService.closeTrade(
+						ourTrade.id,
+						sellPrice,
+						TradeStatus.CLOSED_SELL,
+					);
+				} else {
+					try {
+						const order = await polymarketService.placeSellOrder(
+							ourTrade.tokenId,
+							sellPrice,
 							ourTrade.size,
-							ourTrade.exitPrice,
+							market,
 						);
-						ourTrade.pnl =
-							exitValue - entryValue - ourTrade.fee - fee;
+						if (order) {
+							// PnL and cleanup will be handled by resolveExpiredTrades or a dedicated monitor
+							ourTrade.status = TradeStatus.CLOSED_SELL;
+							ourTrade.exitPrice = parseFloat(order.price);
+							ourTrade.closedAt = new Date().toISOString();
 
-						await redisService.saveTrade(ourTrade);
-						await redisService.moveToAwaitingResolve(ourTrade.id);
+							// Calculate PnL
+							const exitValue = ourTrade.size * ourTrade.exitPrice;
+							const entryValue = ourTrade.cost;
+							const fee = calculateFee(
+								ourTrade.size,
+								ourTrade.exitPrice,
+							);
+							ourTrade.pnl =
+								exitValue - entryValue - ourTrade.fee - fee;
 
-						// Update balance
-						const currentBal = await redisService.getBotBalance();
-						await redisService.setBotBalance(
-							currentBal + exitValue - fee,
+							await redisService.saveTrade(ourTrade);
+							await redisService.moveToAwaitingResolve(ourTrade.id);
+
+							// Update balance
+							const currentBal = await redisService.getBotBalance();
+							await redisService.setBotBalance(
+								currentBal + exitValue - fee,
+							);
+						}
+					} catch (error) {
+						logger.error(
+							`Failed to place live copy SELL order: ${error}`,
 						);
 					}
-				} catch (error) {
-					logger.error(
-						`Failed to place live copy SELL order: ${error}`,
-					);
 				}
 			}
 		}
