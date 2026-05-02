@@ -54,7 +54,8 @@ class DemoTradingService {
 		market: Market,
 		direction: 'UP' | 'DOWN',
 		confidence: number = 0,
-		indicators: Trade['indicators'] = undefined,
+		indicators: any = undefined,
+		copyFrom: string = '',
 	): Promise<Trade | null> {
 		if (
 			!price ||
@@ -103,10 +104,10 @@ class DemoTradingService {
 			startTime: market.startTime.toISOString(),
 			endTime: market.endTime.toISOString(),
 			enteredAt: new Date().toISOString(),
-			priceToBeat: market.priceToBeat ?? 0,
 			confidence,
 			pnl: 0,
 			indicators,
+			copyFrom,
 		};
 
 		await redisService.saveTrade(trade);
@@ -122,6 +123,42 @@ class DemoTradingService {
 		});
 
 		return trade;
+	}
+
+	/**
+	 * Simulate closing a trade immediately
+	 */
+	async closeTrade(
+		tradeId: string,
+		sellPrice: number,
+		status: TradeStatus,
+	): Promise<void> {
+		const trade = await redisService.getTrade(tradeId);
+		if (!trade) return;
+
+		logger.info(
+			`📝 DEMO CLOSE | ${trade.title} | Price: ${sellPrice.toFixed(3)} | Status: ${status}`,
+		);
+
+		trade.status = status;
+		trade.exitPrice = sellPrice;
+		trade.closedAt = new Date().toISOString();
+
+		const exitValue = trade.size * sellPrice;
+		const fee = calculateFee(trade.size, sellPrice);
+		trade.pnl = exitValue - trade.cost - trade.fee - fee;
+
+		await redisService.saveTrade(trade);
+		await redisService.moveToAwaitingResolve(trade.id);
+
+		// Queue for completion (balance/stats update)
+		const queueService = (await import('./queueService')).default;
+		await queueService.addResolveJob({
+			trade,
+			type: 'RESOLVE',
+			reason: 'copy-sell',
+			exitPrice: sellPrice,
+		});
 	}
 
 	/**

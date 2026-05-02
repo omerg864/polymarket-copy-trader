@@ -21,7 +21,6 @@ async function testFallback() {
 		tickSize: '0.001',
 		negRisk: false,
 		minOrderSize: 1,
-		priceToBeat: 60000,
 	};
 
 	// 1. Test with WS active (if possible) - this might return null if not connected

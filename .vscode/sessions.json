@@ -25,7 +25,7 @@
 				"autoExecuteCommands": true,
 				"icon": "rocket",
 				"color": "terminal.ansiGreen",
-				"commands": ["cd btc5-bot"]
+				"commands": ["cd copy-bot"]
 			},
 			{
 				"name": "root",

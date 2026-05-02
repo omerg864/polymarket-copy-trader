@@ -127,7 +127,7 @@ class PolymarketService {
 			config.funderAddress,
 			undefined, // geoBlockToken
 			undefined, // useServerTime
-			this.builderConfig,
+			this.builderConfig as any,
 			undefined, // getSigner
 			undefined, // retryOnError
 			undefined, // tickSizeTtlMs
@@ -189,54 +189,6 @@ class PolymarketService {
 		return Math.floor(epoch / fiveMin) * fiveMin;
 	}
 
-	async getNextMarket(): Promise<Market | null> {
-		try {
-			const now = new Date();
-			const currentStart = this._getCurrentFiveMinBoundary(now);
-			const nextStart = currentStart + 300;
-
-			// 1. Try to get the CURRENT active market first
-			let market = await this._fetchMarketBySlug(
-				this._getMarketSlug(currentStart),
-			);
-
-			// If current market is found, check if it's still actionable
-			if (market) {
-				const sc = await getStrategyConfig();
-				const minMsRemaining = sc.minSecondsRemaining * 1000;
-				const msUntilEnd = market.endTime.getTime() - now.getTime();
-
-				// Return current market if it has enough time
-				if (msUntilEnd >= minMsRemaining) {
-					return market;
-				}
-			}
-
-			// 2. If current market is almost over or missing, get the NEXT market
-			market = await this._fetchMarketBySlug(
-				this._getMarketSlug(nextStart),
-			);
-			if (market) {
-				return market;
-			}
-
-			logger.warn(
-				'No active BTC 5-minute markets found for current or upcoming window',
-			);
-			return null;
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : String(error);
-			logger.error(`Error fetching next market: ${message}`);
-			NotificationManager.handleError(
-				error,
-				'Polymarket',
-				'getNextMarket',
-			);
-			return null;
-		}
-	}
-
 	async getMarketOutcome(slug: string): Promise<string | null> {
 		try {
 			const response = await this.gammaApi.get<GammaEvent[]>('/events', {
@@ -277,6 +229,115 @@ class PolymarketService {
 		}
 	}
 
+	async getMarketByToken(tokenId: string): Promise<Market | null> {
+		try {
+			const response = await this.gammaApi.get<GammaMarket[]>(
+				'/markets',
+				{
+					params: { clob_token_ids: tokenId },
+				},
+			);
+
+			const markets = response.data;
+			if (!Array.isArray(markets) || markets.length === 0) return null;
+
+			const marketData = markets.find((m) => {
+				try {
+					const tokens = JSON.parse(m.clobTokenIds);
+					return tokens.includes(tokenId);
+				} catch (e) {
+					return false;
+				}
+			});
+			if (!marketData) return null;
+			const tokenIds: string[] = JSON.parse(marketData.clobTokenIds);
+
+			// We need the event to get the title and ticker
+			const eventResponse = await this.gammaApi.get<GammaEvent[]>(
+				'/events',
+				{
+					params: { slug: marketData.slug },
+				},
+			);
+			const event = eventResponse.data?.[0];
+
+			return {
+				conditionId: marketData.conditionId,
+				questionId: marketData.questionID,
+				slug: marketData.slug,
+				eventTicker: event?.ticker || '',
+				title: event?.title || marketData.question,
+				startTime: new Date(
+					marketData.eventStartTime || event?.startDate || Date.now(),
+				),
+				endTime: new Date(marketData.endDate),
+				upTokenId: tokenIds[0],
+				downTokenId: tokenIds[1],
+				tickSize:
+					marketData.orderPriceMinTickSize?.toString() ||
+					config.tickSize,
+				negRisk: marketData.negRisk || false,
+				minOrderSize: marketData.orderMinSize || config.minOrderSize,
+			};
+		} catch (error) {
+			logger.debug(`Error fetching market by token ${tokenId}: ${error}`);
+			return null;
+		}
+	}
+
+	async getMarketByConditionId(conditionId: string): Promise<Market | null> {
+		try {
+			const response = await this.gammaApi.get<GammaMarket[]>(
+				'/markets',
+				{
+					params: { condition_ids: conditionId },
+				},
+			);
+
+			const markets = response.data;
+			if (!Array.isArray(markets) || markets.length === 0) return null;
+
+			const marketData = markets.find(
+				(m) =>
+					m.conditionId.toLowerCase() === conditionId.toLowerCase(),
+			);
+			if (!marketData) return null;
+			const tokenIds: string[] = JSON.parse(marketData.clobTokenIds);
+
+			const eventResponse = await this.gammaApi.get<GammaEvent[]>(
+				'/events',
+				{
+					params: { slug: marketData.slug },
+				},
+			);
+			const event = eventResponse.data?.[0];
+
+			return {
+				conditionId: marketData.conditionId,
+				questionId: marketData.questionID,
+				slug: marketData.slug,
+				eventTicker: event?.ticker || '',
+				title: event?.title || marketData.question,
+				startTime: new Date(
+					marketData.eventStartTime || event?.startDate || Date.now(),
+				),
+				endTime: new Date(marketData.endDate),
+				upTokenId: tokenIds[0],
+				downTokenId: tokenIds[1],
+				tickSize:
+					marketData.orderPriceMinTickSize?.toString() ||
+					config.tickSize,
+				negRisk: marketData.negRisk || false,
+				minOrderSize: marketData.orderMinSize || config.minOrderSize,
+			};
+		} catch (error) {
+			logger.debug(
+				`Error fetching market by conditionId ${conditionId}: ${error}`,
+			);
+			return null;
+		}
+	}
+
 	private async _fetchMarketBySlug(slug: string): Promise<Market | null> {
 		try {
 			const response = await this.gammaApi.get<GammaEvent[]>('/events', {
@@ -300,13 +361,8 @@ class PolymarketService {
 
 			const tokenIds: string[] = JSON.parse(marketData.clobTokenIds);
 
-			// Fetch priceToBeat from the dedicated endpoint
 			const eventStartTime = marketData.eventStartTime || event.startDate;
-			const priceToBeat = await this.getPriceToBeat(
-				'BTC',
-				eventStartTime,
-				marketData.endDate,
-			);
+			const priceToBeat = 0;
 
 			return {
 				conditionId: marketData.conditionId,
@@ -323,7 +379,6 @@ class PolymarketService {
 					config.tickSize,
 				negRisk: marketData.negRisk || false,
 				minOrderSize: marketData.orderMinSize || config.minOrderSize,
-				priceToBeat,
 			};
 		} catch (error) {
 			const message =

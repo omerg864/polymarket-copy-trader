@@ -152,26 +152,11 @@ export async function clearModeData(mode: TradeType): Promise<void> {
 export async function getMarketPrices(
 	mode: TradeType,
 ): Promise<MarketDashboardData | null> {
-	const [btcRaw, refRaw, marketPriceRaw, signalRaw] = await Promise.all([
-		redis.get(REDIS_KEYS.BTC_PRICE(mode)),
-		redis.get(REDIS_KEYS.REF_PRICE(mode)),
+	const [marketPriceRaw, signalRaw] = await Promise.all([
 		redis.get(REDIS_KEYS.MARKET_PRICES(mode)),
 		redis.get(REDIS_KEYS.SIGNAL(mode)),
 	]);
-	if (!btcRaw) return null;
-	const btcData = JSON.parse(btcRaw) as {
-		btcPrice: number;
-		updatedAtCode?: number;
-		updatedAt: number;
-	};
-	const refData = refRaw
-		? (JSON.parse(refRaw) as {
-				priceToBeat: number | null;
-				marketTitle: string;
-				marketStartTime?: number;
-				marketEndTime?: number;
-			})
-		: null;
+
 	const marketPriceData = marketPriceRaw
 		? (JSON.parse(marketPriceRaw) as {
 				upPrice: number | null;
@@ -182,14 +167,10 @@ export async function getMarketPrices(
 	const signalData = signalRaw ? JSON.parse(signalRaw) : null;
 
 	return {
-		btcPrice: btcData.btcPrice,
-		updatedAt: btcData.updatedAt,
-		priceToBeat: refData?.priceToBeat ?? null,
-		marketTitle: refData?.marketTitle ?? null,
+		updatedAt: marketPriceData?.updatedAt ?? Date.now(),
+		marketTitle: null,
 		upPrice: marketPriceData?.upPrice ?? null,
 		downPrice: marketPriceData?.downPrice ?? null,
-		marketStartTime: refData?.marketStartTime ?? null,
-		marketEndTime: refData?.marketEndTime ?? null,
 		indicators: signalData?.indicators,
 		confidence: signalData?.confidence,
 		direction: signalData?.direction,

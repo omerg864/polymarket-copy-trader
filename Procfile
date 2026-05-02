@@ -1,1 +1,1 @@
-worker: NODE_OPTIONS='--max-old-space-size=400' npm start -w btc5-bot
+worker: NODE_OPTIONS='--max-old-space-size=400' npm start -w copy-bot

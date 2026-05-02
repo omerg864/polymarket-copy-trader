@@ -9,8 +9,6 @@ export const REDIS_PREFIX = 'pmbot:';
 
 export const REDIS_KEYS = {
 	// All keys are now mode-specific
-	BTC_PRICE: (mode: TradeType) => `${REDIS_PREFIX}${mode}:btc_price`,
-	REF_PRICE: (mode: TradeType) => `${REDIS_PREFIX}${mode}:ref_price`,
 	MARKET_PRICES: (mode: TradeType) => `${REDIS_PREFIX}${mode}:market_prices`,
 	SIGNAL: (mode: TradeType) => `${REDIS_PREFIX}${mode}:signal`,
 	STRATEGY_CONFIG: (mode: TradeType) =>

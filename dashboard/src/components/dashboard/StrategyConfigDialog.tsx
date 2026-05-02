@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { useTimezones, useUpdateConfig } from '@/hooks/use-api';
 import type { StrategyConfig } from '@/types';
-import { Pencil, Plus, Trash2, Clock } from 'lucide-react';
+import { Pencil, Plus, Trash2, Clock, ExternalLink } from 'lucide-react';
 import React, { useCallback, useState } from 'react';
 import { ConfigRow } from './ConfigRow';
 import { ConfigSection } from './ConfigSection';
@@ -36,6 +36,7 @@ export function StrategyConfigDialog({
 	const [prevConfig, setPrevConfig] = useState(config);
 	const [prevOpen, setPrevOpen] = useState(open);
 	const [newWindow, setNewWindow] = useState({ start: '', end: '' });
+	const [newWallet, setNewWallet] = useState({ address: '', nickname: '' });
 
 	if (config !== prevConfig || open !== prevOpen) {
 		setPrevConfig(config);
@@ -56,6 +57,7 @@ export function StrategyConfigDialog({
 		}
 		setEditing(false);
 	}, [config]);
+
 	const handleAddWindow = () => {
 		if (newWindow.start && newWindow.end) {
 			const current = editValues.excludedTimeWindows || [];
@@ -72,6 +74,25 @@ export function StrategyConfigDialog({
 		setEditValues({
 			...editValues,
 			excludedTimeWindows: current.filter((_, i) => i !== index),
+		});
+	};
+
+	const handleAddWallet = () => {
+		if (newWallet.address && newWallet.nickname) {
+			const current = editValues.wallets || [];
+			setEditValues({
+				...editValues,
+				wallets: [...current, newWallet],
+			});
+			setNewWallet({ address: '', nickname: '' });
+		}
+	};
+
+	const handleRemoveWallet = (index: number) => {
+		const current = editValues.wallets || [];
+		setEditValues({
+			...editValues,
+			wallets: current.filter((_, i) => i !== index),
 		});
 	};
 
@@ -96,6 +117,105 @@ export function StrategyConfigDialog({
 				</DialogHeader>
 				{config ? (
 					<div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+						<ConfigSection title="Copy Trading Wallets">
+							{!editing ? (
+								(config.wallets || []).length > 0 ? (
+									(config.wallets || []).map((w, i) => (
+										<React.Fragment key={i}>
+											<div className="flex flex-col py-1">
+												<span className="text-zinc-200 font-medium text-sm">
+													{w.nickname}
+												</span>
+												<a
+													href={`https://polymarket.com/profile/${w.address}`}
+													target="_blank"
+													rel="noopener noreferrer"
+													className="text-[10px] text-blue-400 hover:underline flex items-center gap-1"
+												>
+													{w.address.slice(0, 6)}...
+													{w.address.slice(-4)}
+													<ExternalLink className="h-2 w-2" />
+												</a>
+											</div>
+											<div />
+										</React.Fragment>
+									))
+								) : (
+									<div className="col-span-2 text-zinc-600 italic py-1 text-sm">
+										No wallets configured
+									</div>
+								)
+							) : (
+								<>
+									{(editValues.wallets || []).map((w, i) => (
+										<React.Fragment key={i}>
+											<div className="flex items-center gap-2 py-1">
+												<Button
+													variant="ghost"
+													size="icon"
+													className="h-6 w-6 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+													onClick={() =>
+														handleRemoveWallet(i)
+													}
+												>
+													<Trash2 className="h-3.5 w-3.5" />
+												</Button>
+												<div className="flex flex-col">
+													<span className="text-xs text-zinc-300">
+														{w.nickname}
+													</span>
+													<span className="text-[10px] text-zinc-500">
+														{w.address.slice(0, 10)}
+														...
+													</span>
+												</div>
+											</div>
+											<div />
+										</React.Fragment>
+									))}
+									<div className="col-span-2 border-t border-zinc-800/50 mt-2 pt-3 flex flex-col gap-2">
+										<div className="grid grid-cols-2 gap-2">
+											<Input
+												placeholder="Nickname"
+												value={newWallet.nickname}
+												onChange={(e) =>
+													setNewWallet({
+														...newWallet,
+														nickname:
+															e.target.value,
+													})
+												}
+												className="h-8 bg-zinc-900 border-zinc-800 text-xs"
+											/>
+											<Input
+												placeholder="Address"
+												value={newWallet.address}
+												onChange={(e) =>
+													setNewWallet({
+														...newWallet,
+														address: e.target.value,
+													})
+												}
+												className="h-8 bg-zinc-900 border-zinc-800 text-xs"
+											/>
+										</div>
+										<Button
+											size="sm"
+											className="h-8 w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700"
+											onClick={handleAddWallet}
+											disabled={
+												!newWallet.address ||
+												!newWallet.nickname
+											}
+										>
+											<Plus className="h-4 w-4 mr-2" />{' '}
+											Add Wallet
+										</Button>
+									</div>
+								</>
+							)}
+						</ConfigSection>
+
 						<ConfigSection title="Trading Limits">
 							<ConfigRow
 								label="Fixed Order Size"
@@ -149,221 +269,6 @@ export function StrategyConfigDialog({
 								options={timezones}
 							/>
 						</ConfigSection>
-						<ConfigSection title="Strategy Guards">
-							<ConfigRow
-								label="Min Confidence"
-								field="minConfidence"
-								suffix="%"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-								max={100}
-							/>
-							<ConfigRow
-								label="Min Entry Price"
-								field="minEntryPrice"
-								prefix="$"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
-							<ConfigRow
-								label="Max Entry Price"
-								field="maxEntryPrice"
-								prefix="$"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
-							<ConfigRow
-								label="Min StochRSI"
-								field="minStochRSI"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
-							<ConfigRow
-								label="Max StochRSI"
-								field="maxStochRSI"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
-							<ConfigRow
-								label="Min RSI-14"
-								field="minRSI14"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
-							<ConfigRow
-								label="Max RSI-14"
-								field="maxRSI14"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
-							<ConfigRow
-								label="Min BB Position"
-								field="minBBPosition"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
-							<ConfigRow
-								label="Max BB Position"
-								field="maxBBPosition"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
-							<ConfigRow
-								label="Min Market Age"
-								field="minMarketAgeMinutes"
-								suffix=" min"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
-							<ConfigRow
-								label="Take Profit Type"
-								field="takeProfitType"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								type="select"
-								options={['market', 'percent']}
-							/>
-							{editValues.takeProfitType === 'market' ? (
-								<ConfigRow
-									label="Market Price TP"
-									field="marketPriceTakeProfit"
-									editing={editing}
-									editValues={editValues}
-									setEditValues={setEditValues}
-									min={0}
-									max={1}
-								/>
-							) : (
-								<ConfigRow
-									label="Take Profit Percentage"
-									field="takeProfitPct"
-									suffix="%"
-									editing={editing}
-									editValues={editValues}
-									setEditValues={setEditValues}
-									min={0}
-									max={100}
-								/>
-							)}
-							<ConfigRow
-								label="Stop Loss Type"
-								field="stopLossType"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								type="select"
-								options={['market', 'percent']}
-							/>
-							{editValues.stopLossType === 'market' ? (
-								<ConfigRow
-									label="Market Price SL"
-									field="marketPriceStopLoss"
-									editing={editing}
-									editValues={editValues}
-									setEditValues={setEditValues}
-									min={0}
-								/>
-							) : (
-								<ConfigRow
-									label="Stop Loss Percentage"
-									field="stopLossPct"
-									suffix="%"
-									editing={editing}
-									editValues={editValues}
-									setEditValues={setEditValues}
-									min={0}
-									max={100}
-								/>
-							)}
-							<ConfigRow
-								label="Force Close Before End"
-								field="maxSecLoseFct"
-								suffix="s"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
-							<ConfigRow
-								label="Min Seconds Remaining"
-								field="minSecondsRemaining"
-								suffix="s"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
-							<ConfigRow
-								label="BTC Price Guard Offset"
-								field="btcPriceOffset"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-							/>
-							<ConfigRow
-								label="FCT BTC Offset"
-								field="fctBtcOffset"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
-						</ConfigSection>
-						<ConfigSection title="Technical Analysis">
-							<ConfigRow
-								label="Candles Fetched"
-								field="candleCount"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={1}
-							/>
-							<ConfigRow
-								label="RSI Period"
-								field="rsiPeriod"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={1}
-							/>
-							<ConfigRow
-								label="EMA Fast"
-								field="emaFast"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={1}
-							/>
-							<ConfigRow
-								label="EMA Slow"
-								field="emaSlow"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={1}
-							/>
-						</ConfigSection>
 
 						<ConfigSection title="Time Exclusions">
 							{!editing ? (
@@ -383,7 +288,7 @@ export function StrategyConfigDialog({
 										),
 									)
 								) : (
-									<div className="col-span-2 text-zinc-600 italic py-1">
+									<div className="col-span-2 text-zinc-600 italic py-1 text-sm">
 										No exclusion windows defined
 									</div>
 								)
@@ -393,7 +298,7 @@ export function StrategyConfigDialog({
 										editValues.excludedTimeWindows || []
 									).map((w, i) => (
 										<React.Fragment key={i}>
-											<div className="flex items-center gap-2">
+											<div className="flex items-center gap-2 py-1">
 												<Button
 													variant="ghost"
 													size="icon"
@@ -404,7 +309,7 @@ export function StrategyConfigDialog({
 												>
 													<Trash2 className="h-3.5 w-3.5" />
 												</Button>
-												<span className="text-zinc-400">
+												<span className="text-zinc-400 text-xs">
 													{w.start} — {w.end}
 												</span>
 											</div>
@@ -467,32 +372,6 @@ export function StrategyConfigDialog({
 						</ConfigSection>
 
 						<ConfigSection title="Advanced">
-							<ConfigRow
-								label="Risk Monitor Interval"
-								field="riskMonitorIntervalMs"
-								suffix=" ms"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={100}
-							/>
-							<ConfigRow
-								label="High Price Threshold"
-								field="highPriceThreshold"
-								prefix="$"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
-							<ConfigRow
-								label="High Price Bonus"
-								field="highPriceMaxBonusPct"
-								editing={editing}
-								editValues={editValues}
-								setEditValues={setEditValues}
-								min={0}
-							/>
 							<ConfigRow
 								label="Cycle Interval"
 								field="cycleIntervalMs"

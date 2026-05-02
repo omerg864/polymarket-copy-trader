@@ -30,7 +30,7 @@ try {
 async function main(): Promise<void> {
 	logger.info('');
 	logger.info('╔═══════════════════════════════════════════╗');
-	logger.info(`║  Polymarket BTC 5-Min Bot v${botVersion.padEnd(15)} ║`);
+	logger.info(`║  Polymarket Copy Trader Bot v${botVersion.padEnd(15)} ║`);
 	logger.info('╚═══════════════════════════════════════════╝');
 	logger.info('');
 

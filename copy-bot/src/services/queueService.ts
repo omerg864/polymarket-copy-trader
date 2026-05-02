@@ -426,13 +426,12 @@ class QueueService {
 
 		const buyFee = trade.fee || 0;
 		const totalFee = buyFee + sellFee;
-		
+
 		// Gross PnL (Request: PnL is minus actual cost when lost, fees reducted from trade itself imply net balance)
 		trade.pnl = revenue - trade.cost;
 		trade.fee = totalFee;
 		trade.status = status;
 		trade.exitPrice = exitPrice;
-		trade.exitBtcPrice = exitBtcPrice;
 		trade.pctChange =
 			trade.entryPrice > 0
 				? (exitPrice - trade.entryPrice) / trade.entryPrice

@@ -16,6 +16,7 @@ import {
 import { useActiveTrades, useConfig } from '@/hooks/use-api';
 import type { Trade } from '@/types';
 import { useState } from 'react';
+import { ExternalLink } from 'lucide-react';
 import { DirectionBadge, StatusBadge } from './badges';
 import { TradeDetailsDialog } from './TradeDetailsDialog';
 import { formatGlobalDateTime } from '@/lib/utils';
@@ -102,11 +103,27 @@ export function ActiveTradesTable() {
 										className={`border-zinc-800 cursor-pointer hover:bg-zinc-800/50 transition-colors ${isResolving ? 'opacity-80' : ''}`}
 										onClick={() => setSelectedTrade(trade)}
 									>
-										<TableCell className="font-mono text-xs text-zinc-400 max-w-[140px] truncate">
-											{trade.title.replace(
-												'Bitcoin Up or Down - ',
-												'',
-											)}
+										<TableCell className="font-mono text-xs text-zinc-400 max-w-[140px]">
+											<div className="flex items-center gap-2">
+												<span className="truncate">
+													{trade.title.replace(
+														'Bitcoin Up or Down - ',
+														'',
+													)}
+												</span>
+												<a
+													href={`https://polymarket.com/event/${trade.slug}`}
+													target="_blank"
+													rel="noopener noreferrer"
+													className="p-1 hover:bg-zinc-800 rounded transition-colors text-zinc-500 hover:text-zinc-100 shrink-0"
+													onClick={(e) =>
+														e.stopPropagation()
+													}
+													title="View on Polymarket"
+												>
+													<ExternalLink className="w-3 h-3" />
+												</a>
+											</div>
 										</TableCell>
 										<TableCell className="text-xs text-zinc-500">
 											{formatWithTimezone(trade.enteredAt)}

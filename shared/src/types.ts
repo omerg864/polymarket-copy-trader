@@ -72,7 +72,6 @@ export interface Trade {
 	entryPrice: number;
 	currentPrice: number;
 	exitPrice?: number;
-	exitBtcPrice?: number;
 	size: number;
 	cost: number;
 	fee: number;
@@ -81,115 +80,45 @@ export interface Trade {
 	endTime: string;
 	enteredAt: string;
 	closedAt?: string;
-	priceToBeat: number;
 	pnl: number;
 	pctChange?: number;
 	confidence?: number;
-	indicators?: {
-		currentPrice: number;
-		analysisBtcPrice: number;
-		priceToBeat: number | string;
-		distFromRef: string;
-		vwap?: string;
-		vwapDistancePct?: string;
-		microRsi: string;
-		stochRsi?: string;
-		rsi14: string;
-		ema3: string;
-		ema8: string;
-		bbLower?: string;
-		bbMiddle?: string;
-		bbUpper?: string;
-		bbPosition?: string;
-		momentum3: string;
-		volatility: string;
-		rsi14Pass?: boolean;
-		stochRsiPass?: boolean;
-		bbPositionPass?: boolean;
-		entryPricePass?: boolean;
-		marketPricePass?: boolean;
-		timeFramePass?: boolean;
-		timeRemaining?: string;
-	};
+	indicators?: any;
+	copyFrom?: string; // Nickname or address of the wallet copied
 	actualOutcome?: 'UP' | 'DOWN' | 'UNKNOWN';
+}
+
+export interface CopyWallet {
+	address: string;
+	nickname: string;
 }
 
 export interface StrategyConfig {
 	mode?: TradeType;
 	fixedOrderSizeUsd: number;
-	minConfidence: number;
-	takeProfitType: 'market' | 'percent';
-	marketPriceTakeProfit: number;
-	takeProfitPct: number;
-	stopLossType: 'market' | 'percent';
-	marketPriceStopLoss: number;
-	stopLossPct: number;
 	maxConcurrentTrades: number;
-	minEntryPrice: number;
-	maxEntryPrice: number;
-	minStochRSI: number;
-	maxStochRSI: number;
-	minRSI14: number;
-	maxRSI14: number;
-	minBBPosition: number;
-	maxBBPosition: number;
-	minMarketAgeMinutes: number;
-	candleCount: number;
-	rsiPeriod: number;
-	emaFast: number;
-	emaSlow: number;
-	riskMonitorIntervalMs: number;
 	botAllowance: number;
-	highPriceThreshold: number;
-	highPriceMaxBonusPct: number;
-	maxSecLoseFct: number;
 	cycleIntervalMs: number;
 	dayPnlGoal: number;
-	minSecondsRemaining: number;
-	btcPriceOffset: number;
 	dailyTakeProfit: number;
 	dailyStopLoss: number;
-	fctBtcOffset: number;
 	timezone: string;
+	riskMonitorIntervalMs: number;
+	wallets: CopyWallet[];
 	excludedTimeWindows: { start: string; end: string }[];
 }
 
 export const DEFAULT_STRATEGY_CONFIG: StrategyConfig = {
 	fixedOrderSizeUsd: 100,
-	minConfidence: 70,
-	takeProfitType: 'percent',
-	marketPriceTakeProfit: 0.98,
-	takeProfitPct: 30,
-	stopLossType: 'market',
-	marketPriceStopLoss: 0.4,
-	stopLossPct: 25, // 25% default percentage SL
 	maxConcurrentTrades: 3,
-	minEntryPrice: 0.8,
-	maxEntryPrice: 0.95,
-	minStochRSI: 20,
-	maxStochRSI: 89,
-	minRSI14: 30,
-	maxRSI14: 65,
-	minBBPosition: 0,
-	maxBBPosition: 85,
-	minMarketAgeMinutes: 2,
-	candleCount: 60,
-	rsiPeriod: 14,
-	emaFast: 9,
-	emaSlow: 21,
-	riskMonitorIntervalMs: 2000,
 	botAllowance: 100,
-	highPriceThreshold: 0.9,
-	highPriceMaxBonusPct: 1.0,
-	maxSecLoseFct: 13,
 	cycleIntervalMs: 5000,
+	riskMonitorIntervalMs: 5000,
 	dayPnlGoal: 2,
-	minSecondsRemaining: 30,
-	btcPriceOffset: 5,
 	dailyTakeProfit: -1,
 	dailyStopLoss: 1,
-	fctBtcOffset: 4,
 	timezone: 'Asia/Jerusalem',
+	wallets: [],
 	excludedTimeWindows: [],
 };
 
@@ -240,7 +169,6 @@ export interface Market {
 	tickSize: string;
 	negRisk: boolean;
 	minOrderSize: number;
-	priceToBeat: number | null;
 	upPrice?: number;
 	downPrice?: number;
 }
@@ -309,14 +237,10 @@ export interface MongoInfo {
 }
 
 export interface MarketDashboardData {
-	btcPrice: number;
-	priceToBeat: number | null;
 	upPrice: number | null;
 	downPrice: number | null;
 	updatedAt: number;
 	marketTitle: string | null;
-	marketStartTime: number | null;
-	marketEndTime: number | null;
 	indicators?: Trade['indicators'];
 	confidence?: number;
 	direction?: 'UP' | 'DOWN';

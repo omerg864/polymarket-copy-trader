@@ -21,7 +21,7 @@ import RedisStats from './RedisStats';
 import MongoStats from './MongoStats';
 import { VerificationStatsDialog } from './VerificationStatsDialog';
 import { AddBalanceDialog } from './AddBalanceDialog';
-import { formatBtcPrice, formatGlobalDateTime } from '@/lib/utils';
+import { formatGlobalDateTime } from '@/lib/utils';
 
 export function Header() {
 	const { data: summary, refetch: refetchSummary } = useSummary();
@@ -68,31 +68,29 @@ export function Header() {
 			Confidence: t.confidence
 				? `${(t.confidence * 100).toFixed(1)}%`
 				: '',
-			'Price to Beat': t.priceToBeat ? formatBtcPrice(t.priceToBeat) : '',
-			'BTC Price': t.indicators?.currentPrice ? formatBtcPrice(t.indicators?.currentPrice) : '',
-			'Dist From Ref': t.indicators?.distFromRef ?? '',
-			VWAP: t.indicators?.vwap ?? '',
-			'VWAP Distance %': t.indicators?.vwapDistancePct ?? '',
-			StochRSI: t.indicators?.stochRsi ?? '',
-			MicroRSI: t.indicators?.microRsi ?? '',
-			'RSI-14': t.indicators?.rsi14 ?? '',
-			'EMA-3': t.indicators?.ema3 ?? '',
-			'EMA-8': t.indicators?.ema8 ?? '',
-			'BB Lower': t.indicators?.bbLower ?? '',
-			'BB Middle': t.indicators?.bbMiddle ?? '',
-			'BB Upper': t.indicators?.bbUpper ?? '',
-			'BB Position %': t.indicators?.bbPosition ?? '',
-			'Momentum (3m)': t.indicators?.momentum3 ?? '',
-			Volatility: t.indicators?.volatility ?? '',
 			'Market Start': t.startTime
-				? formatGlobalDateTime(t.startTime, config?.timezone || 'Asia/Jerusalem')
+				? formatGlobalDateTime(
+						t.startTime,
+						config?.timezone || 'Asia/Jerusalem',
+					)
 				: '',
-			'Market End': t.endTime ? formatGlobalDateTime(t.endTime, config?.timezone || 'Asia/Jerusalem') : '',
+			'Market End': t.endTime
+				? formatGlobalDateTime(
+						t.endTime,
+						config?.timezone || 'Asia/Jerusalem',
+					)
+				: '',
 			'Opened At': t.enteredAt
-				? formatGlobalDateTime(t.enteredAt, config?.timezone || 'Asia/Jerusalem')
+				? formatGlobalDateTime(
+						t.enteredAt,
+						config?.timezone || 'Asia/Jerusalem',
+					)
 				: '',
 			'Closed At': t.closedAt
-				? formatGlobalDateTime(t.closedAt, config?.timezone || 'Asia/Jerusalem')
+				? formatGlobalDateTime(
+						t.closedAt,
+						config?.timezone || 'Asia/Jerusalem',
+					)
 				: '',
 		}));
 		const wsTrades = XLSX.utils.json_to_sheet(tradesData);
@@ -137,8 +135,7 @@ export function Header() {
 			<div>
 				<h1 className="text-lg xs:text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
 					📊 Polymarket Trading Dashboard
-					<span
-						className={`text-[9px] xs:text-[10px] uppercase px-2 py-0.5 rounded-full border ${
+					<span className={`text-[9px] xs:text-[10px] uppercase px-2 py-0.5 rounded-full border ${
 							getMode() === 'live'
 								? 'bg-red-500/10 text-red-400 border-red-500/30'
 								: getMode() === 'test'
@@ -150,9 +147,13 @@ export function Header() {
 					</span>
 				</h1>
 				<div className="text-[9px] xs:text-xs sm:text-sm text-zinc-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-					<span>BTC 5-Minute Up/Down Markets • Auto-refreshes every 5s</span>
+					<span>
+						Polymarket Copy Trader • Auto-refreshes every 5s
+					</span>
 					<div className="flex items-center gap-1.5">
-						<span className="hidden xs:inline text-zinc-700">•</span>
+						<span className="hidden xs:inline text-zinc-700">
+							•
+						</span>
 						<RedisStats /> <MongoStats />
 					</div>
 				</div>
@@ -209,7 +210,11 @@ export function Header() {
 				/>
 
 				<StartTimeDialog
-					key={startTimeOpen ? `open-${summary?.botStartTime}` : 'closed'}
+					key={
+						startTimeOpen
+							? `open-${summary?.botStartTime}`
+							: 'closed'
+					}
 					open={startTimeOpen}
 					onOpenChange={setStartTimeOpen}
 					currentStartTime={summary?.botStartTime}

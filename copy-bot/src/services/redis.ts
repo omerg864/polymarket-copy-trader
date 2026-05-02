@@ -294,31 +294,6 @@ class RedisService {
 		await client.set(key, JSON.stringify(stats));
 	}
 
-	async setBtcPrice(btcPrice: number): Promise<void> {
-		const client = this.getClient();
-		await client.set(
-			REDIS_KEYS.BTC_PRICE(this.mode),
-			JSON.stringify({ btcPrice, updatedAt: Date.now() }),
-		);
-	}
-
-	async setPriceToBeat(
-		priceToBeat: number | null,
-		marketTitle: string,
-		marketStartTime?: number,
-		marketEndTime?: number,
-	): Promise<void> {
-		const client = this.getClient();
-		await client.set(
-			REDIS_KEYS.REF_PRICE(this.mode),
-			JSON.stringify({
-				priceToBeat,
-				marketTitle,
-				marketStartTime,
-				marketEndTime,
-			}),
-		);
-	}
 
 	async setMarketPrices(
 		upPrice: number | null,
@@ -374,6 +349,21 @@ class RedisService {
 		const client = this.getClient();
 		const result = await client.set(key, '1', 'EX', ttlSeconds, 'NX');
 		return result === 'OK';
+	}
+
+	async getLastProcessedTradeId(
+		walletAddress: string,
+	): Promise<string | null> {
+		const client = this.getClient();
+		return client.get(`last_trade:${this.mode}:${walletAddress}`);
+	}
+
+	async setLastProcessedTradeId(
+		walletAddress: string,
+		tradeId: string,
+	): Promise<void> {
+		const client = this.getClient();
+		await client.set(`last_trade:${this.mode}:${walletAddress}`, tradeId);
 	}
 }
 
